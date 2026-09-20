@@ -4,93 +4,79 @@
   --blue: #002d72;
   --ink: #222b35;
   --muted: #525d69;
-  --rule: #d9e1ea;
+  --rule: #b4bdc8;
 }
 
 * { box-sizing: border-box; }
-html { scroll-padding-top: 1.5rem; }
+html { scroll-padding-top: 1rem; }
 body {
-  margin: 0;
+  margin: 1rem 0 2rem;
   background: #fff;
   color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-family: Georgia, "Times New Roman", serif;
   font-size: 1rem;
-  line-height: 1.65;
+  line-height: 1.5;
 }
-.container { width: min(100% - 3rem, 60rem); margin-inline: auto; }
-a { color: var(--blue); text-underline-offset: .18em; }
+.container { width: min(calc(100% - 2rem), 50rem); margin-inline: auto; }
+a { color: var(--blue); text-underline-offset: .15em; }
 a:hover { text-decoration-thickness: 2px; }
-a:focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
+a:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 .skip-link {
   position: absolute;
   left: 1rem;
   top: -6rem;
-  padding: .6rem 1rem;
+  padding: .4rem .7rem;
   background: #fff;
   z-index: 2;
 }
 .skip-link:focus { top: .5rem; }
-.site-header { border-top: 4px solid var(--blue); border-bottom: 1px solid var(--rule); }
 .nav-links, .profile-links { display: flex; flex-wrap: wrap; list-style: none; padding: 0; }
-.nav-links { gap: 0 1.7rem; margin: .35rem 0; }
-.nav-links a { display: inline-block; padding: .65rem 0; font-size: .94rem; text-decoration: none; }
+.nav-links { gap: 0 1.1rem; margin: 0 0 .7rem; }
+.nav-links a { display: inline-block; min-height: 2rem; padding-block: .25rem; text-decoration: none; }
+.nav-links a[aria-current="page"] { font-weight: bold; text-decoration: underline; }
 .nav-links a:hover, .nav-links a:focus-visible { text-decoration: underline; }
-section { padding: 2rem 0; border-bottom: 1px solid var(--rule); scroll-margin-top: 1rem; }
-.profile {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 160px;
-  grid-template-areas: "info photo" "links photo" "intro intro";
-  grid-template-rows: auto 1fr auto;
-  column-gap: 3rem;
-  align-items: start;
-  padding-top: 2.7rem;
-}
-h1, h2, h3 { line-height: 1.25; overflow-wrap: anywhere; }
-h1 { margin: 0 0 .8rem; font-size: 2.4rem; font-weight: 650; color: var(--blue); }
-h2 { margin: 0 0 1rem; font-size: 1.55rem; font-weight: 650; color: var(--blue); }
-h3 { margin: 1.5rem 0 .8rem; font-size: 1.08rem; }
-p { margin: 0 0 1rem; }
-section > :last-child { margin-bottom: 0; }
-.appointment { line-height: 1.7; }
-.profile-info { grid-area: info; min-width: 0; }
-.profile-links { grid-area: links; gap: .4rem 1.2rem; margin: .15rem 0 0; }
-.profile-links a { display: inline-block; padding-block: .2rem; overflow-wrap: anywhere; }
-.headshot { grid-area: photo; display: block; width: 160px; max-width: 100%; height: auto; }
-.intro { grid-area: intro; max-width: 54rem; margin: 1.7rem 0 0; }
-.research-themes, .publication-list { margin: 1rem 0; padding-left: 1.3rem; }
-.research-themes li { margin-bottom: .7rem; }
-.publication-list li { margin-bottom: 1.2rem; }
+h1, h2, h3 { color: var(--blue); font-weight: bold; line-height: 1.3; overflow-wrap: anywhere; }
+h1 { font-size: 1.65rem; margin: .6rem 0 1rem; padding-bottom: .2rem; border-bottom: 1px solid var(--rule); }
+h2 { font-size: 1.2rem; margin: 1.25rem 0 .45rem; padding-bottom: .1rem; border-bottom: 1px solid var(--rule); }
+h3 { font-size: 1.05rem; margin: 1rem 0 .4rem; }
+p { margin: 0 0 .65rem; }
+section { scroll-margin-top: 1rem; }
+.profile { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .85rem 1.4rem; }
+.profile-text { flex: 1 1 24rem; min-width: 0; }
+.headshot { display: block; width: 140px; max-width: 100%; height: auto; }
+.appointment { margin-bottom: .7rem; }
+.profile-links { gap: .15rem .8rem; margin: .5rem 0 0; }
+.profile-links a { display: inline-block; min-height: 1.5rem; overflow-wrap: anywhere; }
+.page-directory { margin-top: .9rem; }
+.page-directory a { display: inline-block; min-height: 1.5rem; }
+.research-themes, .publication-list { margin: .5rem 0 .8rem; padding-left: 1.4rem; }
+.research-themes li { margin-bottom: .4rem; }
+.publication-list li { margin-bottom: .8rem; }
 .publication-list a { overflow-wrap: anywhere; }
-.secondary-links, .site-footer { color: var(--muted); font-size: .9rem; }
-.site-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 2rem; padding-block: 1.3rem; }
+.secondary-links { font-size: .9rem; }
+.site-footer { display: flex; flex-wrap: wrap; gap: .2rem 1.5rem; justify-content: space-between; margin-top: 1.8rem; padding-top: .4rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .8rem; }
 .site-footer p { margin: 0; }
 
-@media (max-width: 640px) {
-  .container { width: calc(100% - 2rem); }
-  .nav-links { column-gap: 1.2rem; }
-  .nav-links a { padding-block: .5rem; }
-  .profile { display: flex; flex-wrap: wrap; column-gap: 1rem; padding-top: 1.8rem; }
-  .profile-info { flex: 1 1 12rem; }
-  .profile-links, .intro { flex: 0 1 100%; min-width: 0; }
-  .profile-links { margin-top: 1rem; }
-  h1 { font-size: 1.9rem; }
-  .headshot { width: 100px; }
-  section { padding-block: 1.6rem; }
+@media (max-width: 600px) {
+  body { margin-top: .5rem; }
+  .nav-links { gap: 0 .9rem; }
+  .profile { column-gap: 1rem; }
+  .profile-text { display: contents; }
+  .appointment { flex: 1 1 12rem; min-width: 0; order: 1; }
+  .headshot { width: 100px; order: 2; }
+  .profile-links { flex: 0 1 100%; min-width: 0; order: 3; }
+  .profile-summary { flex: 0 1 100%; min-width: 0; order: 4; }
 }
 
-@media (max-width: 400px) {
-  .profile { column-gap: 1rem; }
+@media (max-width: 360px) {
   .headshot { width: 80px; }
-  h1 { font-size: 1.65rem; }
-  .intro { margin-top: .5rem; }
 }
 
 @media print {
   .site-header, .skip-link { display: none; }
   .container { width: 100%; }
-  body { font-size: 11pt; }
-  section { padding-block: 1rem; }
+  body { margin: 0; font-size: 11pt; }
   a { color: inherit; }
-  h2, h3 { break-after: avoid; }
+  h1, h2, h3 { break-after: avoid; }
   .publication-list li { break-inside: avoid; }
 }

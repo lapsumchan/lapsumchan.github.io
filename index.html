@@ -14,94 +14,48 @@
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
-  <header class="site-header">
-    <nav class="container" aria-label="Main navigation">
+  <header class="site-header container">
+    <nav aria-label="Main navigation">
       <ul class="nav-links">
-        <li><a href="#home">Home</a></li>
-        <li><a href="#research">Research</a></li>
-        <li><a href="#publications">Publications</a></li>
-        <li><a href="#teaching">Teaching &amp; Mentoring</a></li>
-        <li><a href="#software">Software</a></li>
-        <li><a href="#cv">Bio / CV</a></li>
+        <li><a href="index.html" aria-current="page">Home</a></li>
+        <li><a href="research.html">Research</a></li>
+        <li><a href="publications.html">Publications</a></li>
+        <li><a href="index.html#teaching">Teaching &amp; Mentoring</a></li>
+        <li><a href="research.html#software">Software</a></li>
+        <li><a href="index.html#cv">Bio / CV</a></li>
       </ul>
     </nav>
   </header>
-
   <main class="container" id="main-content" tabindex="-1">
-    <section class="profile" id="home" aria-labelledby="name">
-      <div class="profile-info">
-        <h1 id="name">Lap Sum Chan</h1>
+    <h1 id="home">Lap Sum Chan</h1>
+    <div class="profile">
+      <img class="headshot" src="headshot.jpg" alt="Lap Sum Chan" width="1200" height="1800">
+      <div class="profile-text">
         <p class="appointment">Postdoctoral Fellow<br>
           <a href="https://publichealth.jhu.edu/departments/biostatistics">Department of Biostatistics</a><br>
           Johns Hopkins Bloomberg School of Public Health</p>
+        <p class="profile-summary">I am a biostatistician working on trustworthy biomedical AI and statistical methodology for modern biomedical data. My research connects calibrated risk prediction, survival analysis, and statistical genomics, with an emphasis on reliable conclusions and useful uncertainty assessments.</p>
+        <ul class="profile-links" aria-label="Professional links">
+          <li><a href="#cv">CV (upon request)</a></li>
+          <li><a href="https://scholar.google.com/citations?user=yMsQPGIAAAAJ&amp;hl=en">Google Scholar</a></li>
+          <li><a href="https://github.com/lapsumchan">GitHub</a></li>
+          <li><a href="mailto:lchan18@jh.edu">lchan18@jh.edu</a></li>
+        </ul>
       </div>
-      <img class="headshot" src="headshot.jpg" alt="Lap Sum Chan" width="1200" height="1800">
-      <ul class="profile-links" aria-label="Professional links">
-        <li><a href="https://scholar.google.com/citations?user=yMsQPGIAAAAJ&amp;hl=en">Google Scholar</a></li>
-        <li><a href="https://github.com/lapsumchan">GitHub</a></li>
-        <li><a href="mailto:lchan18@jh.edu">lchan18@jh.edu</a></li>
-        <li><a href="#cv">CV (upon request)</a></li>
-      </ul>
-      <p class="intro">I am a biostatistician working on trustworthy biomedical AI and statistical methodology for modern biomedical data. My research connects calibrated risk prediction, survival analysis, and statistical genomics, with an emphasis on reliable conclusions and useful uncertainty assessments.</p>
-    </section>
-
-    <section id="research" aria-labelledby="research-heading">
-      <h2 id="research-heading">Research</h2>
-      <p>My work addresses how complex biomedical data can support reliable prediction and inform decisions. Current interests include:</p>
-      <ul class="research-themes">
-        <li><strong>Calibrated risk prediction and uncertainty.</strong> Assessing the reliability of risk estimates and their implications for decisions.</li>
-        <li><strong>Survival analysis and clinical histories.</strong> Statistical methods for time-to-event outcomes and longitudinal electronic health records.</li>
-        <li><strong>Statistical genetics and genomics.</strong> Methods for association analysis, causal inference, and the study of complex traits.</li>
-        <li><strong>High-dimensional and multimodal data.</strong> Methods that account for dependence and integrate information across biomedical data sources.</li>
-      </ul>
-      <p>Additional research materials are available upon request.</p>
-    </section>
-
-    <section id="publications" aria-labelledby="publications-heading">
-      <h2 id="publications-heading">Publications</h2>
-      <p>Selected papers and preprint versions are listed below. See <a href="https://scholar.google.com/citations?user=yMsQPGIAAAAJ&amp;hl=en">Google Scholar</a> for further publications.</p>
-      <h3>Peer-reviewed</h3>
-      <ul class="publication-list">
-          <li class="paper" data-keywords="GWAS, metabolomics, fine mapping, colocalization, putative causal gene">
-          Xianyong Yin, <strong>Lap Sum Chan</strong>, Debraj Bose, Anne U. Jackson, ..., Eric B. Fauman, Markku Laakso, Michael Boehnke.
-          <a href="https://www.nature.com/articles/s41467-022-29143-5">"Genome-wide association studies of metabolites in Finnish men identify disease-relevant loci."</a>
-          Nature communications 13.1 (2022): 1644.</li>
-          <li class="paper" data-keywords="GWAS, ExWAS, association study, whole-exome sequencing, imputation, metabolomics">
-          Eva König, ..., <strong>Lap Sum Chan</strong>, ..., Christian Fuchsberger.
-          <a href="https://www.mdpi.com/2218-1989/12/7/604">"Whole exome sequencing enhanced imputation identifies 85 metabolite associations in the Alpine CHRIS Cohort."</a>
-          Metabolites, 12(7), (2022): 604.</li>
-      </ul>
-      <h3>Preprint versions</h3>
-      <ul class="publication-list">
-          <li class="paper" data-keywords="Cox proportional hazards model, censoring, differential abundance analysis, microbiome, compositional data">
-          <strong>Lap Sum Chan</strong>, Gen Li.
-          <a href="https://www.biorxiv.org/content/10.1101/2023.07.05.547842v1.abstract">"Zero is not absence: censoring-based differential abundance analysis for microbiome data."</a>
-          bioRxiv, (2023): 2023-07.</li>
-          <li class="paper" data-keywords="High dimensional inference, debiasing, metabolomics, factor analysis model, post selection inference">
-          <strong>Lap Sum Chan</strong>, Gen Li, Eric B. Fauman, Markku Laakso, Michael Boehnke, Peter X.K. Song.
-          <a href="https://www.biorxiv.org/content/10.1101/2022.11.10.515671v1.abstract">"DrFARM: Identification and inference for pleiotropic gene in GWAS."</a>
-          bioRxiv, (2022): 2022-11. </li>
-      </ul>
-    </section>
-
-    <section id="teaching" aria-labelledby="teaching-heading">
-      <h2 id="teaching-heading">Teaching &amp; Mentoring</h2>
-      <p>Please <a href="mailto:lchan18@jh.edu">contact me</a> for information about teaching and mentoring.</p>
-    </section>
-
-    <section id="software" aria-labelledby="software-heading">
-      <h2 id="software-heading">Software</h2>
-      <p><a href="https://github.com/lapsumchan/drfarm"><strong>DrFARM</strong></a> is an R package for identifying and studying pleiotropic associations in multi-trait genome-wide association studies. See the project repository for documentation and software availability.</p>
-    </section>
+    </div>
+    <p class="page-directory"><span id="research"><a href="research.html">Research interests</a></span> &middot; <span id="publications"><a href="publications.html">Selected publications</a></span> &middot; <span id="software"><a href="research.html#software">Software</a></span></p>
 
     <section id="cv" aria-labelledby="cv-heading">
       <h2 id="cv-heading">Bio / CV</h2>
       <p>I received my Ph.D. in Biostatistics from the University of Michigan and previously held a postdoctoral appointment at the University of Minnesota. I am currently a Postdoctoral Fellow in Biostatistics at Johns Hopkins.</p>
       <p>My curriculum vitae is available upon request. Please email <a href="mailto:lchan18@jh.edu">lchan18@jh.edu</a>.</p>
-      <p class="secondary-links">Elsewhere: <a href="https://www.linkedin.com/in/lap-sum-chan-506361105/">LinkedIn</a> &middot; <a href="https://twitter.com/SumLap">Twitter</a></p>
+      <p class="secondary-links">Elsewhere: <a href="https://www.linkedin.com/in/lap-sum-chan-506361105/">LinkedIn</a> · <a href="https://twitter.com/SumLap">Twitter</a></p>
+    </section>
+    <section id="teaching" aria-labelledby="teaching-heading">
+      <h2 id="teaching-heading">Teaching &amp; Mentoring</h2>
+      <p>Please <a href="mailto:lchan18@jh.edu">contact me</a> for information about teaching and mentoring.</p>
     </section>
   </main>
-
   <footer class="container site-footer">
     <p>Lap Sum Chan &middot; Biostatistics</p>
     <p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p>

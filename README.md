@@ -2,7 +2,7 @@
 
 Source for [Lap Sum Chan's academic homepage](https://lapsumchan.github.io/).
 
-The site uses `index.html`, `styles.css`, and `headshot.jpg`.
+The site uses plain HTML pages, a shared `styles.css`, and `headshot.jpg`.
 
 To view locally, run this command from the repository directory:
 
