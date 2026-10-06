@@ -1,0 +1,1010 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Statistical Inference — Chapter 5: Sampling limits and asymptotic approximations | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Sampling limits and asymptotic approximations.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/inference/07-limits.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Statistical Inference — Chapter 5: Sampling limits and asymptotic approximations | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Sampling limits and asymptotic approximations.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/inference/07-limits.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Statistical Inference — Chapter 5: Sampling limits and asymptotic approximations", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Statistical Inference", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/inference/07-limits.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Statistical Inference</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Questions, probability models, and likelihood</p><ol class="contents-chapters"><li><a href="01-models.html">1. Probability models and statistical targets</a></li><li><a href="02-likelihood.html">2. Likelihood, data reduction, and constructing estimators</a></li></ol><p class="contents-part">Part II: Conditional targets, regression, and loss</p><ol class="contents-chapters"><li><a href="conditional-regression.html">3. Regression and conditional targets</a></li><li><a href="03-decisions.html">4. Can a better estimate lead to a worse decision?</a></li></ol><p class="contents-part">Part III: Estimation, uncertainty, and testing</p><ol class="contents-chapters"><li><a href="07-limits.html" aria-current="page">5. Sampling limits and asymptotic approximations</a></li><li><a href="08-confidence.html">6. Likelihood asymptotics and confidence sets</a></li><li><a href="09-testing.html">7. Hypothesis Testing as a Statistical Procedure</a></li><li><a href="06-bayes.html">8. Bayesian inference and predictive uncertainty</a></li></ol><p class="contents-part">Part IV: Shrinkage and regularized regression</p><ol class="contents-chapters"><li><a href="12-shrinkage.html">9. Empirical Bayes and the geometry of shrinkage</a></li><li><a href="regularization-association.html">10. Regularization, bias correction, and association inference</a></li></ol><p class="contents-part">Part V: Association claims and multiplicity</p><ol class="contents-chapters"><li><a href="14-multiplicity.html">11. Multiplicity, simultaneous claims, and false discoveries</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#a-sequence-of-experiments-needs-a-fixed-target">5.1 A sequence of experiments needs a fixed target</a></li><li><a href="#what-different-convergence-statements-permit">5.2 What different convergence statements permit</a></li><li><a href="#a-central-limit-theorem-describes-scaled-error">5.3 A central limit theorem describes scaled error</a></li><li><a href="#exact-computation-audits-an-approximation">5.4 Exact computation audits an approximation</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#studentization-changes-the-denominator-not-the-target">5.5 Studentization changes the denominator, not the target</a></li><li><a href="#the-delta-method-carries-an-estimand-through-a-transformation">5.6 The delta method carries an estimand through a transformation</a></li><li><a href="#when-the-first-derivative-vanishes">5.7 When the first derivative vanishes</a></li><li><a href="#a-quantile-has-a-different-source-of-precision">5.8 A quantile has a different source of precision</a></li><li><a href="#rare-event-sequences-ask-a-different-question">5.9 Rare-event sequences ask a different question</a></li><li><a href="#from-a-limit-argument-to-a-defensible-analysis">5.10 From a limit argument to a defensible analysis</a></li><li><a href="#exercises">5.11 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Statistical Inference</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 5</span></p><div class="chapter-content"><h1 id="i7-chapter">Chapter 5. Sampling limits and asymptotic approximations</h1>
+<p>The earlier probability, likelihood, and loss calculations let us
+compare procedures without treating a large sample as a universal
+remedy. The event count
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math></span>
+gave an exact likelihood, an unbiased estimate, and a sufficient
+statistic. Those calculations become harder when a target is a nonlinear
+function of many parameters or when a likelihood must be optimized
+numerically. Large-sample theory supplies a common language for such
+problems. To use it, we specify what approaches a limit, what remains
+fixed, and which assumptions support the approximation.</p>
+<p>Return to the one-year event probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+in the population defined in Chapter <a href="01-models.html#i1-chapter" data-reference-type="ref" data-reference="i1-chapter">1</a>.
+If a study grew from ten to two hundred independent, completely observed
+people, what would improve? The sample proportion would concentrate
+around the same target. Its error would usually become smaller. A
+suitably scaled error would approach a stable distribution. These are
+distinct statements. This chapter develops them in that order, then uses
+exact binomial calculations to inspect how much a limiting argument
+tells us at a particular sample size.</p>
+<p>The core material is consistency, the ordinary independent-sample
+central limit theorem, Slutsky’s theorem, and the first-order delta
+method. Second-order limits and changing-parameter sequences are
+advanced extensions. They reveal why a normal approximation can fail
+even when an estimator is consistent. The argument builds on
+expectations and variances from Chapter <a href="01-models.html#i1-chapter" data-reference-type="ref" data-reference="i1-chapter">1</a>;
+the characteristic-function outline can be read after the central limit
+theorem’s statement without interrupting the applied examples.</p>
+<h2 id="a-sequence-of-experiments-needs-a-fixed-target">5.1 A sequence of
+experiments needs a fixed target</h2>
+<p>For each positive integer
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>,
+let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>X</mi><mi>n</mi></msub></mrow><annotation encoding="application/x-tex">X_1,\ldots,X_n</annotation></semantics></math></span>
+be independent
+Bernoulli<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(p)</annotation></semantics></math></span>
+observations and let
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>K</mi><mi>n</mi></msub><mo>=</mo><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><mspace width="2.0em"></mspace><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo>=</mo><msub><mi>K</mi><mi>n</mi></msub><mi>/</mi><mi>n</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">K_n=\sum_{i=1}^{n}X_i,\qquad \widehat p_n=K_n/n.
+ \label{i7-sequence}</annotation></semantics></math><span id="i7-sequence" class="equation-anchor"></span><span class="equation-number">(5.1)</span></span> We add a subscript
+when comparing sample sizes; within one experiment we still write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>p</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat p</annotation></semantics></math></span>.
+Unless stated otherwise,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+is fixed as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+increases. The distribution changes because there are more observations,
+not because the population’s event probability changes.</p>
+<p>An estimator
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>T</mi><mi>n</mi></msub><annotation encoding="application/x-tex">T_n</annotation></semantics></math></span>
+of a target
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\tau(p)</annotation></semantics></math></span>
+is consistent at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+if
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">{</mo><mrow><mo stretchy="true" form="prefix">|</mo><msub><mi>T</mi><mi>n</mi></msub><mo>−</mo><mi>τ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">|</mo></mrow><mo>&gt;</mo><mi>ϵ</mi><mo stretchy="false" form="postfix">}</mo><mo>→</mo><mn>0</mn><mspace width="1.0em"></mspace><mrow><mtext mathvariant="normal">for every </mtext><mspace width="0.333em"></mspace></mrow><mi>ϵ</mi><mo>&gt;</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}_p\{|T_n-\tau(p)|&gt;\epsilon\}\longrightarrow0
+ \quad\text{for every }\epsilon&gt;0.
+ \label{i7-consistency}</annotation></semantics></math><span id="i7-consistency" class="equation-anchor"></span><span class="equation-number">(5.2)</span></span> This is
+convergence in probability, written
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>n</mi></msub><mover><mo>→</mo><msub><mi>P</mi><mi>p</mi></msub></mover><mi>τ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">T_n\xrightarrow{P_p}\tau(p)</annotation></semantics></math></span>.
+Consistency describes the probability of an error exceeding any fixed
+tolerance. It does not require that every realized sequence of estimates
+improve monotonically, that finite-sample bias vanish exactly, or that a
+confidence interval have its advertised coverage.</p>
+<p>From Chapter <a href="01-models.html#i1-chapter" data-reference-type="ref" data-reference="i1-chapter">1</a>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mi>p</mi></msub><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo>=</mo><mi>p</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}_p\widehat p_n=p</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>Var</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">\operatorname{Var}_p(\widehat p_n)=p(1-p)/n</annotation></semantics></math></span>.
+Chebyshev’s inequality gives the elementary proof
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">{</mo><mrow><mo stretchy="true" form="prefix">|</mo><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">|</mo></mrow><mo>&gt;</mo><mi>ϵ</mi><mo stretchy="false" form="postfix">}</mo><mo>≤</mo><mfrac><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>n</mi><msup><mi>ϵ</mi><mn>2</mn></msup></mrow></mfrac><mo>≤</mo><mfrac><mn>1</mn><mrow><mn>4</mn><mi>n</mi><msup><mi>ϵ</mi><mn>2</mn></msup></mrow></mfrac><mo>→</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}_p\{|\widehat p_n-p|&gt;\epsilon\}
+ \leq\frac{p(1-p)}{n\epsilon^2}
+ \leq\frac{1}{4n\epsilon^2}\longrightarrow0.
+ \label{i7-chebyshev}</annotation></semantics></math><span id="i7-chebyshev" class="equation-anchor"></span><span class="equation-number">(5.3)</span></span> The last bound is
+uniform over
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">p\in[0,1]</annotation></semantics></math></span>.
+It establishes uniform consistency for this absolute-error criterion. It
+is usually a loose numerical bound: with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ϵ</mi><mo>=</mo><mn>0.05</mn></mrow><annotation encoding="application/x-tex">\epsilon=0.05</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>100</mn></mrow><annotation encoding="application/x-tex">n=100</annotation></semantics></math></span>,
+its upper bound is one and conveys no useful finite-sample guarantee. A
+valid limit argument need not be a sharp planning formula.</p>
+<p>More generally, if an estimator has bias tending to zero and variance
+tending to zero, then its mean squared error tends to zero, and Markov’s
+inequality applied to squared error establishes consistency. The
+converse is false without additional conditions. Rare, very large errors
+can have negligible probability but a large second moment. Therefore an
+observed decline in typical error does not establish convergence of
+expected loss. This distinction will matter when comparing procedures
+under loss functions that heavily penalize tails.</p>
+<h2 id="what-different-convergence-statements-permit">5.2 What different
+convergence statements permit</h2>
+<p>Concentration around a target does not yet describe the shape of the
+remaining error. We need a distributional statement for that task, and
+we must distinguish it from convergence of the variables themselves.
+Convergence in distribution,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>n</mi></msub><mover><mo>→</mo><mi>d</mi></mover><mi>T</mi></mrow><annotation encoding="application/x-tex">T_n\xrightarrow{d}T</annotation></semantics></math></span>,
+means that
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>T</mi><mi>n</mi></msub><mo>≤</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}(T_n\leq t)</annotation></semantics></math></span>
+tends to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>≤</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}(T\leq t)</annotation></semantics></math></span>
+at each continuity point of the limiting cumulative distribution. It
+concerns distributions, not closeness of two variables on individual
+repetitions. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math></span>
+is standard normal and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>n</mi></msub><mo>=</mo><mi>Z</mi></mrow><annotation encoding="application/x-tex">T_n=Z</annotation></semantics></math></span>
+for even
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+but
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>n</mi></msub><mo>=</mo><mo>−</mo><mi>Z</mi></mrow><annotation encoding="application/x-tex">T_n=-Z</annotation></semantics></math></span>
+for odd
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>,
+every
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>T</mi><mi>n</mi></msub><annotation encoding="application/x-tex">T_n</annotation></semantics></math></span>
+has the same normal distribution. Yet
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>T</mi><mi>n</mi></msub><annotation encoding="application/x-tex">T_n</annotation></semantics></math></span>
+does not converge in probability to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math></span>:
+along odd indices,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">|</mo><msub><mi>T</mi><mi>n</mi></msub><mo>−</mo><mi>Z</mi><mo stretchy="true" form="postfix">|</mo></mrow><mo>=</mo><mn>2</mn><mrow><mo stretchy="true" form="prefix">|</mo><mi>Z</mi><mo stretchy="true" form="postfix">|</mo></mrow></mrow><annotation encoding="application/x-tex">|T_n-Z|=2|Z|</annotation></semantics></math></span>
+has a positive probability of exceeding a small tolerance.</p>
+<p>Almost-sure convergence is stronger. It requires convergence along
+the realized sequence outside a probability-zero set. Almost-sure
+convergence implies convergence in probability, which implies
+convergence in distribution. Convergence in distribution to a constant
+also implies convergence in probability to that constant. A general
+nonconstant limit does not give the reverse implication. These
+relationships are the reason that a law of large numbers can support
+substitution of an estimated denominator, whereas a distributional limit
+alone generally cannot.</p>
+<p>Two tools connect the statements. The continuous mapping theorem says
+that continuous transformations preserve an appropriate convergence
+statement. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>n</mi></msub><mover><mo>→</mo><mi>P</mi></mover><mi>θ</mi></mrow><annotation encoding="application/x-tex">T_n\xrightarrow{P}\theta</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>g</mi><annotation encoding="application/x-tex">g</annotation></semantics></math></span>
+is continuous at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>,
+then
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>T</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mover><mo>→</mo><mi>P</mi></mover><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">g(T_n)\xrightarrow{P}g(\theta)</annotation></semantics></math></span>.
+Slutsky’s theorem says that if
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mi>n</mi></msub><mover><mo>→</mo><mi>d</mi></mover><mi>A</mi></mrow><annotation encoding="application/x-tex">A_n\xrightarrow{d}A</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>B</mi><mi>n</mi></msub><mover><mo>→</mo><mi>P</mi></mover><mi>b</mi></mrow><annotation encoding="application/x-tex">B_n\xrightarrow{P}b</annotation></semantics></math></span>
+for a constant
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math></span>,
+then sums and products have the corresponding limits, and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mi>n</mi></msub><mi>/</mi><msub><mi>B</mi><mi>n</mi></msub><mover><mo>→</mo><mi>d</mi></mover><mi>A</mi><mi>/</mi><mi>b</mi></mrow><annotation encoding="application/x-tex">A_n/B_n\xrightarrow{d}A/b</annotation></semantics></math></span>
+if
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>≠</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">b\ne0</annotation></semantics></math></span>.
+The variables need not be independent.</p>
+<p>The constant limit
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math></span>
+is what lets us replace the denominator without needing a new joint
+distribution. If both numerator and denominator merely have
+distributional limits, their joint dependence can affect the ratio. A
+marginal normal limit for each of two quantities does not establish a
+normal limit for their difference. When in doubt, write the joint
+experiment and the relevant joint convergence rather than combining
+separate software summaries.</p>
+<h2 id="a-central-limit-theorem-describes-scaled-error">5.3 A central limit
+theorem describes scaled error</h2>
+<p>Suppose
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mn>1</mn></msub><mo>,</mo><msub><mi>Y</mi><mn>2</mn></msub><mo>,</mo><mi>…</mi></mrow><annotation encoding="application/x-tex">Y_1,Y_2,\ldots</annotation></semantics></math></span>
+are independent and identically distributed, with mean
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>
+and variance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><msup><mi>σ</mi><mn>2</mn></msup><mo>&lt;</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">0&lt;\sigma^2&lt;\infty</annotation></semantics></math></span>.
+The ordinary central limit theorem states
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><msqrt><mi>n</mi></msqrt><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>Y</mi><mo accent="true">¯</mo></mover><mi>n</mi></msub><mo>−</mo><mi>μ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mi>σ</mi></mfrac><mover><mo>→</mo><mi>d</mi></mover><mi>Z</mi><mo>,</mo><mspace width="2.0em"></mspace><mi>Z</mi><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{\sqrt n(\overline Y_n-\mu)}{\sigma}
+ \xrightarrow{d}Z,\qquad Z\sim N(0,1).
+ \label{i7-clt}</annotation></semantics></math><span id="i7-clt" class="equation-anchor"></span><span class="equation-number">(5.4)</span></span> The limit distribution
+is fixed. We do not write convergence to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>,</mo><msup><mi>σ</mi><mn>2</mn></msup><mi>/</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">N(\mu,\sigma^2/n)</annotation></semantics></math></span>,
+whose variance changes with the index. For finite
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>,
+that changing normal distribution can be an approximation to the
+distribution of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>Y</mi><mo accent="true">¯</mo></mover><mi>n</mi></msub><annotation encoding="application/x-tex">\overline Y_n</annotation></semantics></math></span>;
+it is not the fixed object on the right side of a convergence
+statement.</p>
+<p>A short proof outline makes the role of finite variance visible. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>Y</mi><mo>−</mo><mi>μ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>σ</mi></mrow><annotation encoding="application/x-tex">V=(Y-\mu)/\sigma</annotation></semantics></math></span>,
+let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>i</mi><mo>=</mo><msqrt><mrow><mo>−</mo><mn>1</mn></mrow></msqrt></mrow><annotation encoding="application/x-tex">i=\sqrt{-1}</annotation></semantics></math></span>
+in the characteristic function; this local use is distinct from an
+observation index. Near zero it satisfies
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>e</mi><mrow><mi>i</mi><mi>t</mi><mi>V</mi></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mo>−</mo><msup><mi>t</mi><mn>2</mn></msup><mi>/</mi><mn>2</mn><mo>+</mo><mi>o</mi><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>t</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}(e^{itV})=1-t^2/2+o(t^2).
+ \label{i7-characteristic-expansion}</annotation></semantics></math><span id="i7-characteristic-expansion" class="equation-anchor"></span><span class="equation-number">(5.5)</span></span> The
+linear term vanishes because
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mi>V</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mathbb{E}V=0</annotation></semantics></math></span>,
+and the quadratic term uses
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><msup><mi>V</mi><mn>2</mn></msup><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\mathbb{E}V^2=1</annotation></semantics></math></span>.
+Independence makes the characteristic function of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>n</mi><mrow><mo>−</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>V</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">n^{-1/2}\sum_iV_i</annotation></semantics></math></span>
+equal to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>−</mo><msup><mi>t</mi><mn>2</mn></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>o</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mi>/</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mo stretchy="false" form="postfix">}</mo><mi>n</mi></msup></mrow><annotation encoding="application/x-tex">\{1-t^2/(2n)+o(1/n)\}^n</annotation></semantics></math></span>,
+which tends to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>t</mi><mn>2</mn></msup><mi>/</mi><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">e^{-t^2/2}</annotation></semantics></math></span>.
+The continuity theorem for characteristic functions completes the
+distributional argument. This outline is not a finite-sample error
+bound; proving a rate requires stronger moment assumptions and further
+work.</p>
+<p>For the binary experiment at fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>p</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;p&lt;1</annotation></semantics></math></span>,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Z</mi><mi>n</mi></msub><mo>=</mo><mfrac><mrow><msub><mi>K</mi><mi>n</mi></msub><mo>−</mo><mi>n</mi><mi>p</mi></mrow><msqrt><mrow><mi>n</mi><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msqrt></mfrac><mo>=</mo><mfrac><mrow><msqrt><mi>n</mi></msqrt><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><msqrt><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msqrt></mfrac><mover><mo>→</mo><mi>d</mi></mover><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">Z_n=\frac{K_n-np}{\sqrt{np(1-p)}}
+ =\frac{\sqrt n(\widehat p_n-p)}{\sqrt{p(1-p)}}
+ \xrightarrow{d}N(0,1).
+ \label{i7-binomial-clt}</annotation></semantics></math><span id="i7-binomial-clt" class="equation-anchor"></span><span class="equation-number">(5.6)</span></span> At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">p=0</annotation></semantics></math></span>
+or
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">p=1</annotation></semantics></math></span>,
+the observations are constant and the denominator is zero. The regular
+normal statement does not apply. Even for an interior probability, the
+count is discrete at every finite sample size. Its cumulative
+distribution has jumps, while the normal cumulative distribution is
+continuous.</p>
+<figure id="i7-clt-figure">
+<a href="../assets/inference/ch07-clt.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch07-clt.png" alt="Figure 5.1. Exact standardized-binomial cumulative distributions at
+p=0.15p=0.15,
+compared with a standard normal distribution. More observations reduce
+the visible jumps; neither panel makes the finite-binomial law exactly
+normal.">
+</a><figcaption>Figure 5.1. Exact standardized-binomial cumulative distributions at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>,
+compared with a standard normal distribution. More observations reduce
+the visible jumps; neither panel makes the finite-binomial law exactly
+normal.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch07-clt.png">Open full-size figure</a></p></figure>
+<h2 id="exact-computation-audits-an-approximation">5.4 Exact computation
+audits an approximation</h2>
+<p>Rather than decide that a conventional sample-size rule is
+sufficient, evaluate the approximation for a question that matters. For
+a count threshold
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math></span>,
+the exact probability is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>≤</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>pbinom</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo>,</mo><mi>n</mi><mo>,</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}_p(K\leq k)=\operatorname{pbinom}(k,n,p)</annotation></semantics></math></span>.
+A continuity-corrected approximation is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>≤</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.222em"></mspace><mo>≈</mo><mspace width="0.222em"></mspace><mi>Φ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mrow><mi>k</mi><mo>+</mo><mn>1</mn><mi>/</mi><mn>2</mn><mo>−</mo><mi>n</mi><mi>p</mi></mrow><msqrt><mrow><mi>n</mi><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msqrt></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}_p(K\leq k)\ \approx\
+ \Phi\left(\frac{k+1/2-np}{\sqrt{np(1-p)}}\right).
+ \label{i7-continuity}</annotation></semantics></math><span id="i7-continuity" class="equation-anchor"></span><span class="equation-number">(5.7)</span></span> The half-unit
+correction aligns an integer cutoff with a continuous boundary. It does
+not change the model, eliminate skewness, or turn the expression into an
+exact probability. Tail questions, central quantiles, and two-sided
+coverage may have different approximation errors.</p>
+<p>The R function below checks a raw cumulative-distribution distance at
+both sides of every binomial jump. Looking only at the right endpoints
+can miss the largest discrepancy with a continuous distribution. It
+separately checks corrected probabilities at integer thresholds; that is
+a different error criterion and is labelled accordingly.</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# finite-binomial checks of asymptotic arguments.
+out &lt;- "generated"; out.dir &lt;- out
+dir.create(out,recursive=TRUE,showWarnings=FALSE)
+
+# Check CDFs at all jumps, including the left limit of each jump.
+clt.error &lt;- function(n, p) {
+  k &lt;- 0:n
+  z &lt;- (k - n*p)/sqrt(n*p*(1-p))
+  right &lt;- pbinom(k, n, p)
+  left &lt;- pbinom(k-1, n, p)
+  d &lt;- max(abs(right-pnorm(z)), abs(left-pnorm(z)))
+  threshold &lt;- -1:n
+  cc &lt;- pnorm((threshold+0.5-n*p)/sqrt(n*p*(1-p)))
+  data.frame(n=n, p=p, expected.events=n*p,
+             raw.cdf.error=d, corrected.threshold.error=max(abs(pbinom(threshold,n,p)-cc)))
+}
+summary &lt;- do.call(rbind, lapply(c(0.01,0.15,0.5), function(p)
+  do.call(rbind,lapply(c(10L,50L,200L), clt.error,p=p))))
+write.csv(summary,file.path(out,"ch07-normal-approximation.csv"),row.names=FALSE)
+
+# Reader data: exact and approximate probabilities use one common count grid.
+reader &lt;- do.call(rbind,lapply(c(.01,.05,.15,.5),function(p)
+  do.call(rbind,lapply(c(10L,25L,50L,100L,250L),function(n) {
+    k &lt;- 0:n
+    data.frame(n=n,p=p,k=k,z=(k-n*p)/sqrt(n*p*(1-p)),
+      exact.mass=dbinom(k,n,p),exact.cdf=pbinom(k,n,p),
+      normal.cdf=pnorm((k-n*p)/sqrt(n*p*(1-p))),
+      corrected.cdf=pnorm((k+.5-n*p)/sqrt(n*p*(1-p))))
+  }))))
+write.csv(reader,file.path(out,"ch07-reader-distribution.csv"),row.names=FALSE)
+
+# A rare-event sequence has np_n fixed, not a fixed interior p.
+rare &lt;- do.call(rbind,lapply(c(10L,50L,200L,1000L),function(n) {
+  k &lt;- 0:max(n,20L)
+  data.frame(n=n,p=2/n,zero.probability=(1-2/n)^n,
+    poisson.zero=exp(-2),cdf.distance=max(abs(pbinom(k,n,2/n)-ppois(k,2))))
+}))
+write.csv(rare,file.path(out,"ch07-rare-events.csv"),row.names=FALSE)
+
+# A delta-method computation tied to the recurring observed binary study.
+n.obs &lt;- 10L; k.obs &lt;- 2L; q.obs &lt;- k.obs/n.obs
+logit.estimate &lt;- qlogis(q.obs)
+logit.se &lt;- 1/sqrt(n.obs*q.obs*(1-q.obs))
+stopifnot(abs(logit.estimate-log(.25))&lt;1e-12,abs(logit.se-sqrt(.625))&lt;1e-12)
+write.csv(data.frame(n=n.obs,k=k.obs,estimate=logit.estimate,se=logit.se),
+  file.path(out,"ch07-logit.csv"),row.names=FALSE)
+
+# Independent simulation of standardized means and a second-order target.
+set.seed(602807)
+b &lt;- 100000L
+sim &lt;- do.call(rbind,lapply(c(10L,50L,200L),function(n) {
+  k &lt;- rbinom(b,n,.15)
+  z &lt;- (k/n-.15)/sqrt(.15*.85/n)
+  centered.square &lt;- n*(rbinom(b,n,.5)/n-.5)^2
+  data.frame(n=n,replications=b,z.mean=mean(z),z.variance=var(z),
+    z.upper.tail=mean(z&gt;qnorm(.975)),
+    square.mean=mean(centered.square),
+    square.upper.tail=mean(centered.square&gt;.25*qchisq(.95,1)))
+}))
+write.csv(sim,file.path(out,"ch07-simulation.csv"),row.names=FALSE)
+
+# Exact calculations distinguish Monte Carlo noise from approximation error.
+second &lt;- do.call(rbind,lapply(c(10L,50L,200L),function(n) {
+  k &lt;- 0:n
+  w &lt;- dbinom(k,n,.5)
+  t &lt;- n*(k/n-.5)^2
+  data.frame(n=n,exact.mean=sum(w*t),
+    exact.upper.tail=sum(w[t&gt;.25*qchisq(.95,1)]))
+}))
+stopifnot(max(abs(second$exact.mean-.25))&lt;1e-10)
+stopifnot(max(abs(summary$raw.cdf.error))&lt;1)
+stopifnot(all(diff(rare$zero.probability)&gt;0))
+stopifnot(all(rare$zero.probability&lt;exp(-2)))
+write.csv(second,file.path(out,"ch07-second-order.csv"),row.names=FALSE)
+
+# A normal-model efficiency audit for an odd-sample median.
+set.seed(602817)
+median.b &lt;- 20000L; median.n &lt;- 101L
+normal.samples &lt;- matrix(rnorm(median.b*median.n),nrow=median.b)
+means &lt;- rowMeans(normal.samples)
+medians &lt;- apply(normal.samples,1L,median)
+median.check &lt;- data.frame(n=median.n,replications=median.b,
+  scaled.mean.variance=median.n*var(means),
+  scaled.median.variance=median.n*var(medians),
+  limiting.mean.variance=1,limiting.median.variance=pi/2)
+write.csv(median.check,file.path(out,"ch07-median.csv"),row.names=FALSE)
+stopifnot(abs(median.check$scaled.mean.variance-1)&lt;.08,
+          abs(median.check$scaled.median.variance-pi/2)&lt;.12)
+
+tex.table &lt;- function(dat,path,digits=4) {
+  lines &lt;- c(paste0("\\begin{tabular}{",paste(rep("r",ncol(dat)),collapse=""),"}\\toprule"),
+    paste0(paste(gsub("_"," ",names(dat)),collapse=" &amp; ")," \\\\ \\midrule"))
+  for(i in seq_len(nrow(dat))) lines &lt;- c(lines,
+    paste0(paste(formatC(as.numeric(unlist(dat[i,])),format="f",digits=digits),collapse=" &amp; ")," \\\\"))
+  writeLines(c(lines,"\\bottomrule\\end{tabular}"),path)
+}
+tex.table(summary[c("n","p","expected.events","raw.cdf.error","corrected.threshold.error")],
+          file.path(out,"ch07-normal-approximation.tex"))
+tex.table(rare[c("n","zero.probability","poisson.zero","cdf.distance")],
+          file.path(out,"ch07-rare-events.tex"))
+
+second.table &lt;- data.frame(n=second$n,exact.tail=second$exact.upper.tail,
+  simulated.tail=sim$square.upper.tail,
+  simulation.mcse=sqrt(sim$square.upper.tail*(1-sim$square.upper.tail)/b))
+tex.table(second.table,file.path(out,"ch07-second-order.tex"),digits=6)
+writeLines(c("\\begin{tabular}{lrr}\\toprule",
+  "Estimator &amp; Simulated $n$-scaled variance &amp; Limiting variance \\\\ \\midrule",
+  sprintf("Mean &amp; %.6f &amp; %.6f \\\\",median.check$scaled.mean.variance,1),
+  sprintf("Median &amp; %.6f &amp; %.6f \\\\",median.check$scaled.median.variance,pi/2),
+  "\\bottomrule\\end{tabular}"),file.path(out,"ch07-median.tex"))
+
+plot.cdf &lt;- function() {
+  par(mfrow=c(1,2),mar=c(4,4,2,1))
+  for(n in c(10L,200L)) {
+    p &lt;- .15; k &lt;- 0:n; z &lt;- (k-n*p)/sqrt(n*p*(1-p))
+    # Extend the step CDF through the support endpoints to show both tails.
+    xplot &lt;- c(min(-3,z[1]-1),z,max(3,z[length(z)]+1))
+    cdf &lt;- c(0,pbinom(k,n,p),1)
+    plot(xplot,cdf,type="s",xlim=c(-3,3),ylim=c(0,1),
+      xlab="Standardized count",ylab="Cumulative probability",main=paste("n =",n),
+      col="#002D72",lwd=2)
+    curve(pnorm(x),add=TRUE,col="#666666",lty=2,lwd=2)
+    legend("topleft",c("Exact binomial CDF","Standard normal"),
+      col=c("#002D72","#666666"),lty=c(1,2),bty="n",cex=.8)
+  }
+}
+cairo_pdf(file.path(out,"ch07-clt.pdf"),width=7,height=3.4); plot.cdf(); dev.off()
+png(file.path(out,"ch07-clt.png"),width=1400,height=680,res=180); plot.cdf(); dev.off()
+capture.output(sessionInfo(),file=file.path(out,"ch07-session-info.txt"))
+print(summary); print(rare); print(sim); print(second)
+
+# An exact order-statistic CDF and its local median limit.
+median.cdf &lt;- do.call(rbind,lapply(c(101L,1001L,10001L),function(nn) {
+  t &lt;- c(-1,0,1); q &lt;- pnorm(t/sqrt(nn))
+  data.frame(n=nn,t=t,
+    exact=pbinom((nn-1)/2,nn,q,lower.tail=FALSE),
+    limit=pnorm(2*dnorm(0)*t))
+}))
+stopifnot(all(abs(median.cdf$exact[median.cdf$t==0]-.5)&lt;1e-12))
+write.csv(median.cdf,file.path(out,"ch07-median-cdf.csv"),row.names=FALSE)
+print(median.cdf)
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>clt.error <span class="ot">&lt;-</span> <span class="cf">function</span>(n, p) {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  k <span class="ot">&lt;-</span> <span class="dv">0</span><span class="sc">:</span>n</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  z <span class="ot">&lt;-</span> (k <span class="sc">-</span> n<span class="sc">*</span>p)<span class="sc">/</span><span class="fu">sqrt</span>(n<span class="sc">*</span>p<span class="sc">*</span>(<span class="dv">1</span><span class="sc">-</span>p))</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  right <span class="ot">&lt;-</span> <span class="fu">pbinom</span>(k, n, p)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  left <span class="ot">&lt;-</span> <span class="fu">pbinom</span>(k<span class="dv">-1</span>, n, p)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  d <span class="ot">&lt;-</span> <span class="fu">max</span>(<span class="fu">abs</span>(right<span class="sc">-</span><span class="fu">pnorm</span>(z)), <span class="fu">abs</span>(left<span class="sc">-</span><span class="fu">pnorm</span>(z)))</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  threshold <span class="ot">&lt;-</span> <span class="sc">-</span><span class="dv">1</span><span class="sc">:</span>n</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  cc <span class="ot">&lt;-</span> <span class="fu">pnorm</span>((threshold<span class="fl">+0.5</span><span class="sc">-</span>n<span class="sc">*</span>p)<span class="sc">/</span><span class="fu">sqrt</span>(n<span class="sc">*</span>p<span class="sc">*</span>(<span class="dv">1</span><span class="sc">-</span>p)))</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>(<span class="at">n=</span>n, <span class="at">p=</span>p, <span class="at">expected.events=</span>n<span class="sc">*</span>p,</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>             <span class="at">raw.cdf.error=</span>d, <span class="at">corrected.threshold.error=</span><span class="fu">max</span>(<span class="fu">abs</span>(<span class="fu">pbinom</span>(threshold,n,p)<span class="sc">-</span>cc)))</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>summary <span class="ot">&lt;-</span> <span class="fu">do.call</span>(rbind, <span class="fu">lapply</span>(<span class="fu">c</span>(<span class="fl">0.01</span>,<span class="fl">0.15</span>,<span class="fl">0.5</span>), <span class="cf">function</span>(p)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">do.call</span>(rbind,<span class="fu">lapply</span>(<span class="fu">c</span>(<span class="dv">10</span><span class="dt">L</span>,<span class="dv">50</span><span class="dt">L</span>,<span class="dv">200</span><span class="dt">L</span>), clt.error,<span class="at">p=</span>p))))</span></code></pre></div>
+<div id="i7-clt-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 5.1. Executed exact-binomial audits. Raw CDF error is the largest
+discrepancy at either side of a jump. Corrected threshold error compares
+integer-threshold probabilities with equation <a href="#i7-continuity" data-reference-type="eqref" data-reference="i7-continuity">(5.7)</a>.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">p</th>
+<th style="text-align: right;">expected events</th>
+<th style="text-align: right;">raw cdf error</th>
+<th style="text-align: right;">corrected threshold error</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">10.0000</td>
+<td style="text-align: right;">0.0100</td>
+<td style="text-align: right;">0.1000</td>
+<td style="text-align: right;">0.5291</td>
+<td style="text-align: right;">0.0283</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">50.0000</td>
+<td style="text-align: right;">0.0100</td>
+<td style="text-align: right;">0.5000</td>
+<td style="text-align: right;">0.3664</td>
+<td style="text-align: right;">0.1050</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">200.0000</td>
+<td style="text-align: right;">0.0100</td>
+<td style="text-align: right;">2.0000</td>
+<td style="text-align: right;">0.1767</td>
+<td style="text-align: right;">0.0435</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">10.0000</td>
+<td style="text-align: right;">0.1500</td>
+<td style="text-align: right;">1.5000</td>
+<td style="text-align: right;">0.2153</td>
+<td style="text-align: right;">0.0443</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">50.0000</td>
+<td style="text-align: right;">0.1500</td>
+<td style="text-align: right;">7.5000</td>
+<td style="text-align: right;">0.0972</td>
+<td style="text-align: right;">0.0188</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">200.0000</td>
+<td style="text-align: right;">0.1500</td>
+<td style="text-align: right;">30.0000</td>
+<td style="text-align: right;">0.0485</td>
+<td style="text-align: right;">0.0092</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">10.0000</td>
+<td style="text-align: right;">0.5000</td>
+<td style="text-align: right;">5.0000</td>
+<td style="text-align: right;">0.1230</td>
+<td style="text-align: right;">0.0027</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">50.0000</td>
+<td style="text-align: right;">0.5000</td>
+<td style="text-align: right;">25.0000</td>
+<td style="text-align: right;">0.0561</td>
+<td style="text-align: right;">0.0005</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">200.0000</td>
+<td style="text-align: right;">0.5000</td>
+<td style="text-align: right;">100.0000</td>
+<td style="text-align: right;">0.0282</td>
+<td style="text-align: right;">0.0001</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>,
+increasing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+makes the standardized count look more nearly normal. At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.01</mn></mrow><annotation encoding="application/x-tex">p=0.01</annotation></semantics></math></span>,
+even two hundred people provide only two expected events. An apparently
+large number of records can therefore coexist with little information
+about a rare outcome. The relevant precision depends on the event
+probability and the statistical target, not just the row count. The
+table reports the calculated errors, and the complete R example
+reproduces them directly rather than requiring us to infer their size
+from a plot.</p>
+<p>These calculations assume a known generating
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+for an audit. In an actual study,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+is unknown. They therefore illustrate possible performance across model
+settings rather than certifying the approximation at the unknown truth.
+Simulation from the fitted model can show behavior under that model; it
+cannot verify independence, measurement accuracy, or transport from the
+sampled population to the target population.</p>
+<h2 id="studentization-changes-the-denominator-not-the-target">5.5 Studentization
+changes the denominator, not the target</h2>
+<p>To use a normal limit for inference, we must generally estimate its
+variance. Consistency and continuous mapping give
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mover><mo>→</mo><mi>P</mi></mover><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\widehat p_n(1-\widehat p_n)\xrightarrow{P}p(1-p)</annotation></semantics></math></span>.
+For fixed interior
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+Slutsky’s theorem therefore gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><msqrt><mi>n</mi></msqrt><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><msqrt><mrow><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msqrt></mfrac><mover><mo>→</mo><mi>d</mi></mover><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{\sqrt n(\widehat p_n-p)}{\sqrt{\widehat p_n(1-\widehat p_n)}}
+ \xrightarrow{d}N(0,1).
+ \label{i7-studentized}</annotation></semantics></math><span id="i7-studentized" class="equation-anchor"></span><span class="equation-number">(5.8)</span></span> Define the ratio
+arbitrarily at the samples
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>0</mn><mo>,</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">K=0,n</annotation></semantics></math></span>
+if necessary; their combined probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>n</mi></msup><mo>+</mo><msup><mi>p</mi><mi>n</mi></msup></mrow><annotation encoding="application/x-tex">(1-p)^n+p^n</annotation></semantics></math></span>
+tends to zero. This asymptotic convention does not make division by zero
+acceptable in finite-sample software. A program must choose and report a
+finite-sample procedure at those outcomes.</p>
+<p>The distinction between true and estimated variance is easy to
+overlook. Equation <a href="#i7-binomial-clt" data-reference-type="eqref" data-reference="i7-binomial-clt">(5.6)</a> concerns a known
+denominator at a model value. Equation <a href="#i7-studentized" data-reference-type="eqref" data-reference="i7-studentized">(5.8)</a> concerns a random
+denominator calculated from the same observations. Slutsky justifies
+their shared limiting distribution for fixed interior
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+but their finite-sample distributions differ. Chapter <a href="08-confidence.html#i8-chapter" data-reference-type="ref" data-reference="i8-chapter">6</a> will show that the
+resulting Wald confidence interval can have poor coverage near the
+boundary.</p>
+<p>A stable standard error also does not repair dependence. If all
+observations share an unmodelled environmental effect,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Var</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Var}(K)</annotation></semantics></math></span>
+contains covariance terms. Substituting
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">\widehat p(1-\widehat p)/n</annotation></semantics></math></span>
+then estimates the variance of a different experiment. Before improving
+a normal approximation, verify that the variance formula represents the
+actual sampling unit.</p>
+<h2 id="the-delta-method-carries-an-estimand-through-a-transformation">5.6 The
+delta method carries an estimand through a transformation</h2>
+<p>The previous calculation kept the target on the probability scale. If
+the scientific target is a transformation, such as log odds, its error
+must be put on that new scale too. A local expansion tells us how the
+original estimation error propagates. Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>
+be fixed, let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><mi>n</mi></msqrt><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>T</mi><mi>n</mi></msub><mo>−</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mover><mo>→</mo><mi>d</mi></mover><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mi>v</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sqrt n(T_n-\theta)\xrightarrow{d}N(0,v)</annotation></semantics></math></span>
+for finite
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>v</mi><mo>≥</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">v\ge0</annotation></semantics></math></span>,
+and suppose
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>g</mi><annotation encoding="application/x-tex">g</annotation></semantics></math></span>
+is defined on a neighborhood of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>
+and differentiable there at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>.
+The distributional limit makes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><mi>n</mi></msqrt><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>T</mi><mi>n</mi></msub><mo>−</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sqrt n(T_n-\theta)</annotation></semantics></math></span>
+bounded in probability and implies
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>n</mi></msub><mover><mo>→</mo><mi>P</mi></mover><mi>θ</mi></mrow><annotation encoding="application/x-tex">T_n\xrightarrow{P}\theta</annotation></semantics></math></span>.
+Differentiability gives the deterministic remainder representation
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>+</mo><mi>h</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>g</mi><mi>′</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>h</mi><mo>+</mo><mi>h</mi><mspace width="0.167em"></mspace><mi>r</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>h</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>r</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>h</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>→</mo><mn>0</mn><mspace width="1.0em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><mi>h</mi><mo>→</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">g(\theta+h)-g(\theta)=g'(\theta)h+h\,r(h),\qquad r(h)\longrightarrow0\quad(h\longrightarrow0).</annotation></semantics></math></span>
+Substitute
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi><mo>=</mo><msub><mi>T</mi><mi>n</mi></msub><mo>−</mo><mi>θ</mi></mrow><annotation encoding="application/x-tex">h=T_n-\theta</annotation></semantics></math></span>.
+The random remainder satisfies
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>T</mi><mi>n</mi></msub><mo>−</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mover><mo>→</mo><mi>P</mi></mover><mn>0</mn></mrow><annotation encoding="application/x-tex">r(T_n-\theta)\xrightarrow{P}0</annotation></semantics></math></span>,
+and multiplying it by a quantity bounded in probability still gives a
+term tending in probability to zero. Thus
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>T</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>g</mi><mi>′</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>T</mi><mi>n</mi></msub><mo>−</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><msub><mi>o</mi><mi>P</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>n</mi><mrow><mo>−</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">g(T_n)-g(\theta)=g'(\theta)(T_n-\theta)+o_P(n^{-1/2}),
+ \label{i7-delta-expansion}</annotation></semantics></math><span id="i7-delta-expansion" class="equation-anchor"></span><span class="equation-number">(5.9)</span></span> and hence
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><mi>n</mi></msqrt><mo stretchy="false" form="prefix">{</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>T</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mover><mo>→</mo><mi>d</mi></mover><mi>N</mi><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><msup><mrow><mo stretchy="true" form="prefix">[</mo><mi>g</mi><mi>′</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mn>2</mn></msup><mi>v</mi><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\sqrt n\{g(T_n)-g(\theta)\}\xrightarrow{d}
+ N\{0,[g'(\theta)]^2v\}.
+ \label{i7-delta}</annotation></semantics></math><span id="i7-delta" class="equation-anchor"></span><span class="equation-number">(5.10)</span></span> The asymptotic
+variance is the original variance multiplied by the squared local slope.
+When
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mi>′</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≠</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">g'(\theta)\ne0</annotation></semantics></math></span>,
+the transformation retains a nondegenerate first-order limit if
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>v</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">v&gt;0</annotation></semantics></math></span>.
+When
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mi>′</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">g'(\theta)=0</annotation></semantics></math></span>,
+the displayed limit is concentrated at zero and a different scale may be
+needed. A consistent plug-in slope can support a standard error after
+the limiting argument has identified the target and scale.</p>
+<p>For the log odds
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>log</mo><mo stretchy="false" form="prefix">{</mo><mi>p</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">g(p)=\log\{p/(1-p)\}</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mi>′</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mi>/</mi><mo stretchy="false" form="prefix">{</mo><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">g'(p)=1/\{p(1-p)\}</annotation></semantics></math></span>.
+Combining this derivative with equation <a href="#i7-binomial-clt" data-reference-type="eqref" data-reference="i7-binomial-clt">(5.6)</a> gives asymptotic
+variance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mo stretchy="false" form="prefix">{</mo><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">1/\{p(1-p)\}</annotation></semantics></math></span>
+for the scaled log-odds error. Thus an approximate standard error is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mo>se</mo><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">{</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mi>n</mi><mover><mi>p</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><msup><mo stretchy="false" form="postfix">}</mo><mrow><mo>−</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat{\operatorname{se}}\{g(\widehat p)\}
+ =\{n\widehat p(1-\widehat p)\}^{-1/2}.
+ \label{i7-logit-se}</annotation></semantics></math><span id="i7-logit-se" class="equation-anchor"></span><span class="equation-number">(5.11)</span></span> For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn><mo>,</mo><mi>k</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">n=10,k=2</annotation></semantics></math></span>,
+the observed log odds are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>1.386294</mn></mrow><annotation encoding="application/x-tex">-1.386294</annotation></semantics></math></span>
+and this standard error is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.790569</mn><annotation encoding="application/x-tex">0.790569</annotation></semantics></math></span>.
+The transformation respects a probability range when an interval is
+transformed back, but the approximation still rests on a small,
+interior-information experiment.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>n.obs <span class="ot">&lt;-</span> <span class="dv">10</span><span class="dt">L</span>; k.obs <span class="ot">&lt;-</span> <span class="dv">2</span><span class="dt">L</span>; q.obs <span class="ot">&lt;-</span> k.obs<span class="sc">/</span>n.obs</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>logit.estimate <span class="ot">&lt;-</span> <span class="fu">qlogis</span>(q.obs)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>logit.se <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">/</span><span class="fu">sqrt</span>(n.obs<span class="sc">*</span>q.obs<span class="sc">*</span>(<span class="dv">1</span><span class="sc">-</span>q.obs))</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">abs</span>(logit.estimate<span class="sc">-</span><span class="fu">log</span>(.<span class="dv">25</span>))<span class="sc">&lt;</span><span class="fl">1e-12</span>,<span class="fu">abs</span>(logit.se<span class="sc">-</span><span class="fu">sqrt</span>(.<span class="dv">625</span>))<span class="sc">&lt;</span><span class="fl">1e-12</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(<span class="fu">data.frame</span>(<span class="at">n=</span>n.obs,<span class="at">k=</span>k.obs,<span class="at">estimate=</span>logit.estimate,<span class="at">se=</span>logit.se),</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">file.path</span>(out,<span class="st">"ch07-logit.csv"</span>),<span class="at">row.names=</span><span class="cn">FALSE</span>)</span></code></pre></div>
+<p>The ordinary sample log odds are infinite at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">K=0</annotation></semantics></math></span>
+or
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">K=n</annotation></semantics></math></span>.
+A first-order asymptotic result does not give this unmodified statistic
+a finite expectation. In particular, a casual second-order Taylor
+calculation cannot establish its finite-sample bias. One may define a
+boundary extension or use a different estimator, but that new
+finite-sample rule must be named and evaluated. For a fixed interior
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+any finite boundary extension leaves the distributional limit unchanged
+because those boundary samples become improbable.</p>
+<h2 id="when-the-first-derivative-vanishes">5.7 When the first derivative
+vanishes</h2>
+<p>Consider a measure of departure from an event probability of one
+half,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>−</mo><mn>1</mn><mi>/</mi><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>T</mi><mi>n</mi></msub><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo>−</mo><mn>1</mn><mi>/</mi><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\tau(p)=(p-1/2)^2,\qquad T_n=(\widehat p_n-1/2)^2.
+ \label{i7-square-target}</annotation></semantics></math><span id="i7-square-target" class="equation-anchor"></span><span class="equation-number">(5.12)</span></span> Away from
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">p=1/2</annotation></semantics></math></span>,
+first-order delta reasoning gives a normal scaled error with variance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>4</mn><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>−</mo><mn>1</mn><mi>/</mi><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">4(p-1/2)^2p(1-p)</annotation></semantics></math></span>.
+At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">p=1/2</annotation></semantics></math></span>,
+that variance is zero. The conclusion is that the
+square-root-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+fluctuation vanishes, not that the estimator is known exactly.</p>
+<p>Here the algebra supplies the next scale directly:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><msub><mi>T</mi><mi>n</mi></msub><mo>=</mo><mo stretchy="false" form="prefix">{</mo><msqrt><mi>n</mi></msqrt><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo>−</mo><mn>1</mn><mi>/</mi><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><msup><mo stretchy="false" form="postfix">}</mo><mn>2</mn></msup><mover><mo>→</mo><mi>d</mi></mover><mfrac displaystyle="false"><mn>1</mn><mn>4</mn></mfrac><msubsup><mi>χ</mi><mn>1</mn><mn>2</mn></msubsup><mi>.</mi></mrow><annotation encoding="application/x-tex">nT_n=\{\sqrt n(\widehat p_n-1/2)\}^2
+ \xrightarrow{d}\tfrac14\chi^2_1.
+ \label{i7-second-order}</annotation></semantics></math><span id="i7-second-order" class="equation-anchor"></span><span class="equation-number">(5.13)</span></span> The limit is
+nonnegative and asymmetric. At every
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>,
+its exact expectation under
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">p=1/2</annotation></semantics></math></span>
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>Var</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mi>/</mi><mn>4</mn></mrow><annotation encoding="application/x-tex">n\operatorname{Var}(\widehat p_n)=1/4</annotation></semantics></math></span>.
+The script checks this identity by finite summation and independently
+simulates the upper-tail probability. An exact moment agreement does not
+imply that all quantiles already agree with the limiting law.</p>
+<div id="i7-second-order-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 5.2. Upper-tail probabilities at the limiting 95th-percentile cutoff
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo>−</mo><mn>1</mn><mi>/</mi><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">n(\widehat p_n-1/2)^2</annotation></semantics></math></span>.
+The last column quantifies simulation error, not approximation error;
+the limiting reference tail is 0.05.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">exact tail</th>
+<th style="text-align: right;">simulated tail</th>
+<th style="text-align: right;">simulation mcse</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">10.000000</td>
+<td style="text-align: right;">0.021484</td>
+<td style="text-align: right;">0.021570</td>
+<td style="text-align: right;">0.000459</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">50.000000</td>
+<td style="text-align: right;">0.064909</td>
+<td style="text-align: right;">0.065410</td>
+<td style="text-align: right;">0.000782</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">200.000000</td>
+<td style="text-align: right;">0.055966</td>
+<td style="text-align: right;">0.056370</td>
+<td style="text-align: right;">0.000729</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>This is an advanced extension of the second-order delta method. It
+also explains a practical diagnostic: before deriving a normal standard
+error for a transformed target, evaluate the derivative at
+scientifically relevant parameter values. A zero derivative is a
+structural change in the approximation, not a reason to report a
+zero-width uncertainty interval. Close to such values, a first-order
+approximation may be unstable even if the derivative is not exactly
+zero.</p>
+<h2 id="a-quantile-has-a-different-source-of-precision">5.8 A quantile has a
+different source of precision</h2>
+<p>The central limit theorem for a mean is not the only route to a
+normal approximation. Suppose
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mn>1</mn></msub><mo>,</mo><msub><mi>Y</mi><mn>2</mn></msub><mo>,</mo><mi>…</mi></mrow><annotation encoding="application/x-tex">Y_1,Y_2,\ldots</annotation></semantics></math></span>
+are independent and identically distributed from a continuous
+distribution with unique median
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math></span>,
+distribution function
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>F</mi><annotation encoding="application/x-tex">F</annotation></semantics></math></span>,
+and a density continuous and positive at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math></span>.
+For an odd sample size let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>M</mi><mi>n</mi></msub><annotation encoding="application/x-tex">M_n</annotation></semantics></math></span>
+be the middle order statistic. The event
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>M</mi><mi>n</mi></msub><mo>≤</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">M_n\leq x</annotation></semantics></math></span>
+is the event that at least
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">(n+1)/2</annotation></semantics></math></span>
+observations are at or below
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>.
+Independence and the common distribution make that count binomial with
+probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">F(x)</annotation></semantics></math></span>.</p>
+<p>To inspect a local departure, set
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>x</mi><mi>n</mi></msub><mo>=</mo><mi>m</mi><mo>+</mo><mi>t</mi><mi>/</mi><msqrt><mi>n</mi></msqrt></mrow><annotation encoding="application/x-tex">x_n=m+t/\sqrt n</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>n</mi></msub><mo>=</mo><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">q_n=F(x_n)</annotation></semantics></math></span>.
+Differentiability gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>n</mi></msub><mo>=</mo><mn>1</mn><mi>/</mi><mn>2</mn><mo>+</mo><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>t</mi><mi>/</mi><msqrt><mi>n</mi></msqrt><mo>+</mo><mi>o</mi><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>n</mi><mrow><mo>−</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">q_n=1/2+f(m)t/\sqrt n+o(n^{-1/2})</annotation></semantics></math></span>.
+If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>B</mi><mi>n</mi></msub><annotation encoding="application/x-tex">B_n</annotation></semantics></math></span>
+counts observations at or below
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>x</mi><mi>n</mi></msub><annotation encoding="application/x-tex">x_n</annotation></semantics></math></span>,
+its standardized threshold satisfies
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mn>2</mn><mo>−</mo><mi>n</mi><msub><mi>q</mi><mi>n</mi></msub></mrow><msqrt><mrow><mi>n</mi><msub><mi>q</mi><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msqrt></mfrac><mo>→</mo><mo>−</mo><mn>2</mn><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>t</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{(n+1)/2-nq_n}{\sqrt{nq_n(1-q_n)}}\longrightarrow-2f(m)t.</annotation></semantics></math></span>
+Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>n</mi></msub><mo>→</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">q_n\to1/2</annotation></semantics></math></span>,
+so the binomial standardized-count limit remains normal: the bounded
+Bernoulli summands satisfy the triangular-array central limit
+conditions. Taking the upper tail of this count gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mo stretchy="false" form="prefix">{</mo><msqrt><mi>n</mi></msqrt><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>M</mi><mi>n</mi></msub><mo>−</mo><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><mi>t</mi><mo stretchy="false" form="postfix">}</mo><mo>→</mo><mn>1</mn><mo>−</mo><mi>Φ</mi><mo stretchy="false" form="prefix">{</mo><mo>−</mo><mn>2</mn><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>t</mi><mo stretchy="false" form="postfix">}</mo><mo>=</mo><mi>Φ</mi><mo stretchy="false" form="prefix">{</mo><mn>2</mn><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>t</mi><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}\{\sqrt n(M_n-m)\le t\}\longrightarrow
+ 1-\Phi\{-2f(m)t\}=\Phi\{2f(m)t\}.</annotation></semantics></math></span>
+Consequently,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><mi>n</mi></msqrt><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>M</mi><mi>n</mi></msub><mo>−</mo><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow><mover><mo>→</mo><mi>d</mi></mover><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mfrac><mn>1</mn><mrow><mn>4</mn><mi>f</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\sqrt n(M_n-m)\xrightarrow{d}N\left(0,\frac1{4f(m)^2}\right).
+ \label{i7-median-limit}</annotation></semantics></math><span id="i7-median-limit" class="equation-anchor"></span><span class="equation-number">(5.14)</span></span> The sample
+median’s uncertainty depends on the density near the population median.
+A flatter distribution there means that a small change in probability
+corresponds to a larger change in the quantile. The positivity and
+continuity assumptions are essential: an atom, a flat interval of
+medians, or zero density at the target can change the limiting
+argument.</p>
+<p>For a standard normal sample, the exact CDF at one point on the
+scaled-median axis can be evaluated without simulating order statistics.
+At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">t=1</annotation></semantics></math></span>,
+the count probability is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>n</mi></msub><mo>=</mo><mi>Φ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mi>/</mi><msqrt><mi>n</mi></msqrt><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">q_n=\Phi(1/\sqrt n)</annotation></semantics></math></span>;
+the median event is an upper binomial tail:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb3" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">101</span>,<span class="dv">1001</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>q <span class="ot">&lt;-</span> <span class="fu">pnorm</span>(<span class="dv">1</span><span class="sc">/</span><span class="fu">sqrt</span>(n))</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">pbinom</span>((n<span class="dv">-1</span>)<span class="sc">/</span><span class="dv">2</span>,n,q,<span class="at">lower.tail=</span><span class="cn">FALSE</span>)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 0.7880877, 0.7875874</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="fu">pnorm</span>(<span class="dv">2</span><span class="sc">*</span><span class="fu">dnorm</span>(<span class="dv">0</span>))             <span class="co"># 0.7875313: limiting CDF</span></span></code></pre></div>
+<p>The difference from the limit decreases here. This calculation tests
+the order-statistic argument on its own target, rather than applying a
+mean standard error to a median.</p>
+<p>For normal observations with mean
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>
+and variance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>σ</mi><mn>2</mn></msup><annotation encoding="application/x-tex">\sigma^2</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mo>=</mo><mi>μ</mi></mrow><annotation encoding="application/x-tex">m=\mu</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>σ</mi><msqrt><mrow><mn>2</mn><mi>π</mi></mrow></msqrt><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f(m)=1/(\sigma\sqrt{2\pi})</annotation></semantics></math></span>.
+The median’s asymptotic variance is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>π</mi><msup><mi>σ</mi><mn>2</mn></msup><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">\pi\sigma^2/2</annotation></semantics></math></span>,
+whereas the mean’s is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>σ</mi><mn>2</mn></msup><annotation encoding="application/x-tex">\sigma^2</annotation></semantics></math></span>.
+Under this exact normal model the mean has greater asymptotic precision.
+The complete R example simulates twenty thousand samples of size 101
+from a standard normal model and records
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+times the empirical variances of the two estimators alongside their
+limits. It uses the same sample for each pair of estimates, preserving a
+meaningful comparison.</p>
+<div id="i7-median-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 5.3. Executed mean–median comparison for standard-normal samples,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>101</mn></mrow><annotation encoding="application/x-tex">n=101</annotation></semantics></math></span>
+and 20,000 repetitions. The finite-sample variance estimate is a
+simulation result; the final column follows from the mathematical
+limits.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Estimator</th>
+<th style="text-align: right;">Simulated
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>-scaled
+variance</th>
+<th style="text-align: right;">Limiting variance</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Mean</td>
+<td style="text-align: right;">0.991130</td>
+<td style="text-align: right;">1.000000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Median</td>
+<td style="text-align: right;">1.544932</td>
+<td style="text-align: right;">1.570796</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>Under a different distribution, the comparison can change. A standard
+Cauchy sample has no finite mean or variance, and its average remains
+standard Cauchy rather than concentrating. Its median nevertheless has
+target zero and satisfies the quantile limit because the density at zero
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mi>π</mi></mrow><annotation encoding="application/x-tex">1/\pi</annotation></semantics></math></span>.
+The median’s scaled variance limit is then
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>π</mi><mn>2</mn></msup><mi>/</mi><mn>4</mn></mrow><annotation encoding="application/x-tex">\pi^2/4</annotation></semantics></math></span>.
+This contrast concerns both the existence of the statistical target and
+the precision of its estimator; an ideal-normal-model efficiency
+calculation addresses only the latter. Establish a common target and the
+necessary moments before ranking estimators by variance.</p>
+<h2 id="rare-event-sequences-ask-a-different-question">5.9 Rare-event
+sequences ask a different question</h2>
+<p>Suppose now that the population itself changes with sample size so
+that
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mi>n</mi></msub><mo>=</mo><mn>2</mn><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">p_n=2/n</annotation></semantics></math></span>.
+The estimator still estimates its own experiment’s probability, but the
+expected count remains two. The probability-generating function is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>s</mi><msub><mi>K</mi><mi>n</mi></msub></msup><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mi>/</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><msup><mo stretchy="false" form="postfix">}</mo><mi>n</mi></msup><mo>→</mo><msup><mi>e</mi><mrow><mn>2</mn><mrow><mo stretchy="true" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><mo>,</mo></mrow><annotation encoding="application/x-tex">\mathbb{E}(s^{K_n})=\{1+(2/n)(s-1)\}^{n}
+ \longrightarrow e^{2(s-1)},
+ \label{i7-poisson-limit}</annotation></semantics></math><span id="i7-poisson-limit" class="equation-anchor"></span><span class="equation-number">(5.15)</span></span> which
+identifies a
+Poisson<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(2)</annotation></semantics></math></span>
+limit for the count. In particular,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>K</mi><mi>n</mi></msub><mo>=</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mn>2</mn><mi>/</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>n</mi></msup><mo>→</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>2</mn></mrow></msup><mo>&gt;</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}(K_n=0)=(1-2/n)^n\longrightarrow e^{-2}&gt;0.
+ \label{i7-rare-zero}</annotation></semantics></math><span id="i7-rare-zero" class="equation-anchor"></span><span class="equation-number">(5.16)</span></span> The standardized
+count approaches a standardized Poisson variable, not a standard normal
+variable. A plug-in variance remains zero on a nonvanishing fraction of
+samples. There is no contradiction with the
+fixed-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+central limit theorem; its premise was changed.</p>
+<div id="i7-rare-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 5.4. A changing-probability sequence with two expected events. The
+count distribution approaches
+Poisson<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(2)</annotation></semantics></math></span>,
+and zero events remain possible with probability near
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.1353</mn><annotation encoding="application/x-tex">0.1353</annotation></semantics></math></span>.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">zero probability</th>
+<th style="text-align: right;">poisson zero</th>
+<th style="text-align: right;">cdf distance</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">10.0000</td>
+<td style="text-align: right;">0.1074</td>
+<td style="text-align: right;">0.1353</td>
+<td style="text-align: right;">0.0302</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">50.0000</td>
+<td style="text-align: right;">0.1299</td>
+<td style="text-align: right;">0.1353</td>
+<td style="text-align: right;">0.0055</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">200.0000</td>
+<td style="text-align: right;">0.1340</td>
+<td style="text-align: right;">0.1353</td>
+<td style="text-align: right;">0.0014</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">1000.0000</td>
+<td style="text-align: right;">0.1351</td>
+<td style="text-align: right;">0.1353</td>
+<td style="text-align: right;">0.0003</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>This extension helps distinguish more follow-up from more information
+about a rare target. It does not imply that all rare-event studies have
+a Poisson model. A fixed small
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+eventually yields many events as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+grows; a sequence with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><msub><mi>p</mi><mi>n</mi></msub></mrow><annotation encoding="application/x-tex">np_n</annotation></semantics></math></span>
+bounded does not. In practice, inspect event counts, parameter
+boundaries, and the specific target before invoking an asymptotic
+approximation.</p>
+<h2 id="from-a-limit-argument-to-a-defensible-analysis">5.10 From a limit
+argument to a defensible analysis</h2>
+<p>The complete R example first enumerates finite distributions, then
+uses simulation as an independent check. With seed 602807 it generates
+100,000 counts for each of three sample sizes. It computes standardized
+means and second-order statistics from each count, rather than drawing a
+normal variable and claiming to have tested the central limit theorem.
+Monte Carlo error concerns the simulated average; approximation error
+concerns the difference between the exact finite law and the proposed
+normal or chi-square law. These must not share one unexplained error
+bar.</p>
+<p>Unbiasedness controls a mean, and consistency controls concentration
+around a target. Neither gives a normal error distribution by itself. To
+obtain one, we specify a scale and verify the central limit theorem’s
+conditions. For a transformed target, we also check the derivative and
+remainder. Boundary and changing-probability experiments show why no
+fixed sample-size cutoff can replace those steps.</p>
+<p>We can now move from a limit statement to an uncertainty procedure:
+identify the target, derive its scaled error, justify the estimated
+variance, and examine finite-sample behavior. The confidence-set chapter
+uses these steps to choose endpoints while keeping their
+repeated-sampling coverage distinct from the approximation used to
+construct them.</p>
+<h2 id="exercises">5.11 Exercises</h2>
+<ol class="exercises" style='--chapter:"5."'><li id="exercise-5-1"><p><strong>Concentration and expected loss.</strong> For independent identically distributed
+Bernoulli<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(p)</annotation></semantics></math></span>
+observations,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">p\in[0,1]</annotation></semantics></math></span>,
+prove uniform consistency of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><annotation encoding="application/x-tex">\widehat p_n</annotation></semantics></math></span>
+by bounding
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>sup</mo><mi>p</mi></msub><msub><mo>Pr</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mrow><mo stretchy="true" form="prefix">|</mo><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">|</mo></mrow><mo>&gt;</mo><mi>ϵ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sup_p\Pr_p(|\widehat p_n-p|&gt;\epsilon)</annotation></semantics></math></span>
+for every
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ϵ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\epsilon&gt;0</annotation></semantics></math></span>.
+Construct a sequence
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>T</mi><mi>n</mi></msub><annotation encoding="application/x-tex">T_n</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>n</mi></msub><mo>→</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">T_n\to0</annotation></semantics></math></span>
+in probability but
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>T</mi><mi>n</mi><mn>2</mn></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mo>↛</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mathbb E(T_n^2)\not\to0</annotation></semantics></math></span>.
+State the implication for interpreting consistency under squared-error
+loss.</p>
+</li><li id="exercise-5-2"><p><strong>A random denominator can vanish.</strong> For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>K</mi><mi>n</mi></msub><mo>∼</mo><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>,</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">K_n\sim\operatorname{Binomial}(n,p)</annotation></semantics></math></span>
+at fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>p</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;p&lt;1</annotation></semantics></math></span>,
+derive the standard-normal limit of the studentized proportion when its
+denominator is nonzero. Define the statistic arbitrarily on
+zero-denominator outcomes for the asymptotic statement. Derive their
+exact probability, evaluate it at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>,</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>10</mn><mo>,</mo><mn>0.15</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">(n,p)=(10,0.15)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>200</mn><mo>,</mo><mn>0.01</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(200,0.01)</annotation></semantics></math></span>,
+and explain why the arbitrary definition is not a finite-sample
+inference guarantee.</p>
+</li><li id="exercise-5-3"><p><strong>Transformations change the error scale.</strong> Under the fixed-interior Bernoulli model, derive the asymptotic
+variances of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><mi>n</mi></msqrt><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi><mn>2</mn></msubsup><mo>−</mo><msup><mi>p</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sqrt n(\widehat p_n^2-p^2)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><mi>n</mi></msqrt><mrow><mo stretchy="true" form="prefix">[</mo><mo>log</mo><mo stretchy="false" form="prefix">{</mo><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>−</mo><mo>log</mo><mo stretchy="false" form="prefix">{</mo><mi>p</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">\sqrt n[\log\{\widehat p_n/(1-\widehat p_n)\}-\log\{p/(1-p)\}]</annotation></semantics></math></span>.
+For the latter limit, define a finite value on counts zero and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>.
+Explain separately what happens at a true
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">p=0</annotation></semantics></math></span>
+and why the unmodified finite-sample log odds have no ordinary finite
+expectation at any interior
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.</p>
+</li><li id="exercise-5-4"><p><strong>A growing sample with a bounded event count.</strong> For fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\lambda&gt;0</annotation></semantics></math></span>
+and integers
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>&gt;</mo><mi>λ</mi></mrow><annotation encoding="application/x-tex">n&gt;\lambda</annotation></semantics></math></span>,
+let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>K</mi><mi>n</mi></msub><mo>∼</mo><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>,</mo><mi>λ</mi><mi>/</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">K_n\sim\operatorname{Binomial}(n,\lambda/n)</annotation></semantics></math></span>.
+Derive the limiting count distribution from its probability-generating
+function, the limiting probability of zero events, and the limiting
+distribution of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>K</mi><mi>n</mi></msub><mo>−</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><msqrt><mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>λ</mi><mi>/</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msqrt></mrow><annotation encoding="application/x-tex">(K_n-\lambda)/\sqrt{\lambda(1-\lambda/n)}</annotation></semantics></math></span>.
+Explain why this does not contradict the fixed-interior-probability
+CLT.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="03-decisions.html">Previous: 4. Can a better estimate lead to a worse decision?</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="08-confidence.html">Next: 6. Likelihood asymptotics and confidence sets</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

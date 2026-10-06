@@ -1,0 +1,163 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Survival Analysis — Notation | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Notes on Survival Analysis.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/survival/notation.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Notes on Survival Analysis — Notation | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Notes on Survival Analysis.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/survival/notation.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Survival Analysis — Notation", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Survival Analysis", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/survival/notation.html", "learningResourceType": "Guide", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Survival Analysis</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html" aria-current="page">Notation</a></p><p class="contents-part">Part I: Events, observation, and population functions</p><ol class="contents-chapters"><li><a href="01-observation.html">1. Events, clocks, and incomplete observation</a></li><li><a href="02-functions.html">2. Survival, risk, hazard, and lifetime summaries</a></li></ol><p class="contents-part">Part II: Risk sets and nonparametric estimation</p><ol class="contents-chapters"><li><a href="03-km.html">3. Estimating survival from incomplete follow-up</a></li><li><a href="04-nelson-aalen.html">4. Nelson--Aalen estimation and counting processes</a></li></ol><p class="contents-part">Part III: Likelihood and survival regression</p><ol class="contents-chapters"><li><a href="07-likelihood.html">5. Likelihood under incomplete observation</a></li><li><a href="08-parametric.html">6. Parametric survival regression</a></li><li><a href="09-cox.html">7. The Cox model: estimation and absolute risk</a></li><li><a href="10-strata-ties.html">8. Stratification and tied event times</a></li><li><a href="11-diagnostics.html">9. Diagnostics that answer model questions</a></li></ol><p class="contents-part">Part IV: Competing events</p><ol class="contents-chapters"><li><a href="15-competing-risks.html">10. Competing risks and first-event probabilities</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Survival Analysis</a><br><span class="book-byline">Lap Sum Chan</span></p><div class="chapter-content"><h1 id="notation">Notation</h1>
+<p>Each chapter defines its symbols where they enter the argument. This
+reference connects the recurring objects; a clearly stated local
+convention takes precedence.</p>
+<div class="table-scroll"><table>
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Symbol</th>
+<th style="text-align: left;">Meaning and convention</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>C</mi><annotation encoding="application/x-tex">C</annotation></semantics></math></td>
+<td style="text-align: left;">Event and censoring times, measured from
+the declared time origin in the same units. These are random times;
+censoring does not reveal the eventual event time.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>,</mo><mi>C</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">X=\min(T,C)</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Δ</mi><annotation encoding="application/x-tex">\Delta</annotation></semantics></math></td>
+<td style="text-align: left;">Observed follow-up and event indicator,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><mo>=</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>T</mi><mo>≤</mo><mi>C</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\Delta=\mathbf1\{T\leq C\}</annotation></semantics></math>.
+They remain random in the sampling model; their recorded values are
+fixed when evaluating a likelihood. The regression bridge uses
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>U</mi><annotation encoding="application/x-tex">U</annotation></semantics></math>
+for the same follow-up quantity to distinguish it from a design
+matrix.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>τ</mi><annotation encoding="application/x-tex">\tau</annotation></semantics></math></td>
+<td style="text-align: left;">A time argument and a specified reporting
+horizon. Their units match those of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(t)</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">F(t)</annotation></semantics></math></td>
+<td style="text-align: left;">Survival probability
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>&gt;</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">P(T&gt;t)</annotation></semantics></math>
+and event-time distribution
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>≤</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">P(T\leq t)</annotation></semantics></math>.
+Both are dimensionless.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\lambda(t)</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">H(t)</annotation></semantics></math></td>
+<td style="text-align: left;">Instantaneous hazard and cumulative
+hazard. Hazard has units of inverse time; cumulative hazard is
+dimensionless. The inference book’s penalty
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math>
+is a separate, explicitly local use.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">Y_i(t)</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>N</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">N_i(t)</annotation></semantics></math></td>
+<td style="text-align: left;">At-risk indicator and event-counting
+process. Here
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Y</mi><annotation encoding="application/x-tex">Y</annotation></semantics></math>
+describes observation at risk, rather than a regression response.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mi>j</mi></msub><annotation encoding="application/x-tex">t_j</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>y</mi><mi>j</mi></msub><annotation encoding="application/x-tex">y_j</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mi>j</mi></msub><annotation encoding="application/x-tex">d_j</annotation></semantics></math></td>
+<td style="text-align: left;">Distinct ordered event time, risk-set
+count and event count at that time. Counts are dimensionless.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>z</mi><mi>i</mi></msub><annotation encoding="application/x-tex">z_i</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></td>
+<td style="text-align: left;">Predictor and coefficient columns of
+dimension
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math>,
+where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math>
+counts slopes and excludes the intercept. Cox regression has no
+intercept;
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>β</mi><mi>𝖳</mi></msup><msub><mi>z</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\beta^\mathsf{T}z_i</annotation></semantics></math>
+is a scalar. The Cox model has no separately identifiable intercept: the
+baseline hazard absorbs it.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\lambda_0(t)</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">H_0(t)</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S_0(t)</annotation></semantics></math></td>
+<td style="text-align: left;">Baseline hazard, cumulative hazard and
+survival at the specified reference predictor values. They are not
+marginal population summaries.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>L</mi><annotation encoding="application/x-tex">L</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>ℓ</mo><annotation encoding="application/x-tex">\ell</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>U</mi><annotation encoding="application/x-tex">U</annotation></semantics></math></td>
+<td style="text-align: left;">Likelihood, log likelihood and score when
+defined with a parameter argument. Elsewhere
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>L</mi><mi>i</mi></msub><annotation encoding="application/x-tex">L_i</annotation></semantics></math>
+is an entry time; in the regression bridge
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>U</mi><mi>i</mi></msub><annotation encoding="application/x-tex">U_i</annotation></semantics></math>
+is follow-up. Arguments and scope distinguish these uses.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>J</mi><annotation encoding="application/x-tex">J</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\lambda_k(t)</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>F</mi><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">F_k(t)</annotation></semantics></math></td>
+<td style="text-align: left;">Event cause, cause-specific hazard and
+cumulative incidence for cause
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>.
+A competing event changes the probability target.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mi>j</mi></msub><annotation encoding="application/x-tex">V_j</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>V</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">d</mi><mi mathvariant="normal">b</mi></mrow></msub><annotation encoding="application/x-tex">\widehat V_{\mathrm{db}}</annotation></semantics></math></td>
+<td style="text-align: left;"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mi>j</mi></msub><annotation encoding="application/x-tex">V_j</annotation></semantics></math>
+is the
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>×</mo><mi>p</mi></mrow><annotation encoding="application/x-tex">p\times p</annotation></semantics></math>
+weighted covariate covariance within Cox risk set
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>.
+The inference book uses
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>V</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">d</mi><mi mathvariant="normal">b</mi></mrow></msub><annotation encoding="application/x-tex">\widehat V_{\mathrm{db}}</annotation></semantics></math>
+for the estimated covariance of debiased slope estimates. These matrices
+describe different objects.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Φ</mi><annotation encoding="application/x-tex">\Phi</annotation></semantics></math></td>
+<td style="text-align: left;">Standard normal CDF, used after the
+relevant standardization and normal-approximation assumptions are
+stated.</td>
+</tr>
+</tbody>
+</table>
+</div><p>When a matrix is used, observations occupy rows and predictors occupy
+columns. The Cox design is
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>×</mo><mi>p</mi></mrow><annotation encoding="application/x-tex">n\times p</annotation></semantics></math>
+without an intercept; AFT regression uses the augmented vector
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>v</mi><mi>i</mi></msub><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><msubsup><mi>z</mi><mi>i</mi><mi>𝖳</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mi>𝖳</mi></msup></mrow><annotation encoding="application/x-tex">v_i=(1,z_i^\mathsf{T})^\mathsf{T}</annotation></semantics></math>
+and an
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>×</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">n\times(p+1)</annotation></semantics></math>
+design. A coefficient’s units compensate for its predictor so that a
+linear predictor is dimensionless. Code uses dot-separated
+author-defined R names; package APIs retain their own spelling.</p>
+</div><nav class="chapter-sequence" aria-label="Collection sequence"><a href="how-to-use.html">About these notes</a><a href="01-observation.html">Chapter 1</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

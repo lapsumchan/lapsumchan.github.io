@@ -1,0 +1,1045 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Statistical Inference — Chapter 10: Regularization, bias correction, and association inference | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Regularization, bias correction, and association inference.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/inference/regularization-association.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Notes on Statistical Inference — Chapter 10: Regularization, bias correction, and association inference | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Regularization, bias correction, and association inference.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/inference/regularization-association.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Statistical Inference — Chapter 10: Regularization, bias correction, and association inference", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Statistical Inference", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/inference/regularization-association.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Statistical Inference</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Questions, probability models, and likelihood</p><ol class="contents-chapters"><li><a href="01-models.html">1. Probability models and statistical targets</a></li><li><a href="02-likelihood.html">2. Likelihood, data reduction, and constructing estimators</a></li></ol><p class="contents-part">Part II: Conditional targets, regression, and loss</p><ol class="contents-chapters"><li><a href="conditional-regression.html">3. Regression and conditional targets</a></li><li><a href="03-decisions.html">4. Can a better estimate lead to a worse decision?</a></li></ol><p class="contents-part">Part III: Estimation, uncertainty, and testing</p><ol class="contents-chapters"><li><a href="07-limits.html">5. Sampling limits and asymptotic approximations</a></li><li><a href="08-confidence.html">6. Likelihood asymptotics and confidence sets</a></li><li><a href="09-testing.html">7. Hypothesis Testing as a Statistical Procedure</a></li><li><a href="06-bayes.html">8. Bayesian inference and predictive uncertainty</a></li></ol><p class="contents-part">Part IV: Shrinkage and regularized regression</p><ol class="contents-chapters"><li><a href="12-shrinkage.html">9. Empirical Bayes and the geometry of shrinkage</a></li><li><a href="regularization-association.html" aria-current="page">10. Regularization, bias correction, and association inference</a></li></ol><p class="contents-part">Part V: Association claims and multiplicity</p><ol class="contents-chapters"><li><a href="14-multiplicity.html">11. Multiplicity, simultaneous claims, and false discoveries</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#penalized-target">A penalty changes the estimation problem</a></li><li><a href="#orthogonal-shrinkage">Orthogonal geometry exposes shrinkage and its bias</a></li><li><a href="#high-dimensional-structure">High dimension requires structure, not just an optimizer</a></li><li><a href="#debiasing-expansion">The bias correction and its remainder</a></li><li><a href="#nodewise-precision">Estimate precision through nodewise regressions</a></li><li><a href="#debiased-inference">Conditions for coefficient intervals and p-values</a></li><li><a href="#single-outcome-worked-example">A complete correlated, high-dimensional example</a></li><li><a href="#regularization-computation">Execute the geometry and audit a failure</a></li><li><a href="#split-sample-inference">Independent selection clarifies a different valid argument</a></li><li><a href="#exercises">Exercises</a></li><li><a href="#regularization-references">Connections</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Statistical Inference</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 10</span></p><div class="chapter-content"><h1 id="regularization-bias-correction-and-association-inference">Chapter 10. Regularization, bias correction, and association inference</h1>
+<p>The normal-means calculation showed why accepting some bias can
+reduce total squared error. We now return to the conditional regression
+model, where many correlated markers can make individual coefficients
+unstable. Regularization restricts or penalizes those coefficients. Our
+immediate question is how to estimate a specified slope and assess its
+uncertainty when the penalized fit itself is biased. Good prediction of
+the response and a justified claim about one slope require different
+arguments.</p>
+<p><a href="conditional-regression.html">Conditional regression</a>
+defined the slope as a change in the conditional response mean when the
+other predictors are held fixed. We retain that target. An orthogonal
+design first makes the penalty bias visible. We then examine what
+additional structure permits estimation in high dimension, derive a
+residual-score correction, and assess the conditions needed for its
+standard errors and tests.</p>
+<h2 id="penalized-target">A penalty changes the estimation problem</h2>
+<p>For the slope calculations, we use the linear model
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>y</mi><mo>=</mo><mi>X</mi><mi>β</mi><mo>+</mo><mi>ε</mi></mrow><annotation encoding="application/x-tex">y=X\beta+\varepsilon</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+slopes and no intercept in the following formulas. Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math></span>
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>×</mo><mi>p</mi></mrow><annotation encoding="application/x-tex">n\times p</annotation></semantics></math></span>,
+while
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ε</mi><annotation encoding="application/x-tex">\varepsilon</annotation></semantics></math></span>
+are columns of lengths
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>,
+respectively. In this unit,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+is a predictor count rather than the event probability from the opening
+chapters. An unpenalized intercept belongs to a separate scalar, not to
+the
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>-dimensional
+slope vector. We show exactly how centering removes that intercept in
+the worked example. Predictor scaling matters because penalties attach
+to numerical coefficients; rescaling one column changes how strongly its
+associated effect is penalized unless the fitting convention adjusts for
+that scale.</p>
+<p>Ridge and lasso solve, respectively,</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">d</mi><mi mathvariant="normal">g</mi><mi mathvariant="normal">e</mi></mrow></msup><mo>=</mo><mo>arg</mo><munder><mo>min</mo><mi>b</mi></munder><mrow><mo stretchy="true" form="prefix">{</mo><mfrac><mrow><mo stretchy="false" form="postfix">∥</mo><mi>y</mi><mo>−</mo><mi>X</mi><mi>b</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow><mrow><mn>2</mn><mi>n</mi></mrow></mfrac><mo>+</mo><mfrac><mi>λ</mi><mn>2</mn></mfrac><mo stretchy="false" form="postfix">∥</mo><mi>b</mi><msubsup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn><mn>2</mn></msubsup><mo stretchy="true" form="postfix">}</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">l</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">s</mi><mi mathvariant="normal">s</mi><mi mathvariant="normal">o</mi></mrow></msup><mo>=</mo><mo>arg</mo><munder><mo>min</mo><mi>b</mi></munder><mrow><mo stretchy="true" form="prefix">{</mo><mfrac><mrow><mo stretchy="false" form="postfix">∥</mo><mi>y</mi><mo>−</mo><mi>X</mi><mi>b</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow><mrow><mn>2</mn><mi>n</mi></mrow></mfrac><mo>+</mo><mi>λ</mi><mo stretchy="false" form="postfix">∥</mo><mi>b</mi><msub><mo stretchy="false" form="postfix">∥</mo><mn>1</mn></msub><mo stretchy="true" form="postfix">}</mo></mrow><mo>,</mo><mspace width="1.0em"></mspace><mi>λ</mi><mo>≥</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\widehat\beta^{\mathrm{ridge}}
+=\arg\min_b\left\{\frac{\|y-Xb\|^2}{2n}
++\frac{\lambda}{2}\|b\|_2^2\right\},
+\qquad
+\widehat\beta^{\mathrm{lasso}}
+=\arg\min_b\left\{\frac{\|y-Xb\|^2}{2n}
++\lambda\|b\|_1\right\},\quad \lambda\ge0.
+</annotation></semantics></math></span></p>
+<p>The factors of two are part of our convention. Software using a
+different objective scaling can require a different numerical tuning
+parameter for the same solution. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\lambda&gt;0</annotation></semantics></math></span>,
+ridge has the unique solution</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">d</mi><mi mathvariant="normal">g</mi><mi mathvariant="normal">e</mi></mrow></msup><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mrow><msup><mi>X</mi><mi>𝖳</mi></msup><mi>X</mi></mrow><mi>n</mi></mfrac><mo>+</mo><mi>λ</mi><msub><mi>I</mi><mi>p</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo>−</mo><mn>1</mn></mrow></msup><mfrac><mrow><msup><mi>X</mi><mi>𝖳</mi></msup><mi>y</mi></mrow><mi>n</mi></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\widehat\beta^{\mathrm{ridge}}
+=\left(\frac{X^\mathsf{T}X}{n}+\lambda I_p\right)^{-1}
+\frac{X^\mathsf{T}y}{n}.
+</annotation></semantics></math></span></p>
+<p>It shrinks coefficients continuously. The lasso penalty is not
+differentiable at zero. Its optimality condition uses a subgradient
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>s</mi><mi>j</mi></msub><annotation encoding="application/x-tex">s_j</annotation></semantics></math></span>,
+equal to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>sign</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{sign}(\widehat\beta_j)</annotation></semantics></math></span>
+at a nonzero coefficient and lying in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mo>−</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[-1,1]</annotation></semantics></math></span>
+at zero:</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><msup><mi>X</mi><mi>𝖳</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>y</mi><mo>−</mo><mi>X</mi><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mi>n</mi></mfrac><mo>=</mo><mi>λ</mi><mi>s</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\frac{X^\mathsf{T}(y-X\widehat\beta)}{n}=\lambda s.
+</annotation></semantics></math></span></p>
+<p>This condition explains how a coefficient can become exactly zero.
+The lasso objective is convex, but its coefficient minimizer need not be
+unique with an arbitrary rank-deficient design. A reported zero means
+the penalized rule selected zero at that tuning parameter; it is not a
+test accepting a scientific null.</p>
+<h2 id="orthogonal-shrinkage">Orthogonal geometry exposes shrinkage and
+its bias</h2>
+<p>When
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>X</mi><mi>𝖳</mi></msup><mi>X</mi><mi>/</mi><mi>n</mi><mo>=</mo><msub><mi>I</mi><mi>p</mi></msub></mrow><annotation encoding="application/x-tex">X^\mathsf{T}X/n=I_p</annotation></semantics></math></span>,
+put
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><msup><mi>X</mi><mi>𝖳</mi></msup><mi>y</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">z=X^\mathsf{T}y/n</annotation></semantics></math></span>.
+The squared-error part of the objective is, apart from a constant,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mn>1</mn><mn>2</mn></mfrac><msub><mo>∑</mo><mi>j</mi></msub><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>b</mi><mi>j</mi></msub><mo>−</mo><msub><mi>z</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">\frac12\sum_j(b_j-z_j)^2</annotation></semantics></math></span>.
+Ridge and lasso therefore act coordinate by coordinate:</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>j</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">d</mi><mi mathvariant="normal">g</mi><mi mathvariant="normal">e</mi></mrow></msubsup><mo>=</mo><mfrac><msub><mi>z</mi><mi>j</mi></msub><mrow><mn>1</mn><mo>+</mo><mi>λ</mi></mrow></mfrac><mo>,</mo><mspace width="2.0em"></mspace><msubsup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>j</mi><mrow><mi mathvariant="normal">l</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">s</mi><mi mathvariant="normal">s</mi><mi mathvariant="normal">o</mi></mrow></msubsup><mo>=</mo><mo>sign</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>z</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><msub><mrow><mo stretchy="true" form="prefix">(</mo><mrow><mo stretchy="true" form="prefix">|</mo><msub><mi>z</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">|</mo></mrow><mo>−</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\widehat\beta_j^{\mathrm{ridge}}=\frac{z_j}{1+\lambda},
+\qquad
+\widehat\beta_j^{\mathrm{lasso}}
+=\operatorname{sign}(z_j)(|z_j|-\lambda)_+.
+</annotation></semantics></math></span></p>
+<p>For the lasso, a positive minimizer solves
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>−</mo><msub><mi>z</mi><mi>j</mi></msub><mo>+</mo><mi>λ</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">b-z_j+\lambda=0</annotation></semantics></math></span>;
+a negative one solves
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>−</mo><msub><mi>z</mi><mi>j</mi></msub><mo>−</mo><mi>λ</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">b-z_j-\lambda=0</annotation></semantics></math></span>.
+When
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">|</mo><msub><mi>z</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">|</mo></mrow><mo>≤</mo><mi>λ</mi></mrow><annotation encoding="application/x-tex">|z_j|\le\lambda</annotation></semantics></math></span>,
+zero satisfies the subgradient condition. This derives soft thresholding
+rather than treating sparsity as a software property.</p>
+<p>Under independent mean-zero errors with variance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>σ</mi><mn>2</mn></msup><annotation encoding="application/x-tex">\sigma^2</annotation></semantics></math></span>,
+the orthogonal
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>z</mi><mi>j</mi></msub><annotation encoding="application/x-tex">z_j</annotation></semantics></math></span>
+has mean
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>β</mi><mi>j</mi></msub><annotation encoding="application/x-tex">\beta_j</annotation></semantics></math></span>
+and variance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>σ</mi><mn>2</mn></msup><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">\sigma^2/n</annotation></semantics></math></span>.
+Ridge has squared-error risk</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>E</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>j</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">d</mi><mi mathvariant="normal">g</mi><mi mathvariant="normal">e</mi></mrow></msubsup><mo>−</mo><msub><mi>β</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>=</mo><mfrac><mrow><msup><mi>λ</mi><mn>2</mn></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>β</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>+</mo><msup><mi>σ</mi><mn>2</mn></msup><mi>/</mi><mi>n</mi></mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">
+E(\widehat\beta_j^{\mathrm{ridge}}-\beta_j)^2
+=\frac{\lambda^2(\beta_j)^2+\sigma^2/n}{(1+\lambda)^2}.
+</annotation></semantics></math></span></p>
+<p>The variance decreases, but bias grows with signal size. Lasso adds a
+zero region and a nonregular sampling distribution. These are
+consequences of the chosen rule. As in the <a href="12-shrinkage.html">shrinkage chapter</a>, improving one
+squared-error criterion does not establish improvement for each
+coefficient. Here the penalty acts on a regression design, so we need to
+examine that design before turning the fitted slopes into inferential
+claims.</p>
+<h2 id="high-dimensional-structure">High dimension requires structure,
+not just an optimizer</h2>
+<p>If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>&gt;</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">p&gt;n</annotation></semantics></math></span>,
+the design has a nontrivial null space. For any
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>v</mi><annotation encoding="application/x-tex">v</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mi>v</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">Xv=0</annotation></semantics></math></span>,
+the vectors
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi><mo>+</mo><mi>v</mi></mrow><annotation encoding="application/x-tex">\beta+v</annotation></semantics></math></span>
+give the same conditional response mean. All unrestricted coefficients
+cannot then be identified from this fixed design. At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">p=n</annotation></semantics></math></span>,
+an uncentered, full-rank square design without an intercept can identify
+the mean coefficients, but an ordinary residual variance estimate has no
+remaining degrees of freedom. Our centered design has rank at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">n-1</annotation></semantics></math></span>,
+so that square full-rank case does not apply here.</p>
+<p>Sparsity is one possible structural assumption: only
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math></span>
+coefficients are nonzero, or the vector is adequately approximated by a
+sparse one. Restricted design conditions require that relevant sparse
+changes in coefficients still produce detectable changes in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mi>b</mi></mrow><annotation encoding="application/x-tex">Xb</annotation></semantics></math></span>.
+Nearly duplicate columns can defeat identification of individual effects
+even if they predict the same response well. Sparsity alone, without a
+compatible design and enough information relative to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math></span>,
+is insufficient.</p>
+<p>Choosing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math></span>
+by validation targets the specified predictive loss on the validation
+population. This can be a sound prediction strategy. It does not prove a
+bound on coefficient bias, validate an inverse covariance estimate, or
+account for selection in a confidence interval. The inferential problem
+has to state its own conditions.</p>
+<h2 id="debiasing-expansion">The bias correction and its remainder</h2>
+<p>For a population predictor vector on the working scale, write its
+positive-definite covariance as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>Σ</mi><mi>X</mi></msub><annotation encoding="application/x-tex">\Sigma_X</annotation></semantics></math></span>
+and its precision as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Ω</mi><mi>X</mi></msub><mo>=</mo><msubsup><mi>Σ</mi><mi>X</mi><mrow><mo>−</mo><mn>1</mn></mrow></msubsup></mrow><annotation encoding="application/x-tex">\Omega_X=\Sigma_X^{-1}</annotation></semantics></math></span>.
+The observed design supplies a different object:</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>C</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><mo>=</mo><mfrac><mrow><msup><mi>X</mi><mi>𝖳</mi></msup><mi>X</mi></mrow><mi>n</mi></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\widehat C_X=\frac{X^\mathsf{T}X}{n}.
+</annotation></semantics></math></span></p>
+<p>For centered predictors, R’s <code>cov(X)</code> divides by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">n-1</annotation></semantics></math></span>,
+so it equals
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><msub><mover><mi>C</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">n\widehat C_X/(n-1)</annotation></semantics></math></span>.
+The distinction matters when a matrix estimated with one divisor is used
+in a correction defined with another. When
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>&gt;</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">p&gt;n</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>C</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><annotation encoding="application/x-tex">\widehat C_X</annotation></semantics></math></span>
+is singular even if
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>Σ</mi><mi>X</mi></msub><annotation encoding="application/x-tex">\Sigma_X</annotation></semantics></math></span>
+is positive definite. We therefore estimate a useful approximate inverse
+from the design rather than attempting to invert the empirical Gram
+matrix.</p>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><annotation encoding="application/x-tex">\widehat\Omega_X</annotation></semantics></math></span>
+be that design-based estimate, with size
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>×</mo><mi>p</mi></mrow><annotation encoding="application/x-tex">p\times p</annotation></semantics></math></span>,
+and let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>β</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat\beta</annotation></semantics></math></span>
+be an initial sparse slope estimate. We correct it using the residual
+score:</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">d</mi><mi mathvariant="normal">b</mi></mrow></msub><mo>=</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo>+</mo><mfrac><mn>1</mn><mi>n</mi></mfrac><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><msup><mi>X</mi><mi>𝖳</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>y</mi><mo>−</mo><mi>X</mi><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\widehat\beta_{\mathrm{db}}
+=\widehat\beta+
+\frac{1}{n}\widehat\Omega_X X^\mathsf{T}(y-X\widehat\beta).
+</annotation></semantics></math></span></p>
+<p>The lasso optimality condition tells us that the score has not
+generally vanished. Multiplying by an approximate inverse translates
+this remaining score into a coefficient adjustment. To see what the
+adjustment can and cannot remove, substitute
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>y</mi><mo>=</mo><mi>X</mi><mi>β</mi><mo>+</mo><mi>ε</mi></mrow><annotation encoding="application/x-tex">y=X\beta+\varepsilon</annotation></semantics></math></span>
+and collect terms:</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">d</mi><mi mathvariant="normal">b</mi></mrow></msub><mo>−</mo><mi>β</mi><mo>=</mo><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><mfrac><mrow><msup><mi>X</mi><mi>𝖳</mi></msup><mi>ε</mi></mrow><mi>n</mi></mfrac><mo>+</mo><munder><munder><mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>I</mi><mi>p</mi></msub><mo>−</mo><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><msub><mover><mi>C</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo>−</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mo accent="true">⏟</mo></munder><mi>r</mi></munder><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\widehat\beta_{\mathrm{db}}-\beta
+=\widehat\Omega_X\frac{X^\mathsf{T}\varepsilon}{n}
++\underbrace{(I_p-\widehat\Omega_X\widehat C_X)
+ (\widehat\beta-\beta)}_{r}.
+</annotation></semantics></math></span></p>
+<p>This identity holds exactly. The remainder
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math></span>
+records the initial coefficient error left after the correction. For
+coordinate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math></span>,</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">|</mo><msub><mi>r</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">|</mo></mrow><mo>≤</mo><mo stretchy="false" form="postfix">∥</mo><msubsup><mi>e</mi><mi>j</mi><mi>𝖳</mi></msubsup><mo>−</mo><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mrow><mi>X</mi><mo>,</mo><mi>j</mi></mrow></msub><msub><mover><mi>C</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><msub><mo stretchy="false" form="postfix">∥</mo><mi>∞</mi></msub><mo stretchy="false" form="postfix">∥</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo>−</mo><mi>β</mi><msub><mo stretchy="false" form="postfix">∥</mo><mn>1</mn></msub><mo>,</mo></mrow><annotation encoding="application/x-tex">
+|r_j|\le
+\|e_j^\mathsf{T}-\widehat\Omega_{X,j}\widehat C_X\|_\infty
+\|\widehat\beta-\beta\|_1,
+</annotation></semantics></math></span></p>
+<p>where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>e</mi><mi>j</mi></msub><annotation encoding="application/x-tex">e_j</annotation></semantics></math></span>
+is the
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math></span>th
+coordinate column and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mrow><mi>X</mi><mo>,</mo><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">\widehat\Omega_{X,j}</annotation></semantics></math></span>
+is row
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math></span>.
+The bound separates two tasks: control the sparse estimator’s error and
+approximate the inverse row well enough. Small prediction error alone
+does not control their product.</p>
+<p>Suppose that, conditional on the design, the original errors are
+independent Gaussian with common variance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>σ</mi><mn>2</mn></msup><annotation encoding="application/x-tex">\sigma^2</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><annotation encoding="application/x-tex">\widehat\Omega_X</annotation></semantics></math></span>
+depends on the design alone. The leading term is then exactly
+conditionally Gaussian, with covariance</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><msup><mi>σ</mi><mn>2</mn></msup><mi>n</mi></mfrac><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><msub><mover><mi>C</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><msubsup><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi><mi>𝖳</mi></msubsup><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\frac{\sigma^2}{n}
+\widehat\Omega_X\widehat C_X\widehat\Omega_X^\mathsf{T}.
+</annotation></semantics></math></span></p>
+<p>If we first center a model with an intercept, the centered errors are
+correlated; we will account for that projection explicitly below.
+Because the centered design is orthogonal to the constant column, the
+covariance of this leading slope term remains the expression above. This
+calculation describes the leading term, not the complete corrected
+estimator. A material remainder cannot be repaired by assigning a
+Gaussian reference distribution.</p>
+<h2 id="nodewise-precision">Estimate precision through nodewise
+regressions</h2>
+<p>The remainder bound asks for rows that approximately invert the
+predictor Gram matrix. We construct them one at a time. For each
+predictor column
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mi>j</mi></msub><annotation encoding="application/x-tex">X_j</annotation></semantics></math></span>,
+regress it on the remaining columns
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mrow><mo>−</mo><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">X_{-j}</annotation></semantics></math></span>
+using the same working scale:</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>γ</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub><mo>=</mo><mo>arg</mo><munder><mo>min</mo><mi>g</mi></munder><mrow><mo stretchy="true" form="prefix">{</mo><mfrac><mrow><mo stretchy="false" form="postfix">∥</mo><msub><mi>X</mi><mi>j</mi></msub><mo>−</mo><msub><mi>X</mi><mrow><mo>−</mo><mi>j</mi></mrow></msub><mi>g</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow><mrow><mn>2</mn><mi>n</mi></mrow></mfrac><mo>+</mo><msub><mi>λ</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">∥</mo><mi>g</mi><msub><mo stretchy="false" form="postfix">∥</mo><mn>1</mn></msub><mo stretchy="true" form="postfix">}</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msubsup><mover><mi>τ</mi><mo accent="true">̂</mo></mover><mi>j</mi><mn>2</mn></msubsup><mo>=</mo><mfrac><mrow><mo stretchy="false" form="postfix">∥</mo><msub><mi>X</mi><mi>j</mi></msub><mo>−</mo><msub><mi>X</mi><mrow><mo>−</mo><mi>j</mi></mrow></msub><msub><mover><mi>γ</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow><mi>n</mi></mfrac><mo>+</mo><msub><mi>λ</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">∥</mo><msub><mover><mi>γ</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub><msub><mo stretchy="false" form="postfix">∥</mo><mn>1</mn></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\widehat\gamma_j=
+\arg\min_g\left\{\frac{\|X_j-X_{-j}g\|^2}{2n}
++\lambda_j\|g\|_1\right\},
+\qquad
+\widehat\tau_j^2=
+\frac{\|X_j-X_{-j}\widehat\gamma_j\|^2}{n}
++\lambda_j\|\widehat\gamma_j\|_1.
+</annotation></semantics></math></span></p>
+<p>Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>γ</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub><annotation encoding="application/x-tex">\widehat\gamma_j</annotation></semantics></math></span>
+has
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">p-1</annotation></semantics></math></span>
+entries. Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>c</mi><mi>j</mi></msub><annotation encoding="application/x-tex">c_j</annotation></semantics></math></span>
+be the row with a one in position
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><msub><mover><mi>γ</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">-\widehat\gamma_j</annotation></semantics></math></span>
+in the other positions. Set
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mrow><mi>X</mi><mo>,</mo><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>c</mi><mi>j</mi></msub><mi>/</mi><msubsup><mover><mi>τ</mi><mo accent="true">̂</mo></mover><mi>j</mi><mn>2</mn></msubsup></mrow><annotation encoding="application/x-tex">\widehat\Omega_{X,j}=c_j/\widehat\tau_j^2</annotation></semantics></math></span>.
+The penalty contribution in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mover><mi>τ</mi><mo accent="true">̂</mo></mover><mi>j</mi><mn>2</mn></msubsup><annotation encoding="application/x-tex">\widehat\tau_j^2</annotation></semantics></math></span>
+is essential: the nodewise lasso optimality condition gives</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><msub><mover><mi>C</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>j</mi><mi>j</mi></mrow></msub><mo>=</mo><mn>1</mn><mo>,</mo><mspace width="2.0em"></mspace><munder><mo>max</mo><mrow><mi>k</mi><mo>≠</mo><mi>j</mi></mrow></munder><mrow><mo stretchy="true" form="prefix">|</mo><msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><msub><mover><mi>C</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>j</mi><mi>k</mi></mrow></msub><mo stretchy="true" form="postfix">|</mo></mrow><mo>≤</mo><mfrac><msub><mi>λ</mi><mi>j</mi></msub><msubsup><mover><mi>τ</mi><mo accent="true">̂</mo></mover><mi>j</mi><mn>2</mn></msubsup></mfrac></mrow><annotation encoding="application/x-tex">
+(\widehat\Omega_X\widehat C_X)_{jj}=1,
+\qquad
+\max_{k\ne j}|(\widehat\Omega_X\widehat C_X)_{jk}|
+\le\frac{\lambda_j}{\widehat\tau_j^2}
+</annotation></semantics></math></span></p>
+<p>for an exact optimizer. To obtain the diagonal identity, multiply the
+nodewise residual by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>j</mi></msub><mo>=</mo><msub><mi>X</mi><mrow><mo>−</mo><mi>j</mi></mrow></msub><msub><mover><mi>γ</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub><mo>+</mo><mtext mathvariant="normal">residual</mtext></mrow><annotation encoding="application/x-tex">X_j=X_{-j}\widehat\gamma_j+\text{residual}</annotation></semantics></math></span>;
+the cross-product with the fitted part contributes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><msub><mi>λ</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">∥</mo><msub><mover><mi>γ</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub><msub><mo stretchy="false" form="postfix">∥</mo><mn>1</mn></msub></mrow><annotation encoding="application/x-tex">n\lambda_j\|\widehat\gamma_j\|_1</annotation></semantics></math></span>.
+The off-diagonal bound is the remaining subgradient bound. These
+relations explain why the residual variance alone would give the wrong
+normalization. <span class="citation" data-cites="van-de-geer2014"><a class="collection-citation" href="references.html#ref-van-de-geer2014" role="doc-biblioref" aria-label="Reference 5">[5]</a></span></p>
+<p>The resulting estimate need not be symmetric, and it is not the
+ordinary inverse of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>C</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><annotation encoding="application/x-tex">\widehat C_X</annotation></semantics></math></span>.
+We retain its row orientation in the correction and use its transpose in
+the covariance calculation. Its statistical accuracy still requires a
+suitable sparse or approximately sparse population precision,
+well-behaved predictor covariance, and appropriate tuning. The
+optimality identities establish algebraic control, not every condition
+required for inference.</p>
+<h2 id="debiased-inference">Conditions for coefficient intervals and
+p-values</h2>
+<p>For one prespecified coordinate, write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>v</mi><mi>j</mi></msub><mo>=</mo><msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><msub><mover><mi>C</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><msubsup><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi><mi>𝖳</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>j</mi><mi>j</mi></mrow></msub></mrow><annotation encoding="application/x-tex">v_j=(\widehat\Omega_X\widehat C_X\widehat\Omega_X^\mathsf{T})_{jj}</annotation></semantics></math></span>.
+A sufficient asymptotic argument requires a correctly specified linear
+conditional mean, independent homoscedastic Gaussian errors before
+centering, a design-based
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><annotation encoding="application/x-tex">\widehat\Omega_X</annotation></semantics></math></span>,
+nondegenerate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>v</mi><mi>j</mi></msub><annotation encoding="application/x-tex">v_j</annotation></semantics></math></span>,
+a consistent estimate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>σ</mi><mo accent="true">̂</mo></mover><mi>/</mi><mi>σ</mi><mover><mo>→</mo><mi>P</mi></mover><mn>1</mn></mrow><annotation encoding="application/x-tex">\widehat\sigma/\sigma\xrightarrow{P}1</annotation></semantics></math></span>,
+and</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><msqrt><mi>n</mi></msqrt><mspace width="0.167em"></mspace><msub><mi>r</mi><mi>j</mi></msub></mrow><mrow><mi>σ</mi><msqrt><msub><mi>v</mi><mi>j</mi></msub></msqrt></mrow></mfrac><mover><mo>→</mo><mi>P</mi></mover><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\frac{\sqrt n\,r_j}{\sigma\sqrt{v_j}}\xrightarrow{P}0.
+</annotation></semantics></math></span></p>
+<p>The leading Gaussian term and this negligible-remainder condition
+give an asymptotic standard normal pivot. We estimate its covariance
+by</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>V</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">d</mi><mi mathvariant="normal">b</mi></mrow></msub><mo>=</mo><mfrac><msup><mover><mi>σ</mi><mo accent="true">̂</mo></mover><mn>2</mn></msup><mi>n</mi></mfrac><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><msub><mover><mi>C</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><msubsup><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi><mi>𝖳</mi></msubsup><mo>,</mo><mspace width="2.0em"></mspace><msub><mover><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi></mrow><mo accent="true">̂</mo></mover><mi>j</mi></msub><mo>=</mo><msqrt><msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>V</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">d</mi><mi mathvariant="normal">b</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>j</mi><mi>j</mi></mrow></msub></msqrt><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\widehat V_{\mathrm{db}}=
+\frac{\widehat\sigma^2}{n}
+\widehat\Omega_X\widehat C_X\widehat\Omega_X^\mathsf{T},
+\qquad
+\widehat{\mathrm{se}}_j=
+\sqrt{(\widehat V_{\mathrm{db}})_{jj}}.
+</annotation></semantics></math></span></p>
+<p>The descriptive subscript separates this coefficient covariance from
+the false-discovery count
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math></span>
+in <a href="14-multiplicity.html">multiplicity</a> and the local
+risk-set covariance in the survival book. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mrow><mn>0</mn><mi>j</mi></mrow></msub><mo>:</mo><msub><mi>β</mi><mi>j</mi></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">H_{0j}:\beta_j=0</annotation></semantics></math></span>,
+the interval, statistic, and two-sided p-value are</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mrow><mrow><mi mathvariant="normal">d</mi><mi mathvariant="normal">b</mi></mrow><mo>,</mo><mi>j</mi></mrow></msub><mo>±</mo><msub><mi>z</mi><mrow><mn>1</mn><mo>−</mo><mi>α</mi><mi>/</mi><mn>2</mn></mrow></msub><msub><mover><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi></mrow><mo accent="true">̂</mo></mover><mi>j</mi></msub><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>Z</mi><mi>j</mi></msub><mo>=</mo><mfrac><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mrow><mrow><mi mathvariant="normal">d</mi><mi mathvariant="normal">b</mi></mrow><mo>,</mo><mi>j</mi></mrow></msub><msub><mover><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi></mrow><mo accent="true">̂</mo></mover><mi>j</mi></msub></mfrac><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>P</mi><mi>j</mi></msub><mo>=</mo><mn>2</mn><mi>Φ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><mrow><mo stretchy="true" form="prefix">|</mo><msub><mi>Z</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">|</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">
+\widehat\beta_{\mathrm{db},j}
+\pm z_{1-\alpha/2}\widehat{\mathrm{se}}_j,
+\qquad
+Z_j=\frac{\widehat\beta_{\mathrm{db},j}}
+{\widehat{\mathrm{se}}_j},
+\qquad
+P_j=2\Phi(-|Z_j|),
+</annotation></semantics></math></span></p>
+<p>where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Φ</mi><annotation encoding="application/x-tex">\Phi</annotation></semantics></math></span>
+is the standard normal CDF and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>z</mi><mrow><mn>1</mn><mo>−</mo><mi>α</mi><mi>/</mi><mn>2</mn></mrow></msub><annotation encoding="application/x-tex">z_{1-\alpha/2}</annotation></semantics></math></span>
+its quantile. These are asymptotic constructions. A zero lasso
+coefficient can have a nonzero corrected estimate; we calculate the
+p-value for each specified coordinate, including those that the lasso
+set to zero.</p>
+<p>One common sufficient rate calculation combines an initial
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mo>ℓ</mo><mn>1</mn></msub><annotation encoding="application/x-tex">\ell_1</annotation></semantics></math></span>
+error of order
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><msqrt><mrow><mo>log</mo><mi>p</mi><mi>/</mi><mi>n</mi></mrow></msqrt></mrow><annotation encoding="application/x-tex">s\sqrt{\log p/n}</annotation></semantics></math></span>
+with an inverse-row approximation error of order
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msqrt><mrow><mo>log</mo><mi>p</mi><mi>/</mi><mi>n</mi></mrow></msqrt><annotation encoding="application/x-tex">\sqrt{\log p/n}</annotation></semantics></math></span>.
+If the variance factors stay bounded away from zero, the resulting
+remainder is negligible on the
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>n</mi><mrow><mo>−</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">n^{-1/2}</annotation></semantics></math></span>
+scale when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mo>log</mo><mi>p</mi><mi>/</mi><msqrt><mi>n</mi></msqrt><mo>→</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">s\log p/\sqrt n\to0</annotation></semantics></math></span>.
+We need sparsity, restricted design conditions, suitable penalty levels,
+and accurate inverse estimation to obtain these rates. A fitted model’s
+predictive performance does not establish them.</p>
+<p>For a growing collection of tests, coordinatewise convergence alone
+does not justify a familywise or false-discovery guarantee. The
+approximation must be accurate enough over the tested family, and the
+p-value dependence must support the adjustment. <a href="14-multiplicity.html">Multiplicity</a> explains why Holm permits
+arbitrary dependence between valid null p-values, while BH requires
+additional dependence conditions. Neither adjustment can repair invalid
+input p-values.</p>
+<h2 id="single-outcome-worked-example">A complete correlated,
+high-dimensional example</h2>
+<p>I use a new synthetic continuous response so that we can compare
+every estimate with a known coefficient. This is a separate dataset from
+the earlier low-dimensional regression and normal-means examples. We
+generate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>240</mn></mrow><annotation encoding="application/x-tex">n=240</annotation></semantics></math></span>
+observations and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>360</mn></mrow><annotation encoding="application/x-tex">p=360</annotation></semantics></math></span>
+predictors with population covariance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>Σ</mi><mrow><mi>X</mi><mo>,</mo><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>j</mi><mi>k</mi></mrow></msub><mo>=</mo><msup><mn>0.4</mn><mrow><mo stretchy="true" form="prefix">|</mo><mi>j</mi><mo>−</mo><mi>k</mi><mo stretchy="true" form="postfix">|</mo></mrow></msup></mrow><annotation encoding="application/x-tex">(\Sigma_{X,\mathrm{raw}})_{jk}=0.4^{|j-k|}</annotation></semantics></math></span>.
+The original model is</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mrow><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow><mo>,</mo><mi>i</mi></mrow></msub><mo>=</mo><mn>2</mn><mo>+</mo><msubsup><mi>x</mi><mrow><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow><mo>,</mo><mi>i</mi></mrow><mi>𝖳</mi></msubsup><msub><mi>β</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow></msub><mo>+</mo><msub><mi>ε</mi><mrow><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow><mo>,</mo><mi>i</mi></mrow></msub><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>ε</mi><mrow><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow><mo>,</mo><mi>i</mi></mrow></msub><mover><mo>∼</mo><mrow><mi mathvariant="normal">i</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">d</mi></mrow></mover><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">
+y_{\mathrm{raw},i}=2+x_{\mathrm{raw},i}^\mathsf{T}\beta_{\mathrm{raw}}
++\varepsilon_{\mathrm{raw},i},
+\qquad
+\varepsilon_{\mathrm{raw},i}\overset{\mathrm{iid}}{\sim}N(0,1),
+</annotation></semantics></math></span></p>
+<p>independently of the predictors. The only nonzero slopes are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>β</mi><mrow><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow><mo>,</mo><mn>1</mn></mrow></msub><mo>=</mo><mn>0.7</mn></mrow><annotation encoding="application/x-tex">\beta_{\mathrm{raw},1}=0.7</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>β</mi><mrow><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow><mo>,</mo><mn>5</mn></mrow></msub><mo>=</mo><mo>−</mo><mn>0.55</mn></mrow><annotation encoding="application/x-tex">\beta_{\mathrm{raw},5}=-0.55</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>β</mi><mrow><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow><mo>,</mo><mn>12</mn></mrow></msub><mo>=</mo><mn>0.4</mn></mrow><annotation encoding="application/x-tex">\beta_{\mathrm{raw},12}=0.4</annotation></semantics></math></span>.
+These are conditional associations in the specified model, not causal
+effects inferred from the simulation.</p>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mo>=</mo><msub><mi>I</mi><mi>n</mi></msub><mo>−</mo><msub><mn>𝟏</mn><mi>n</mi></msub><msubsup><mn>𝟏</mn><mi>n</mi><mi>𝖳</mi></msubsup><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">M=I_n-\mathbf1_n\mathbf1_n^\mathsf{T}/n</annotation></semantics></math></span>
+and let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>D</mi><annotation encoding="application/x-tex">D</annotation></semantics></math></span>
+be the diagonal matrix of empirical predictor RMS scales after
+centering. The working data are</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>=</mo><mi>M</mi><msub><mi>X</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow></msub><msup><mi>D</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>,</mo><mspace width="2.0em"></mspace><mi>y</mi><mo>=</mo><mi>M</mi><msub><mi>y</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow></msub><mo>,</mo><mspace width="2.0em"></mspace><mi>β</mi><mo>=</mo><mi>D</mi><msub><mi>β</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">
+X=MX_{\mathrm{raw}}D^{-1},\qquad
+y=My_{\mathrm{raw}},\qquad
+\beta=D\beta_{\mathrm{raw}}.
+</annotation></semantics></math></span></p>
+<p>Thus
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>X</mi><mi>𝖳</mi></msup><msub><mn>𝟏</mn><mi>n</mi></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">X^\mathsf{T}\mathbf1_n=0</annotation></semantics></math></span>,
+each diagonal of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>C</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><annotation encoding="application/x-tex">\widehat C_X</annotation></semantics></math></span>
+is one, and the working coefficient measures response change per
+empirical RMS unit of the predictor. We do not standardize the response.
+Under a fixed diagonal change of scale, population covariance and
+precision transform as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>D</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><msub><mi>Σ</mi><mrow><mi>X</mi><mo>,</mo><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow></mrow></msub><msup><mi>D</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup></mrow><annotation encoding="application/x-tex">D^{-1}\Sigma_{X,\mathrm{raw}}D^{-1}</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><msub><mi>Ω</mi><mrow><mi>X</mi><mo>,</mo><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow></mrow></msub><mi>D</mi></mrow><annotation encoding="application/x-tex">D\Omega_{X,\mathrm{raw}}D</annotation></semantics></math></span>,
+respectively. The fitted precision must use the actual scale of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math></span>
+in the correction; estimating it on the raw columns and inserting it
+unchanged would be inconsistent.</p>
+<p>The working error is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><msub><mi>ε</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow></msub><mo>∼</mo><msub><mi>N</mi><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><msup><mi>σ</mi><mn>2</mn></msup><mi>M</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">M\varepsilon_{\mathrm{raw}}\sim N_n(0,\sigma^2M)</annotation></semantics></math></span>,
+not an independent-error vector. Nevertheless,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>X</mi><mi>𝖳</mi></msup><mi>M</mi><mo>=</mo><msup><mi>X</mi><mi>𝖳</mi></msup></mrow><annotation encoding="application/x-tex">X^\mathsf{T}M=X^\mathsf{T}</annotation></semantics></math></span>,
+so the leading-term covariance remains
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>σ</mi><mn>2</mn></msup><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><msub><mover><mi>C</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><msubsup><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi><mi>𝖳</mi></msubsup><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">\sigma^2\widehat\Omega_X\widehat C_X\widehat\Omega_X^\mathsf{T}/n</annotation></semantics></math></span>.
+Conditioning on the realized design and its scales makes the working
+truth
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><msub><mi>β</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow></msub></mrow><annotation encoding="application/x-tex">D\beta_{\mathrm{raw}}</annotation></semantics></math></span>
+a specified comparison target. Dividing the fitted slopes by those same
+scales returns the original-unit coefficients. We then recover the
+unpenalized intercept as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>y</mi><mo accent="true">¯</mo></mover><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow></msub><mo>−</mo><msubsup><mover><mi>x</mi><mo accent="true">¯</mo></mover><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow><mi>𝖳</mi></msubsup><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">d</mi><mi mathvariant="normal">b</mi><mo mathvariant="normal">,</mo><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">w</mi></mrow></msub></mrow><annotation encoding="application/x-tex">\overline y_{\mathrm{raw}}-\overline x_{\mathrm{raw}}^\mathsf{T}\widehat\beta_{\mathrm{db,raw}}</annotation></semantics></math></span>;
+the example does not attach a confidence interval to this intercept.</p>
+<h3 id="scaled-lasso-workflow">From first principles: estimate the noise
+and the sparse slopes</h3>
+<p>When
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>&gt;</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">p&gt;n</annotation></semantics></math></span>,
+ordinary least-squares residual degrees of freedom do not provide a
+noise estimate. We use the scaled lasso <span class="citation" data-cites="sun2012scaled"><a class="collection-citation" href="references.html#ref-sun2012scaled" role="doc-biblioref" aria-label="Reference 7">[7]</a></span>, which jointly
+minimizes</p>
+<p><span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mo stretchy="false" form="postfix">∥</mo><mi>y</mi><mo>−</mo><mi>X</mi><mi>b</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow><mrow><mn>2</mn><mi>n</mi><mi>u</mi></mrow></mfrac><mo>+</mo><mfrac><mi>u</mi><mn>2</mn></mfrac><mo>+</mo><msub><mi>λ</mi><mn>0</mn></msub><mo stretchy="false" form="postfix">∥</mo><mi>b</mi><msub><mo stretchy="false" form="postfix">∥</mo><mn>1</mn></msub><mo>,</mo><mspace width="2.0em"></mspace><mi>u</mi><mo>&gt;</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\frac{\|y-Xb\|^2}{2nu}+\frac{u}{2}
++\lambda_0\|b\|_1,\qquad u&gt;0.
+</annotation></semantics></math></span></p>
+<p>Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>u</mi><annotation encoding="application/x-tex">u</annotation></semantics></math></span>
+is a candidate noise SD, distinct from the sparsity count
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math></span>
+used above. For a fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>u</mi><annotation encoding="application/x-tex">u</annotation></semantics></math></span>,
+minimizing over
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math></span>
+is a lasso fit with penalty
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>=</mo><mi>u</mi><msub><mi>λ</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">\lambda=u\lambda_0</annotation></semantics></math></span>.
+For a fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math></span>,
+differentiation with respect to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>u</mi><annotation encoding="application/x-tex">u</annotation></semantics></math></span>
+gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>u</mi><mo>=</mo><mo stretchy="false" form="postfix">∥</mo><mi>y</mi><mo>−</mo><mi>X</mi><mi>b</mi><mo stretchy="false" form="postfix">∥</mo><mi>/</mi><msqrt><mi>n</mi></msqrt></mrow><annotation encoding="application/x-tex">u=\|y-Xb\|/\sqrt n</annotation></semantics></math></span>.
+Alternating these two steps yields
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>β</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat\beta</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>σ</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat\sigma</annotation></semantics></math></span>.
+The transparent coordinate-descent implementation below uses the same
+soft thresholding derived earlier.</p>
+<p>We set
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mn>0</mn></msub><mo>=</mo><mn>1.1</mn><msqrt><mrow><mn>2</mn><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>n</mi></mrow></msqrt></mrow><annotation encoding="application/x-tex">\lambda_0=1.1\sqrt{2\log(p)/n}</annotation></semantics></math></span>,
+and use this same explicit numerical level in every nodewise regression.
+The level has the usual
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msqrt><mrow><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>n</mi></mrow></msqrt><annotation encoding="application/x-tex">\sqrt{\log(p)/n}</annotation></semantics></math></span>
+order; the constant is a numerical choice for this example, not a claim
+of uniform coverage. Scaled-lasso noise consistency requires the sparse
+linear model and suitable compatibility and tuning conditions. Dividing
+by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+is part of that estimator, not an exact unbiased residual-variance
+formula. Centering loses one direction, but its effect on this
+asymptotic scale estimate vanishes as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+grows. We neither subtract
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+from
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+nor treat the selected model size as an exact residual degree-of-freedom
+correction.</p>
+<h3 id="standard-lasso-workflow">Standard R workflow and the
+correction</h3>
+<p>We use <code>glmnet::glmnet()</code> for the nodewise fits and for an
+independent implementation of the final lasso objective. We explicitly
+set the penalty sequence, <code>alpha = 1</code>,
+<code>intercept = FALSE</code>, and <code>standardize = FALSE</code>.
+The design has already been centered and scaled. The package reports
+coefficients on the supplied predictor scale; supplying the exact
+penalty and comparing the two optimizers avoids relying on its
+automatically generated penalty path. We perform the correction and
+standard-error calculation directly from the displayed matrix formulas.
+<span class="citation" data-cites="glmnet-documentation"><a class="collection-citation" href="references.html#ref-glmnet-documentation" role="doc-biblioref" aria-label="Reference 8">[8]</a></span></p>
+<p>Dependencies: base R, <code>stats</code>, and <code>glmnet</code>;
+installing <code>glmnet</code> also installs its package dependencies.
+The block contains every helper, the data generator, both fitting
+routes, and the inference calculations. The nodewise helper adapts the
+row construction in the published DrFARM repository’s
+<code>precM.NL.one()</code> and <code>precM.NL.whole()</code>, with
+explicit tuning and no internal rescaling. It uses only predictor
+regressions. <span class="citation" data-cites="chan2025drfarm"><a class="collection-citation" href="references.html#ref-chan2025drfarm" role="doc-biblioref" aria-label="Reference 6">[6]</a></span> The <a href="../licenses/debiased-regression-notice.txt">adapted code
+notice</a> and <a href="../licenses/GPL-3.0.txt">GNU GPL version 3
+license</a> accompany the example.</p>
+<div class="sourceCode"><pre class="r"><code class="sourceCode r"># Single-outcome debiasing: a complete known-truth example.
+# Dependencies: base R, stats, and glmnet; install.packages also installs its dependencies.
+# Install glmnet once if needed: install.packages("glmnet")
+# The nodewise helper adapts precM.NL.one/precM.NL.whole from drfarm 0.1.0:
+# Lap Sum Chan, Gen Li, Peter X. K. Song; GPL version 3 or later.
+# Source: https://github.com/lapsumchan/drfarm/tree/406172af67bccede260ec2d6ca137a718c703c03
+# Changes: explicit penalty; no EBIC/CV, hidden scaling, or full DrFARM fitter.
+# License: https://www.gnu.org/licenses/gpl-3.0.html
+if (!requireNamespace("glmnet", quietly = TRUE)) {
+  stop('Install glmnet first with install.packages("glmnet").')
+}
+options(width = 110)
+
+# From first principles: minimize RSS/(2n) + lambda * sum(abs(beta)).
+# Updating one coefficient reduces to soft thresholding its partial residual.
+soft.threshold &lt;- function(z, lambda) sign(z) * pmax(abs(z) - lambda, 0)
+lasso.cd &lt;- function(X, y, lambda, beta.start = rep(0, ncol(X)),
+                     tolerance = 1e-10, max.sweeps = 10000L) {
+  n &lt;- nrow(X)
+  C.hat.X &lt;- crossprod(X) / n
+  score &lt;- drop(crossprod(X, y) / n)
+  beta.hat &lt;- beta.start
+  gradient &lt;- score - drop(C.hat.X %*% beta.hat)
+  for (sweep in seq_len(max.sweeps)) {
+    largest.change &lt;- 0
+    for (j in seq_len(ncol(X))) {
+      old &lt;- beta.hat[j]
+      beta.hat[j] &lt;- soft.threshold(gradient[j] + C.hat.X[j, j] * old,
+                                     lambda) / C.hat.X[j, j]
+      change &lt;- beta.hat[j] - old
+      gradient &lt;- gradient - C.hat.X[, j] * change
+      largest.change &lt;- max(largest.change, abs(change))
+    }
+    if (largest.change &lt; tolerance) return(beta.hat)
+  }
+  stop("Coordinate descent did not converge.")
+}
+
+# Scaled lasso alternates a lasso fit and the residual RMS noise estimate.
+# This solves RSS/(2 n sigma) + sigma/2 + lambda.base * ||beta||_1.
+scaled.lasso &lt;- function(X, y, lambda.base, tolerance = 1e-9,
+                         max.steps = 1000L) {
+  beta.hat &lt;- rep(0, ncol(X))
+  sigma.hat &lt;- sqrt(mean(y^2))
+  for (step in seq_len(max.steps)) {
+    beta.hat &lt;- lasso.cd(X, y, lambda.base * sigma.hat, beta.hat)
+    sigma.new &lt;- sqrt(mean((y - drop(X %*% beta.hat))^2))
+    if (sigma.new &lt;= 0) stop("Scaled lasso reached a zero residual scale.")
+    if (abs(sigma.new - sigma.hat) &lt;= tolerance * sigma.hat) {
+      return(list(beta.hat = beta.hat, sigma.hat = sigma.new,
+                  lambda = lambda.base * sigma.new, steps = step))
+    }
+    sigma.hat &lt;- sigma.new
+  }
+  stop("Scaled lasso did not converge.")
+}
+
+# Minimal nodewise precision calculation, with the original row orientation.
+# The penalty contribution in tau.sq makes each diagonal inverse product one.
+nodewise.precision &lt;- function(X, lambda.node) {
+  n &lt;- nrow(X)
+  p &lt;- ncol(X)
+  Omega.hat.X &lt;- matrix(0, p, p)
+  nodewise.kkt &lt;- numeric(p)
+  for (j in seq_len(p)) {
+    other &lt;- setdiff(seq_len(p), j)
+    # The requested decreasing path ends exactly at the chosen penalty.
+    lambda.max &lt;- max(abs(drop(crossprod(X[, other, drop = FALSE], X[, j]) / n)))
+    lambda.path &lt;- sort(unique(c(max(lambda.max, lambda.node) * 1.01,
+                                 lambda.node)), decreasing = TRUE)
+    fit &lt;- glmnet::glmnet(X[, other, drop = FALSE], X[, j],
+                          family = "gaussian", alpha = 1,
+                          lambda = lambda.path, intercept = FALSE,
+                          standardize = FALSE, thresh = 1e-12, maxit = 100000L)
+    gamma.hat &lt;- drop(as.matrix(fit$beta)[, ncol(fit$beta)])
+    residual &lt;- X[, j] - drop(X[, other, drop = FALSE] %*% gamma.hat)
+    score &lt;- drop(crossprod(X[, other, drop = FALSE], residual) / n)
+    active &lt;- abs(gamma.hat) &gt; 1e-10
+    nodewise.kkt[j] &lt;- max(c(abs(score[active] - lambda.node *
+                                 sign(gamma.hat[active])),
+                             pmax(abs(score[!active]) - lambda.node, 0)))
+    tau.sq &lt;- mean(residual^2) + lambda.node * sum(abs(gamma.hat))
+    Omega.hat.X[j, j] &lt;- 1 / tau.sq
+    Omega.hat.X[j, other] &lt;- -gamma.hat / tau.sq
+  }
+  attr(Omega.hat.X, "max.nodewise.kkt") &lt;- max(nodewise.kkt)
+  Omega.hat.X
+}
+
+# Generate correlated predictors with population covariance rho^|j-k|.
+set.seed(71101)
+n &lt;- 240L
+p &lt;- 360L
+rho &lt;- 0.4
+Sigma.X.raw &lt;- rho^abs(outer(seq_len(p), seq_len(p), "-"))
+X.raw &lt;- matrix(rnorm(n * p), nrow = n) %*% chol(Sigma.X.raw)
+beta.raw &lt;- numeric(p)
+beta.raw[c(1L, 5L, 12L)] &lt;- c(0.7, -0.55, 0.4)
+beta.0 &lt;- 2
+sigma &lt;- 1
+error.raw &lt;- rnorm(n, sd = sigma)
+y.raw &lt;- beta.0 + drop(X.raw %*% beta.raw) + error.raw
+
+# Center once, and standardize predictors using the RMS divisor n.
+# Do not standardize y: sigma stays in the original response units.
+x.mean &lt;- colMeans(X.raw)
+X.centered &lt;- sweep(X.raw, 2, x.mean, "-")
+x.scale &lt;- sqrt(colMeans(X.centered^2))
+X &lt;- sweep(X.centered, 2, x.scale, "/")
+y &lt;- y.raw - mean(y.raw)
+beta.truth &lt;- x.scale * beta.raw
+C.hat.X &lt;- crossprod(X) / n
+sample.covariance &lt;- stats::cov(X)
+
+# The penalty is proportional to sqrt(log(p)/n), not prediction-tuned.
+lambda.base &lt;- 1.1 * sqrt(2 * log(p) / n)
+initial &lt;- scaled.lasso(X, y, lambda.base)
+beta.hat &lt;- initial$beta.hat
+sigma.hat &lt;- initial$sigma.hat
+Omega.hat.X &lt;- nodewise.precision(X, lambda.node = lambda.base)
+
+# Standard R workflow: verify glmnet solves the same final lasso objective.
+# Explicit scaling, intercept, lambda, and alpha prevent default mismatches.
+lambda.max &lt;- max(abs(drop(crossprod(X, y) / n)))
+lambda.path &lt;- sort(unique(c(max(lambda.max, initial$lambda) * 1.01,
+                             initial$lambda)), decreasing = TRUE)
+standard.fit &lt;- glmnet::glmnet(X, y, family = "gaussian", alpha = 1,
+                               lambda = lambda.path, intercept = FALSE,
+                               standardize = FALSE, thresh = 1e-12,
+                               maxit = 100000L)
+beta.standard &lt;- drop(as.matrix(standard.fit$beta)[, ncol(standard.fit$beta)])
+
+# From first principles: correction, covariance, and normal-reference inference.
+residual &lt;- y - drop(X %*% beta.hat)
+beta.db &lt;- beta.hat + drop(Omega.hat.X %*% crossprod(X, residual) / n)
+V.hat.db &lt;- sigma.hat^2 / n * Omega.hat.X %*% C.hat.X %*% t(Omega.hat.X)
+se.db &lt;- sqrt(diag(V.hat.db))
+Z &lt;- beta.db / se.db
+P &lt;- 2 * stats::pnorm(-abs(Z))
+critical &lt;- stats::qnorm(0.975)
+results &lt;- data.frame(predictor = seq_len(p), truth = beta.truth,
+                       penalized = beta.hat, debiased = beta.db,
+                       se = se.db, lower = beta.db - critical * se.db,
+                       upper = beta.db + critical * se.db,
+                       p.value = P, Holm = stats::p.adjust(P, "holm"),
+                       BH = stats::p.adjust(P, "BH"))
+
+# Return original-unit slopes and the associated unpenalized intercept.
+beta.db.raw &lt;- beta.db / x.scale
+beta.0.db &lt;- mean(y.raw) - sum(x.mean * beta.db.raw)
+
+# Known truth lets us inspect the exact remainder on this one dataset.
+# These checks cannot be performed with an unknown beta in real data.
+error.centered &lt;- error.raw - mean(error.raw)
+noise.term &lt;- drop(Omega.hat.X %*% crossprod(X, error.centered) / n)
+remainder &lt;- drop((diag(p) - Omega.hat.X %*% C.hat.X) %*%
+                    (beta.hat - beta.truth))
+expansion.error &lt;- max(abs(beta.db - beta.truth - noise.term - remainder))
+precision.error &lt;- max(abs(diag(p) - Omega.hat.X %*% C.hat.X))
+software.error &lt;- max(abs(beta.hat - beta.standard))
+score &lt;- drop(crossprod(X, residual) / n)
+active &lt;- abs(beta.hat) &gt; 1e-10
+initial.kkt &lt;- max(c(abs(score[active] - initial$lambda * sign(beta.hat[active])),
+                     pmax(abs(score[!active]) - initial$lambda, 0)))
+A &lt;- Omega.hat.X %*% t(X) / n
+covariance.error &lt;- max(abs(V.hat.db - sigma.hat^2 * tcrossprod(A)))
+cat(sprintf("n = %d, p = %d; centered design rank = %d\n", n, p, qr(X)$rank))
+cat(sprintf("sigma = %.6f; scaled-lasso sigma.hat = %.6f; steps = %d\n",
+            sigma, sigma.hat, initial$steps))
+cat(sprintf("lambda.base = %.6f; final coefficient penalty = %.6f\n",
+            lambda.base, initial$lambda))
+cat(sprintf("Max first-principles / glmnet difference: %.3g\n", software.error))
+cat(sprintf("Max initial lasso KKT error: %.3g; max nodewise KKT error: %.3g\n",
+            initial.kkt, attr(Omega.hat.X, "max.nodewise.kkt")))
+cat(sprintf("Max exact expansion discrepancy: %.3g\n", expansion.error))
+cat(sprintf("Max entry of I - Omega.hat.X %%*%% C.hat.X: %.6f\n",
+            precision.error))
+cat(sprintf("Max known-truth remainder / estimated SE: %.6f\n", max(abs(remainder) / se.db)))
+cat(sprintf("Original-unit intercept estimate: %.6f (truth = %.1f)\n\n", beta.0.db, beta.0))
+# These coordinates were specified before fitting, rather than selected by p-value.
+print(results[c(1L, 5L, 12L, 2L, 30L, 120L), ], digits = 5, row.names = FALSE)
+cat(sprintf("\nAmong all %d coordinates: raw P &lt;= 0.05: %d; Holm: %d; BH: %d\n",
+            p, sum(P &lt;= 0.05), sum(results$Holm &lt;= 0.05), sum(results$BH &lt;= 0.05)))
+cat(sprintf("R %s; glmnet %s; Matrix %s\n", as.character(getRversion()),
+            as.character(utils::packageVersion("glmnet")),
+            as.character(utils::packageVersion("Matrix"))))
+stopifnot(p &gt; n, qr(X)$rank &lt; p, max(abs(colMeans(X))) &lt; 1e-12,
+          max(abs(diag(C.hat.X) - 1)) &lt; 1e-12,
+          max(abs(sample.covariance - n / (n - 1) * C.hat.X)) &lt; 1e-12,
+          software.error &lt; 2e-6, expansion.error &lt; 1e-12, covariance.error &lt; 1e-12,
+          initial.kkt &lt; 1e-7, attr(Omega.hat.X, "max.nodewise.kkt") &lt; 1e-5,
+          max(abs(diag(Omega.hat.X %*% C.hat.X) - 1)) &lt; 1e-5,
+          all(is.finite(se.db)), all(se.db &gt; 0), all(P &gt;= 0 &amp; P &lt;= 1))
+</code></pre>
+</div><p>The resulting calculations are:</p>
+<pre class="output"><code>n = 240, p = 360; centered design rank = 239
+sigma = 1.000000; scaled-lasso sigma.hat = 1.039123; steps = 13
+lambda.base = 0.243622; final coefficient penalty = 0.253153
+Max first-principles / glmnet difference: 6.12e-11
+Max initial lasso KKT error: 5.92e-11; max nodewise KKT error: 2.75e-08
+Max exact expansion discrepancy: 2.36e-16
+Max entry of I - Omega.hat.X %*% C.hat.X: 0.317843
+Max known-truth remainder / estimated SE: 1.843294
+Original-unit intercept estimate: 1.903599 (truth = 2.0)
+
+ predictor    truth penalized   debiased       se    lower     upper    p.value       Holm         BH
+         1  0.69460  0.400874  0.6596174 0.068057  0.52623  0.793006 3.2560e-22 1.1722e-19 1.1722e-19
+         5 -0.53634 -0.224327 -0.4890434 0.068171 -0.62266 -0.355431 7.2959e-13 2.6192e-10 1.3133e-10
+        12  0.42204  0.080317  0.3493479 0.068356  0.21537  0.483324 3.2101e-07 1.1492e-04 3.8521e-05
+         2  0.00000  0.000000  0.0279725 0.069318 -0.10789  0.163833 6.8655e-01 1.0000e+00 9.8022e-01
+        30  0.00000  0.000000 -0.0071902 0.068757 -0.14195  0.127571 9.1671e-01 1.0000e+00 9.9696e-01
+       120  0.00000  0.000000 -0.0864298 0.069104 -0.22187  0.049011 2.1104e-01 1.0000e+00 9.4578e-01
+
+Among all 360 coordinates: raw P &lt;= 0.05: 22; Holm: 3; BH: 3
+R 4.3.3; glmnet 4.1.8; Matrix 1.6.5
+</code></pre>
+<p>The centered design has rank 239, below its 360 columns. A population
+precision can exist even though this empirical Gram matrix cannot be
+inverted. The estimated noise SD is about 1.039, compared with the
+generator’s value of 1. The first-principles fit and <code>glmnet</code>
+agree to about
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>6.1</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>11</mn></mrow></msup></mrow><annotation encoding="application/x-tex">6.1\times10^{-11}</annotation></semantics></math></span>,
+and the lasso and nodewise optimality checks confirm that the stated
+numerical objectives were solved closely.</p>
+<p>The table shows three active and three null coordinates specified
+before fitting. For predictor 1, the working truth is about 0.695, the
+penalized estimate is 0.401, and the corrected estimate is 0.660, with
+estimated SE 0.0681. The correction moves the estimate toward its
+conditional target while retaining sampling uncertainty. The null
+predictor 120 has a corrected estimate about
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>0.0864</mn></mrow><annotation encoding="application/x-tex">-0.0864</annotation></semantics></math></span>
+even though its lasso coefficient is zero; its p-value is about
+0.211.</p>
+<p>We apply Holm and BH to all 360 p-values, not only to the displayed
+rows or selected predictors. The counts summarize this one fit. They do
+not establish error-rate control, and the AR(1) predictor covariance
+alone does not prove the dependence condition required for BH on the
+resulting two-sided test statistics.</p>
+<p>Known truth lets us also examine what would be hidden in real data:
+the largest remainder is about 1.84 estimated SEs. That is material for
+some coordinates. The correction has improved some point estimates, but
+the normal approximation requires the remaining bias to be small
+relative to the leading sampling variation. In this sample, the
+remainder is too large to ignore uniformly across coordinates;
+convergence of the fits does not establish the required asymptotic
+condition. It demonstrates the full calculation and its limitations,
+rather than furnishing calibration evidence. Numerical optimality and a
+small algebra discrepancy cannot replace the statistical assumptions and
+remainder control needed for an inferential claim.</p>
+<h2 id="regularization-computation">Execute the geometry and audit a
+failure</h2>
+<p>The next block contains three separate experiments, each with newly
+generated data. The first uses three orthogonal columns to compare
+ridge, lasso, and a residual correction. The second constructs an
+intentionally high-dimensional setting where the expansion is exact but
+its remainder is large. The third selects a marker in one sample and
+estimates its slope in an independent sample. Dependencies: base R and
+<code>stats</code>, included with R. No external files are required.</p>
+<div class="sourceCode"><pre class="r"><code class="sourceCode r"># Regularization and association: exact geometry and an honest split-sample fit.
+# Dependencies: base R and stats (included in R).
+options(width = 95)
+
+# From first principles: a centered orthogonal design with X'X/n = I.
+X &lt;- cbind(x1 = c(1, 1, 1, 1, -1, -1, -1, -1),
+           x2 = c(1, 1, -1, -1, 1, 1, -1, -1),
+           x3 = c(1, -1, 1, -1, 1, -1, 1, -1))
+n &lt;- nrow(X)
+beta &lt;- c(1.2, .35, -.15)
+error &lt;- .2 * c(1, -1, -1, 1, 1, -1, -1, 1)
+y &lt;- drop(X %*% beta) + error
+C.hat.X &lt;- crossprod(X) / n
+z &lt;- drop(crossprod(X, y) / n)
+lambda &lt;- .4
+ridge &lt;- drop(solve(C.hat.X + lambda * diag(ncol(X)), z))
+soft.threshold &lt;- function(z, lambda) sign(z) * pmax(abs(z) - lambda, 0)
+lasso &lt;- soft.threshold(z, lambda)
+debiased &lt;- lasso + drop(crossprod(X, y - X %*% lasso) / n)
+cat("Orthogonal regression at lambda = 0.4\n")
+print(data.frame(term = colnames(X), least.squares = z, ridge = ridge,
+                 lasso = lasso, corrected = debiased),
+      digits = 6, row.names = FALSE)
+cat(sprintf("Maximum orthogonal correction error: %.3g\n\n",
+            max(abs(debiased - z))))
+
+# Verify the correction identity in a deliberately high-dimensional design.
+# This demonstrates an algebraic expansion; it does not certify valid p-values.
+set.seed(7102)
+n.hd &lt;- 12L
+p.hd &lt;- 18L
+X.hd &lt;- matrix(rnorm(n.hd * p.hd), nrow = n.hd)
+X.hd &lt;- scale(X.hd, center = TRUE, scale = FALSE)
+beta.hd &lt;- c(1, -.5, rep(0, p.hd - 2L))
+sigma.hd &lt;- .6
+epsilon.hd &lt;- rnorm(n.hd, sd = sigma.hd)
+epsilon.hd &lt;- epsilon.hd - mean(epsilon.hd)
+y.hd &lt;- drop(X.hd %*% beta.hd) + epsilon.hd
+C.hat.X.hd &lt;- crossprod(X.hd) / n.hd
+Omega.hat.X.hd &lt;- solve(C.hat.X.hd + .4 * diag(p.hd))
+initial.hd &lt;- drop(Omega.hat.X.hd %*% crossprod(X.hd, y.hd) / n.hd)
+corrected.hd &lt;- initial.hd +
+  drop(Omega.hat.X.hd %*% crossprod(X.hd, y.hd - X.hd %*% initial.hd) / n.hd)
+noise.term &lt;- drop(Omega.hat.X.hd %*% crossprod(X.hd, epsilon.hd) / n.hd)
+remainder &lt;- drop((diag(p.hd) - Omega.hat.X.hd %*% C.hat.X.hd) %*%
+                    (initial.hd - beta.hd))
+se.noise &lt;- sigma.hd * sqrt(diag(Omega.hat.X.hd %*% C.hat.X.hd %*% t(Omega.hat.X.hd)) / n.hd)
+cat("High-dimensional algebra audit (12 people, 18 predictors)\n")
+cat(sprintf("Expansion discrepancy: %.3g\n", max(abs(
+  corrected.hd - beta.hd - noise.term - remainder))))
+cat(sprintf("Largest remainder / conditional noise SD: %.6f\n\n",
+            max(abs(remainder) / se.noise)))
+
+# Standard R workflow after independent model selection.
+# The first sample selects one marker. The second sample is generated independently.
+set.seed(7103)
+n.train &lt;- 120L
+n.test &lt;- 100L
+p &lt;- 6L
+make.design &lt;- function(n) matrix(rnorm(n * p), nrow = n)
+X.train &lt;- make.design(n.train)
+X.test &lt;- make.design(n.test)
+beta.full &lt;- c(.9, -.6, rep(0, p - 2L))
+y.train &lt;- 2 + drop(X.train %*% beta.full) + rnorm(n.train)
+y.test &lt;- 2 + drop(X.test %*% beta.full) + rnorm(n.test)
+selected &lt;- which.max(abs(drop(crossprod(scale(X.train, scale = FALSE),
+                                        y.train - mean(y.train)))))
+test.data &lt;- data.frame(y = y.test, marker = X.test[, selected])
+split.fit &lt;- lm(y ~ marker, data = test.data)
+split.table &lt;- coef(summary(split.fit))
+cat(sprintf("Independent discovery sample selects marker %d\n", selected))
+cat("Independent inference sample: a prespecified conditional slope\n")
+print(split.table, digits = 6)
+print(confint(split.fit, "marker"), digits = 6)
+cat("Here independent normal predictors make the omitted signal normal noise.\n")
+cat("With correlated predictors, the reduced-model slope generally changes target.\n")
+
+stopifnot(max(abs(colMeans(X))) &lt; 1e-14,
+          max(abs(C.hat.X - diag(ncol(X)))) &lt; 1e-14,
+          max(abs(debiased - z)) &lt; 1e-14,
+          max(abs(corrected.hd - beta.hd - noise.term - remainder)) &lt; 1e-12,
+          max(abs(lasso - c(.8, 0, 0))) &lt; 1e-14,
+          max(abs(ridge - c(1.2 / 1.4, .35 / 1.4, -.15 / 1.4))) &lt; 1e-14,
+          selected == 1L,
+          nrow(test.data) &gt; length(coef(split.fit)))
+</code></pre>
+</div><p>The executed output is:</p>
+<pre class="output"><code>Orthogonal regression at lambda = 0.4
+ term least.squares     ridge lasso corrected
+   x1          1.20  0.857143   0.8      1.20
+   x2          0.35  0.250000   0.0      0.35
+   x3         -0.15 -0.107143   0.0     -0.15
+Maximum orthogonal correction error: 2.22e-16
+
+High-dimensional algebra audit (12 people, 18 predictors)
+Expansion discrepancy: 2.22e-16
+Largest remainder / conditional noise SD: 11.649014
+
+Independent discovery sample selects marker 1
+Independent inference sample: a prespecified conditional slope
+            Estimate Std. Error  t value    Pr(&gt;|t|)
+(Intercept) 2.051015   0.121639 16.86145 9.99629e-31
+marker      0.720264   0.124262  5.79632 8.25650e-08
+          2.5 %   97.5 %
+marker 0.473669 0.966858
+Here independent normal predictors make the omitted signal normal noise.
+With correlated predictors, the reduced-model slope generally changes target.
+</code></pre>
+<p>The first table derives the lasso zeros and ridge shrinkage directly.
+In the orthogonal setting, taking
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><mo>=</mo><msub><mi>I</mi><mi>p</mi></msub></mrow><annotation encoding="application/x-tex">\widehat\Omega_X=I_p</annotation></semantics></math></span>
+gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">d</mi><mi mathvariant="normal">b</mi></mrow></msub><mo>=</mo><mi>z</mi></mrow><annotation encoding="application/x-tex">\widehat\beta_{\mathrm{db}}=z</annotation></semantics></math></span>
+exactly, so the correction removes the lasso bias in this special
+geometry. Under the Gaussian model it would recover ordinary
+least-squares inference. This calculation is a check of an identity, not
+an illustration of a general high-dimensional theorem.</p>
+<p>In the 12-person, 18-predictor example, we center the generated
+predictor columns and the error vector. The expansion discrepancy is
+about
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2.2</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>16</mn></mrow></msup></mrow><annotation encoding="application/x-tex">2.2\times10^{-16}</annotation></semantics></math></span>
+while the largest remainder is about 11.65 conditional noise standard
+deviations. The initial estimator and approximate inverse here are ridge
+constructions chosen for an algebra audit. No high-dimensional p-value
+is reported. Perfect agreement with the expansion can coexist with an
+unusable normal approximation: checking code algebra and establishing
+inferential validity are different tasks.</p>
+<h2 id="split-sample-inference">Independent selection clarifies a
+different valid argument</h2>
+<p>The correction approach needs a negligible bias remainder. The last
+experiment uses a different route to a valid low-dimensional argument:
+marker selection uses only the discovery sample. Conditional on that
+selection, the independent inference sample treats the chosen marker as
+prespecified. For a correctly specified low-dimensional Gaussian linear
+model with full rank and positive residual degrees of freedom, its
+ordinary
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>
+interval has the conditional repeated-sampling guarantee derived in <a href="conditional-regression.html">conditional regression</a>. With
+known
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>σ</mi><annotation encoding="application/x-tex">\sigma</annotation></semantics></math></span>,
+a corresponding normal interval is available; estimating
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>σ</mi><annotation encoding="application/x-tex">\sigma</annotation></semantics></math></span>
+by the residual mean square gives the exact
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>
+construction under those Gaussian assumptions. <span class="citation" data-cites="R-stats-lm"><a class="collection-citation" href="references.html#ref-R-stats-lm" role="doc-biblioref" aria-label="Reference 1">[1]</a></span></p>
+<p>An omitted active predictor can change the target or the error model.
+Here all predictor columns are independently generated normal variables.
+Conditional on the selected predictor, omitted signals are independent
+normal variation, so the selected-marker slope remains its full-model
+coefficient and the reduced conditional model is Gaussian. With
+correlated predictors, a reduced-model slope generally differs from the
+full-model conditional coefficient. Independence between samples
+prevents selection from using the inference noise; it does not eliminate
+omitted-variable bias or create a target that the fitted model does not
+identify.</p>
+<p>The code selects marker 1 and estimates a slope about 0.720264, with
+a 95% interval about 0.473669 to 0.966858. The generator’s coefficient
+is 0.9. One interval covering that value does not prove coverage; the
+coverage argument comes from the model, independent selection, and the
+pivot. Splitting sacrifices sample size and can produce unstable
+selections, but it makes clear which data choose the question and which
+data quantify its uncertainty.</p>
+<h2 id="exercises">Exercises</h2><ol class="exercises" style='--chapter:"10."'><li id="exercise-10-1"><p><strong>Check the normalization before soft thresholding.</strong> For centered
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math></span>
+and a centered design
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>X</mi><mi>𝖳</mi></msup><mi>X</mi><mi>/</mi><mi>n</mi><mo>=</mo><msub><mi>I</mi><mi>p</mi></msub></mrow><annotation encoding="application/x-tex">X^\mathsf TX/n=I_p</annotation></semantics></math></span>,
+minimize
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="postfix">∥</mo><mi>y</mi><mo>−</mo><mi>X</mi><mi>b</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>λ</mi><mo stretchy="false" form="postfix">∥</mo><mi>b</mi><msub><mo stretchy="false" form="postfix">∥</mo><mn>1</mn></msub></mrow><annotation encoding="application/x-tex">\|y-Xb\|^2/(2n)+\lambda\|b\|_1</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\lambda&gt;0</annotation></semantics></math></span>,
+over slope vectors
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>∈</mo><msup><mi>ℝ</mi><mi>p</mi></msup></mrow><annotation encoding="application/x-tex">b\in\mathbb R^p</annotation></semantics></math></span>.
+Derive the coordinate estimate in terms of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><msup><mi>X</mi><mi>𝖳</mi></msup><mi>y</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">z=X^\mathsf Ty/n</annotation></semantics></math></span>,
+including the equality convention at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">|</mo><msub><mi>z</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">|</mo></mrow><mo>=</mo><mi>λ</mi></mrow><annotation encoding="application/x-tex">|z_j|=\lambda</annotation></semantics></math></span>.
+Explain why this orthogonal identity is a special check rather than a
+possible full-rank Gram matrix when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>&gt;</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">p&gt;n</annotation></semantics></math></span>.</p>
+</li><li id="exercise-10-2"><p><strong>Identify the remainder before computing a p-value.</strong> For the centered working model
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>y</mi><mo>=</mo><mi>X</mi><mi>β</mi><mo>+</mo><mi>ε</mi></mrow><annotation encoding="application/x-tex">y=X\beta+\varepsilon</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>∈</mo><msup><mi>ℝ</mi><mrow><mi>n</mi><mo>×</mo><mi>p</mi></mrow></msup></mrow><annotation encoding="application/x-tex">X\in\mathbb R^{n\times p}</annotation></semantics></math></span>,
+let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>C</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><mo>=</mo><msup><mi>X</mi><mi>𝖳</mi></msup><mi>X</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">\widehat C_X=X^\mathsf TX/n</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><mo>∈</mo><msup><mi>ℝ</mi><mrow><mi>p</mi><mo>×</mo><mi>p</mi></mrow></msup></mrow><annotation encoding="application/x-tex">\widehat\Omega_X\in\mathbb R^{p\times p}</annotation></semantics></math></span>
+depend only on the design, and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>β</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat\beta</annotation></semantics></math></span>
+be an initial slope estimate. Expand
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">d</mi><mi mathvariant="normal">b</mi></mrow></msub><mo>−</mo><mi>β</mi></mrow><annotation encoding="application/x-tex">\widehat\beta_{\mathrm{db}}-\beta</annotation></semantics></math></span>
+for the correction defined in the chapter. Bound the absolute remainder
+for coordinate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math></span>
+by a product of an infinity norm and an
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mo>ℓ</mo><mn>1</mn></msub><annotation encoding="application/x-tex">\ell_1</annotation></semantics></math></span>
+error. Assume the centered columns satisfy
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mn>𝟏</mn><mi>𝖳</mi></msup><mi>X</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mathbf1^\mathsf TX=0</annotation></semantics></math></span>,
+write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mo>=</mo><msub><mi>I</mi><mi>n</mi></msub><mo>−</mo><mn>𝟏</mn><msup><mn>𝟏</mn><mi>𝖳</mi></msup><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">M=I_n-\mathbf1\mathbf1^\mathsf T/n</annotation></semantics></math></span>,
+and let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ε</mi><mo>=</mo><mi>M</mi><msub><mi>ε</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">\varepsilon=M\varepsilon_0</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ε</mi><mn>0</mn></msub><mo>∣</mo><mi>X</mi><mo>∼</mo><msub><mi>N</mi><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><msup><mi>σ</mi><mn>2</mn></msup><msub><mi>I</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\varepsilon_0\mid X\sim N_n(0,\sigma^2I_n)</annotation></semantics></math></span>.
+Derive the leading-term covariance and state the remainder and
+noise-estimation conditions needed for a normal-reference interval and
+p-value at one prespecified coordinate. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>α</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;\alpha&lt;1</annotation></semantics></math></span>,
+write the two-sided interval and the p-value for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mn>0</mn></msub><mo>:</mo><msub><mi>β</mi><mi>j</mi></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">H_0:\beta_j=0</annotation></semantics></math></span>,
+using
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>V</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">d</mi><mi mathvariant="normal">b</mi></mrow></msub><annotation encoding="application/x-tex">\widehat V_{\mathrm{db}}</annotation></semantics></math></span>.</p>
+</li><li id="exercise-10-3"><p><strong>Covariance, Gram matrix, and units.</strong> For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>&gt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">n&gt;1</annotation></semantics></math></span>,
+let a raw predictor matrix
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mo>∈</mo><msup><mi>ℝ</mi><mrow><mi>n</mi><mo>×</mo><mi>p</mi></mrow></msup></mrow><annotation encoding="application/x-tex">W\in\mathbb R^{n\times p}</annotation></semantics></math></span>
+be column-centered and let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>D</mi><annotation encoding="application/x-tex">D</annotation></semantics></math></span>
+be a fixed positive diagonal matrix of chosen predictor scales. Define
+working predictors
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>=</mo><mi>W</mi><msup><mi>D</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup></mrow><annotation encoding="application/x-tex">X=WD^{-1}</annotation></semantics></math></span>.
+Compare
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>W</mi><mi>𝖳</mi></msup><mi>W</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">W^\mathsf TW/(n-1)</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>W</mi><mi>𝖳</mi></msup><mi>W</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">W^\mathsf TW/n</annotation></semantics></math></span>.
+At the population level, let the corresponding mean-centered predictor
+vector have a positive-definite covariance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>Σ</mi><mi>W</mi></msub><annotation encoding="application/x-tex">\Sigma_W</annotation></semantics></math></span>,
+and apply the same fixed scale transformation
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><msup><mi>D</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mi>w</mi></mrow><annotation encoding="application/x-tex">x=D^{-1}w</annotation></semantics></math></span>.
+Derive the relationship between raw and working slope vectors,
+population predictor covariance and precision matrices, and a
+back-transformed covariance for the debiased slope estimates. Explain
+why using a raw-scale precision estimate with the working-scale score is
+generally incorrect, and why
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>Ω</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><annotation encoding="application/x-tex">\widehat\Omega_X</annotation></semantics></math></span>
+cannot be defined as an ordinary inverse of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>C</mi><mo accent="true">̂</mo></mover><mi>X</mi></msub><annotation encoding="application/x-tex">\widehat C_X</annotation></semantics></math></span>
+when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>&gt;</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">p&gt;n</annotation></semantics></math></span>.</p>
+</li><li id="exercise-10-4"><p><strong>An illustrative family is not a calibration study.</strong> Suppose the worked example produces two-sided p-values
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mi>j</mi></msub><mo>=</mo><mn>2</mn><mi>Φ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><mrow><mo stretchy="true" form="prefix">|</mo><msub><mi>Z</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">|</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">P_j=2\Phi(-|Z_j|)</annotation></semantics></math></span>
+for the prespecified family of all
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+slopes. State the marginal inference conditions needed before any
+multiplicity adjustment. Compare the assumptions and error targets of
+Holm and Benjamini–Hochberg adjustment. Explain why adjusting only
+coordinates selected by a nonzero lasso estimate changes the testing
+problem, and why recovery of the known nonzero coefficients in one
+simulated dataset does not establish nominal interval coverage or
+FDR.</p>
+</li></ol><h2 id="regularization-references">Connections</h2>
+<p>The shrinkage calculations and remainder argument use standard
+regression theory. The synthetic examples develop those ideas into
+explicit calculations. We carry these valid-p-value requirements into <a href="14-multiplicity.html">multiplicity</a>, where the tested family
+and dependence assumptions become explicit.</p>
+</div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="12-shrinkage.html">Previous: 9. Empirical Bayes and the geometry of shrinkage</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="14-multiplicity.html">Next: 11. Multiplicity, simultaneous claims, and false discoveries</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

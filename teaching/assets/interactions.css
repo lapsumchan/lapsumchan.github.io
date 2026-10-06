@@ -1,0 +1,14 @@
+.interaction { margin: 2rem 0; padding: 1rem 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.interaction h3 { margin-top: .2rem; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem 1.2rem; margin: 1rem 0; }
+.controls label { max-width: 100%; font-size: .9rem; }
+.controls input[type=range] { width: 180px; max-width: 100%; }
+.interaction button, .interaction select { font: inherit; font-size: .85rem; padding: .35rem .5rem; color: var(--ink); background: white; border: 1px solid #777; max-width: 100%; }
+.interaction svg { display: block; width: 100%; height: auto; }
+[hidden] { display: none !important; }
+.prediction { font-style: italic; }
+.plot-legend, .legend { display: flex; gap: .3rem 1rem; flex-wrap: wrap; font-size: .85rem; line-height: 1.5; }
+.plot-line { display: inline-block; width: 1.1em; margin-right: .4em; vertical-align: middle; }
+.swatch:before { content: ''; display: inline-block; width: 1.1rem; height: 2px; vertical-align: middle; background: var(--blue); margin-right: .4rem; }
+.swatch.orange:before { background: #b05218; }.swatch.gray:before { background: #777; }
+@media (max-width: 600px) { .controls { align-items: flex-start; flex-direction: column; } .interaction svg text { font-size: 26px; } }

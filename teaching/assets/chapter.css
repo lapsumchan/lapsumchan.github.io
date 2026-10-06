@@ -1,0 +1,123 @@
+@font-face {
+  font-family: BookMath;
+  src: url("latinmodern-math.otf") format("opentype");
+  font-display: swap;
+}
+@font-face {
+  font-family: BookText;
+  src: url("latinmodern-roman-regular.otf") format("opentype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: BookText;
+  src: url("latinmodern-roman-bold.otf") format("opentype");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: BookText;
+  src: url("latinmodern-roman-italic.otf") format("opentype");
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: BookText;
+  src: url("latinmodern-roman-bolditalic.otf") format("opentype");
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+}
+/* Local Latin Modern text and mathematics share an academic typographic scale. */
+.book-main, .book-sidebar { font-family: BookText, "Times New Roman", serif; }
+.book-main { font-size: 1.06rem; line-height: 1.6; font-kerning: normal; }
+.book-title { color: var(--muted); margin: .2rem 0 .6rem; }
+.book-tools { display: flex; flex-wrap: wrap; gap: .25rem 1.2rem; margin: .7rem 0 1rem; padding: 0; list-style: none; }
+.book-tools li { margin: 0; }
+.chapter-toc { margin: 1rem 0 1.4rem; }
+.chapter-toc summary { cursor: pointer; color: var(--blue); width: fit-content; padding: .2rem 0; }
+.chapter-toc ol { padding-left: 1.5rem; margin: .5rem 0 0; }
+.chapter-toc li { margin: .25rem 0; }
+.book-main h2 { margin: 1.9rem 0 .65rem; }
+.book-main h3 { font-size: 1.05em; line-height: 1.35; color: var(--blue); margin: 1.45rem 0 .55rem; }
+.book-main p { margin-bottom: .85em; }
+.book-main ul, .book-main ol { margin-block: .75em 1em; }
+.book-main li { margin-block: .3em; }
+.book-main p, .book-main li, .book-main td, .book-main th { overflow-wrap: break-word; }
+.book-main img { max-width: 100%; height: auto; display: block; }
+.book-main figure { margin: 1.5rem 0; }
+.book-main figcaption { font-size: .9rem; line-height: 1.5; margin-top: .6rem; color: var(--muted); }
+.figure-tools { font-size: .85rem; margin-top: .3rem; }
+.figure-zoom { display: block; }
+.equation { display: grid; grid-template-columns: minmax(max-content, 1fr) max-content; align-items: center; column-gap: .85em; max-width: 100%; overflow-x: auto; padding: .45em .1em; margin: .55em 0 .7em; position: relative; }
+.equation math { justify-self: center; margin: 0; padding: .1em 0; }
+.equation-number { justify-self: end; white-space: nowrap; font-size: .9em; font-variant-numeric: lining-nums tabular-nums; }
+.equation-anchor { position: absolute; top: 0; left: 0; }
+math { font-family: BookMath, math; font-size: 1em; }
+/* Aligned derivations keep display-sized fractions and summation limits. */
+math[display="block"] mtd[columnalign="left"],
+math[display="block"] mtd[columnalign="right"] { math-style: normal; }
+.inline-equation { display: inline-flex; align-items: baseline; max-width: 100%; overflow-x: auto; vertical-align: baseline; padding: 0; margin: 0; }
+.inline-equation math { flex: 0 0 auto; }
+.table-scroll { max-width: 100%; overflow-x: auto; margin: 1.2em 0; }
+.book-main table { border-collapse: collapse; margin: .35em auto; font-size: .9em; line-height: 1.45; min-width: 60%; font-variant-numeric: lining-nums tabular-nums; }
+.book-main caption { text-align: left; font-size: .9rem; line-height: 1.5; margin-bottom: .6rem; }
+.book-main th, .book-main td { padding: .4rem .65rem; border-bottom: 1px solid var(--rule); vertical-align: top; text-align: left; }
+.book-main thead th { border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
+.book-main pre { max-width: 100%; overflow-x: auto; font: .81rem/1.6 "DejaVu Sans Mono", Consolas, monospace; background: #f6f6f6; border: 1px solid #d5d9de; padding: .8rem; white-space: pre; margin: .3rem 0 1.2rem; tab-size: 2; }
+.book-main code { font: .86em/1.6 "DejaVu Sans Mono", Consolas, monospace; }
+.book-main pre code { font-size: inherit; }
+.sourceCode { min-width: 0; }
+.copy-code { font: .78rem/1.5 system-ui, sans-serif; display: block; margin: 0 0 .25rem auto; padding: .2rem .45rem; color: var(--blue); background: white; border: 1px solid var(--rule); cursor: pointer; }
+.copy-status { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+button:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.equation:focus-visible, .table-scroll:focus-visible, pre:focus-visible { outline-offset: -2px; }
+.exercises { list-style: none; counter-reset: exercise; padding-left: 0; }
+.exercises > li { counter-increment: exercise; margin: 1rem 0; }
+.exercises > li::before { content: var(--chapter) counter(exercise) ". "; font-weight: bold; }
+.exercises > li > p:first-child { display: inline; }
+.exercises > li > p + p { margin-top: .65rem; }
+.chapter-end { border-top: 1px solid var(--rule); margin-top: 1.8rem; padding-top: .6rem; display: flex; flex-wrap: wrap; gap: .4rem 1.3rem; }
+.acknowledgment { color: var(--muted); font-size: .9rem; }
+.teaching-main section { margin-bottom: 1.6rem; }
+.teaching-main .preparation { font-size: .95rem; }
+.teaching-main p, .teaching-main li { overflow-wrap: break-word; }
+.co, .cv { color: #53645b; }
+.st, .ch { color: #755321; }
+.kw, .cf, .fu { color: #002d72; }
+.dv, .fl, .cn { color: #7a3d65; }
+@media (max-width: 600px) {
+  .book-main pre { font-size: .78rem; padding: .65rem; }
+  .book-main table { min-width: 100%; }
+  .book-main th, .book-main td { padding: .35rem .5rem; }
+  .book-tools { gap: .25rem 1rem; }
+  .book-main h2 { margin-top: 1.5rem; }
+}
+@media print {
+  .book-tools, .chapter-toc, .copy-code, .copy-status, .chapter-end, .figure-tools { display: none; }
+  .book-main { font-size: 11pt; }
+  .book-main pre { white-space: pre-wrap; }
+}
+/* Book entrances and sequence links use ordinary academic text. */
+.book-chapter-list, .contents-chapters { list-style: none; padding-left: 0 !important; }
+.book-chapter-list li { margin: .4rem 0; }
+.contents-part { font-weight: bold; }
+.book-location { color: var(--muted); font-size: .9rem; }
+.chapter-sequence { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .7rem 1.4rem; border-top: 1px solid var(--rule); margin-top: 1.8rem; padding-top: .7rem; }
+.chapter-sequence a { min-width: 0; max-width: 100%; overflow-wrap: break-word; }
+.book-main h1, .book-main h2, .book-main h3 { overflow-wrap: anywhere; }
+.book-main .theorem, .book-main .proposition, .book-main .lemma, .book-main .definition, .book-main .example, .book-main .remark { margin: 1.25em 0; padding-left: .8rem; border-left: 2px solid var(--rule); }
+.book-main .proof { margin: 1em 0 1.3em; }
+.book-main .references, .book-main .csl-entry { font-size: .9rem; overflow-wrap: anywhere; }
+.citation-jump { display: inline-block; width: .1em; height: .7em; }
+@media (max-width: 600px) { .chapter-sequence { display: block; } .chapter-sequence a { display: block; margin: .6rem 0; } }
+@media print { .chapter-sequence { display: none; } }
+.section-links ol { list-style: none; padding-left: 0 !important; }
+
+/* Complete examples stay in the chapter, with native keyboard access. */
+.complete-example summary { cursor: pointer; color: var(--blue); padding: .35rem 0; }
+.complete-example { margin: .8rem 0 1.4rem; min-width: 0; }
+.run-example { margin-top: 1.5rem; }

@@ -1,0 +1,698 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Survival Analysis — Chapter 1: Events, clocks, and incomplete observation | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Events, clocks, and incomplete observation.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/survival/01-observation.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Survival Analysis — Chapter 1: Events, clocks, and incomplete observation | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Events, clocks, and incomplete observation.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/survival/01-observation.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Survival Analysis — Chapter 1: Events, clocks, and incomplete observation", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Survival Analysis", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/survival/01-observation.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Survival Analysis</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Events, observation, and population functions</p><ol class="contents-chapters"><li><a href="01-observation.html" aria-current="page">1. Events, clocks, and incomplete observation</a></li><li><a href="02-functions.html">2. Survival, risk, hazard, and lifetime summaries</a></li></ol><p class="contents-part">Part II: Risk sets and nonparametric estimation</p><ol class="contents-chapters"><li><a href="03-km.html">3. Estimating survival from incomplete follow-up</a></li><li><a href="04-nelson-aalen.html">4. Nelson--Aalen estimation and counting processes</a></li></ol><p class="contents-part">Part III: Likelihood and survival regression</p><ol class="contents-chapters"><li><a href="07-likelihood.html">5. Likelihood under incomplete observation</a></li><li><a href="08-parametric.html">6. Parametric survival regression</a></li><li><a href="09-cox.html">7. The Cox model: estimation and absolute risk</a></li><li><a href="10-strata-ties.html">8. Stratification and tied event times</a></li><li><a href="11-diagnostics.html">9. Diagnostics that answer model questions</a></li></ol><p class="contents-part">Part IV: Competing events</p><ol class="contents-chapters"><li><a href="15-competing-risks.html">10. Competing risks and first-event probabilities</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#begin-with-the-question-not-the-follow-up-column">1.1 From a clinical question to follow-up records</a></li><li><a href="#define-an-event-and-a-clock-together">1.2 Define an event and a clock together</a></li><li><a href="#what-a-right-censored-record-actually-says">1.3 What a right-censored record actually says</a></li><li><a href="#a-twelve-person-cohort-and-its-logical-limits">1.4 A twelve-person cohort and its logical limits</a></li><li><a href="#encode-the-question-in-r">1.5 Encode the question in R</a></li><li><a href="#run-chapter-example">Run the chapter examples</a></li><li><a href="#observation-schemes-that-require-different-analyses">1.6 Observation schemes that require different analyses</a></li><li><a href="#the-assumptions-that-permit-a-population-interpretation">1.7 The assumptions that permit a population interpretation</a></li><li><a href="#keep-the-endpoint-within-scope">1.8 When another event changes the question</a></li><li><a href="#exercises">1.9 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Survival Analysis</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 1</span></p><div class="chapter-content"><h1 id="s1-observation">Chapter 1. Events, clocks, and incomplete observation</h1>
+<span id="how-to-read-this-chapter"></span><h2 id="begin-with-the-question-not-the-follow-up-column">1.1 From a clinical
+question to follow-up records</h2>
+<p>A study follows people after enrollment to learn how long they remain
+free of a first symptom recurrence, meaning the return of symptoms after
+an earlier episode. The investigators ask, “What proportion will
+experience recurrence within five months?” Some participants provide
+eight months of information; others stop responding earlier. One has a
+recurrence at month 4. Another is last known to be recurrence-free at
+month 2. A third is recurrence-free when observation ends at month 7.
+Those three records contain different information about the five-month
+question, even if a spreadsheet gives each person just one time and one
+status code.</p>
+<p>Survival analysis starts by separating the event process from the
+process that reveals it. A person can remain event-free while the study
+loses the ability to observe them. Conversely, an event may be known to
+have occurred even when its exact time is unknown. These are properties
+of observation, not alternative biological outcomes. A valid analysis
+connects the records to a clearly defined population quantity through
+stated assumptions.</p>
+<p>The twelve-person synthetic cohort below lets us inspect what each
+record contributes to the five-month recurrence question. We first
+define its event, clock, and observation rule. Chapter <a href="02-functions.html#s2-functions" data-reference-type="ref" data-reference="s2-functions">2</a> gives names to the
+population probabilities, and Chapter <a href="03-km.html#s3-km" data-reference-type="ref" data-reference="s3-km">3</a> uses the
+follow-up times to estimate them. The cohort is a worked example, not
+evidence for a clinical conclusion.</p>
+<p>The first question to ask of any proposed analysis is not whether a
+distribution looks normal. It is whether the variable being analyzed
+records the scientific outcome or only a partial observation of that
+outcome. Skewness can motivate a distributional model, but transforming
+follow-up times cannot turn a censored record into an observed event
+time.</p>
+<h2 id="define-an-event-and-a-clock-together">1.2 Define an event and a
+clock together</h2>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math></span>
+denote time from a specified origin to a specified first event.
+“Recurrence” needs an operational definition: an adjudicated diagnosis,
+a laboratory threshold, or a recorded symptom report could produce
+different event times. “First” also matters. A study of the first
+recurrence has one event time per person; a study of every recurrence
+has a sequence of dependent times. Treating repeated events from the
+same person as unrelated subjects would change both the question and the
+sampling assumptions.</p>
+<p>The time origin should define the population eligible to contribute.
+Time since diagnosis, time since enrollment, and attained age are all
+possible clocks, but they are not interchangeable labels. Suppose people
+enroll two months after diagnosis only if they have remained event-free.
+An analysis beginning at enrollment describes selected two-month
+survivors. Moving its time labels back two months does not recover
+people who had an event before enrollment. The earlier selection
+remains.</p>
+<p>Changing units is different from changing the origin. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>T</mi><mi>m</mi></msub><annotation encoding="application/x-tex">T_m</annotation></semantics></math></span>
+measures months and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>y</mi></msub><mo>=</mo><msub><mi>T</mi><mi>m</mi></msub><mi>/</mi><mn>12</mn></mrow><annotation encoding="application/x-tex">T_y=T_m/12</annotation></semantics></math></span>
+measures years, then
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>T</mi><mi>m</mi></msub><mo>&gt;</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>T</mi><mi>y</mi></msub><mo>&gt;</mo><mn>5</mn><mi>/</mi><mn>12</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}(T_m&gt;5)=\mathbb{P}(T_y&gt;5/12).
+ \label{s1-unit-conversion}</annotation></semantics></math><span id="s1-unit-conversion" class="equation-anchor"></span><span class="equation-number">(1.1)</span></span> This
+conversion changes the numerical scale without changing who is in the
+population or the event represented. Subject-specific shifts of the
+origin can alter both eligibility and conditioning. A file should
+therefore retain the dates needed to reconstruct the chosen clock, not
+merely a rounded duration whose origin cannot be checked.</p>
+<p>In our example, the population consists of participants who are
+event-free at enrollment, the origin is enrollment, and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">T&gt;0</annotation></semantics></math></span>
+is time in months to first recurrence. The five-month target is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>≤</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>&gt;</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mo>−</mo><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">F(5)=\mathbb{P}(T\leq5), \qquad S(5)=\mathbb{P}(T&gt;5)=1-F(5).
+ \label{s1-target}</annotation></semantics></math><span id="s1-target" class="equation-anchor"></span><span class="equation-number">(1.2)</span></span> These are descriptive
+probabilities for that population. A comparison of curves across
+treatment groups would still need additional design and assumptions
+before it could support a causal treatment claim. For now there are no
+treatments, covariates, competing terminal events, or repeated
+recurrences in the target.</p>
+<h2 id="what-a-right-censored-record-actually-says">1.3 What a
+right-censored record actually says</h2>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>C</mi><annotation encoding="application/x-tex">C</annotation></semantics></math></span>
+be the last time at which the event could be ascertained for a person
+who remained event-free that long. Under right censoring we observe
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>,</mo><mi>C</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>Δ</mi><mo>=</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>T</mi><mo>≤</mo><mi>C</mi><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">X=\min(T,C),\qquad \Delta=\mathbf{1}\{T\leq C\}.
+ \label{s1-record}</annotation></semantics></math><span id="s1-record" class="equation-anchor"></span><span class="equation-number">(1.3)</span></span> Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>C</mi><annotation encoding="application/x-tex">C</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math></span>
+are scalar random times in the sampling model;
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+is the recorded follow-up value. We reserve
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math></span>
+for observed follow-up in this book, rather than for a regression design
+matrix. An event record
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo>,</mo><mi>Δ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">(X,\Delta)=(x,1)</annotation></semantics></math></span>
+says
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T=x</annotation></semantics></math></span>.
+A censored record
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(x,0)</annotation></semantics></math></span>
+says
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T&gt;x</annotation></semantics></math></span>.
+The latter is a lower bound, not a missing value with no information. It
+establishes survival through
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+but does not reveal what happened later.</p>
+<p>We use an event-first convention at equality: an event at the final
+observable time is recorded as an event. If event and censoring times
+are continuous, exact equality may have probability zero. Recorded days
+or months nevertheless create ties between different people. A
+convention is needed to calculate risk sets from such records; it should
+be documented rather than determined by whichever row appears first in a
+file. A risk set is the group under observation and still event-free
+immediately before an event time; it includes only people who have
+already entered follow-up.</p>
+<p>The status indicator
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Δ</mi><annotation encoding="application/x-tex">\Delta</annotation></semantics></math></span>
+is not generally the same variable as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>T</mi><mo>≤</mo><mn>5</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\mathbf{1}\{T\leq5\}</annotation></semantics></math></span>.
+For a person censored at month 2, the latter is unknown. For a person
+with an event at month 4 it is one. For a person censored at month 7 it
+is zero. Even an observed event at month 8 gives a known zero for the
+five-month target. Its event occurred after the horizon.</p>
+<p>This distinction explains why a binary analysis of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Δ</mi><annotation encoding="application/x-tex">\Delta</annotation></semantics></math></span>
+can miss the scientific target. Its expectation under a common
+observation scheme is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>≤</mo><mi>C</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}(T\leq C)</annotation></semantics></math></span>,
+which depends on follow-up. Extending follow-up could increase the
+observed event fraction while leaving
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">F(5)</annotation></semantics></math></span>
+unchanged. A binary analysis can be appropriate when everyone has fully
+ascertained five-month status. The problem is equating that status with
+an indicator defined at variable follow-up times.</p>
+<h2 id="a-twelve-person-cohort-and-its-logical-limits">1.4 A twelve-person
+cohort and its logical limits</h2>
+<p>Table <a href="#s1-cohort-table" data-reference-type="ref" data-reference="s1-cohort-table">1.1</a> is our recurring cohort. The
+recording unit is the analysis time in months. A status of one denotes
+an event; zero denotes right censoring. All twelve people enter at time
+zero.</p>
+<div id="s1-cohort-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 1.1. Original synthetic cohort used throughout the opening
+chapters.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Participant</th>
+<th style="text-align: right;">A</th>
+<th style="text-align: right;">B</th>
+<th style="text-align: right;">C</th>
+<th style="text-align: right;">D</th>
+<th style="text-align: right;">E</th>
+<th style="text-align: right;">F</th>
+<th style="text-align: right;">G</th>
+<th style="text-align: right;">H</th>
+<th style="text-align: right;">I</th>
+<th style="text-align: right;">J</th>
+<th style="text-align: right;">K</th>
+<th style="text-align: right;">L</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math></span></td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">8</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Δ</mi><annotation encoding="application/x-tex">\Delta</annotation></semantics></math></span></td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>At five months, A, B, E, and F are known to have had events. G, H, I,
+J, K, and L are known not to have had an event by that horizon. G is
+included in the latter group because censoring at month 5 implies
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mn>5</mn></mrow><annotation encoding="application/x-tex">T&gt;5</annotation></semantics></math></span>
+under our convention. Only C and D have unknown five-month status. Thus
+ten of twelve horizon outcomes are known, despite six of twelve event
+times being censored. The percentage of censored times and the
+percentage of missing fixed-horizon outcomes measure different
+things.</p>
+<figure id="s1-timelines">
+<a href="../assets/survival/ch01-follow-up.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch01-follow-up.png" alt="Figure 1.1. Each segment is observed follow-up. A filled point is an
+event; a cross is right censoring. The vertical line marks five months.
+No line after a censoring mark is an observed event-free
+trajectory.">
+</a><figcaption>Figure 1.1. Each segment is observed follow-up. A filled point is an
+event; a cross is right censoring. The vertical line marks five months.
+No line after a censoring mark is an observed event-free
+trajectory.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch01-follow-up.png">Open full-size figure</a></p></figure>
+<p>Consider the unobserved fraction of these particular twelve people
+who actually experienced an event by month 5. If neither C nor D did,
+the fraction is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>4</mn><mi>/</mi><mn>12</mn></mrow><annotation encoding="application/x-tex">4/12</annotation></semantics></math></span>.
+If both did, it is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>6</mn><mi>/</mi><mn>12</mn></mrow><annotation encoding="application/x-tex">6/12</annotation></semantics></math></span>.
+Therefore
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mn>4</mn><mn>12</mn></mfrac><mo>≤</mo><mfrac><mn>1</mn><mn>12</mn></mfrac><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>12</mn></munderover><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>T</mi><mi>i</mi></msub><mo>≤</mo><mn>5</mn><mo stretchy="false" form="postfix">}</mo><mo>≤</mo><mfrac><mn>6</mn><mn>12</mn></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac4{12}\leq\frac1{12}\sum_{i=1}^{12}\mathbf{1}\{T_i\leq5\}
+ \leq\frac6{12}.
+ \label{s1-cohort-bounds}</annotation></semantics></math><span id="s1-cohort-bounds" class="equation-anchor"></span><span class="equation-number">(1.4)</span></span> These are
+logical bounds for the realized cohort, not a confidence interval for
+the population probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">F(5)</annotation></semantics></math></span>.
+They do not incorporate sampling variation or assert that the population
+probability lies between them.</p>
+<p>Two complete event-time samples demonstrate the ambiguity. Assign
+every censored person an event at month 9; this gives the lower bound.
+Alternatively, assign C and D events at month 4.5 and leave the other
+censored times at 9; this gives the upper bound. Both assignments
+preserve every observed record: C’s assigned event remains after month 2
+and D’s remains after month 3. These constructions are possible
+completions, not recommended imputations. They show why the records
+alone do not determine every individual’s future.</p>
+<p>Three tempting shortcuts give three different numbers. The proportion
+with any observed event is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>6</mn><mi>/</mi><mn>12</mn><mo>=</mo><mn>0.50</mn></mrow><annotation encoding="application/x-tex">6/12=0.50</annotation></semantics></math></span>.
+The event fraction among people whose five-month outcome is known is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>4</mn><mi>/</mi><mn>10</mn><mo>=</mo><mn>0.40</mn></mrow><annotation encoding="application/x-tex">4/10=0.40</annotation></semantics></math></span>.
+Counting known events but placing all twelve people in the denominator
+gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>4</mn><mi>/</mi><mn>12</mn><mo>=</mo><mn>0.3333</mn></mrow><annotation encoding="application/x-tex">4/12=0.3333</annotation></semantics></math></span>.
+Each has a different interpretation. None becomes an unbiased estimate
+of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">F(5)</annotation></semantics></math></span>
+merely because it is easy to calculate. The second selects on
+observation, and the third treats unknown outcomes as nonevents.
+Chapter <a href="03-km.html#s3-km" data-reference-type="ref" data-reference="s3-km">3</a> will use the actual time information
+rather than choosing one of these shortcuts.</p>
+<h2 id="encode-the-question-in-r">1.5 Encode the question in R</h2>
+<p>The following calculation makes horizon-specific knowledge explicit.
+The data frame <code>cohort</code> contains the columns in Table <a href="#s1-cohort-table" data-reference-type="ref" data-reference="s1-cohort-table">1.1</a>. An exact event time determines
+whether the event falls before the horizon; a right-censored time
+determines that outcome only if it reaches the horizon.</p>
+<p>Only base R is needed; the block creates the synthetic cohort before
+computing its horizon-specific outcomes.</p>
+<section class="run-example" aria-labelledby="run-chapter-example"><h2 class="unnumbered" id="run-chapter-example">Run the chapter
+examples</h2>
+<p>Copy the block below into a fresh R session. It creates the synthetic
+data and prints the chapter calculations, with figures in the R graphics
+window. Only base R is needed.</p>
+<details class="complete-example"><summary>Complete R example</summary><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"># events, clocks and incomplete observation.
+# Twelve synthetic participants; time is measured in months.
+# status = 1 records an event; status = 0 records right censoring.
+# Only base R is needed. No file download or working-directory setup is needed.
+cohort &lt;- data.frame(
+  id = LETTERS[1:12],
+  time = c(1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 8, 8),
+  status = c(1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0)
+)
+stopifnot(!anyDuplicated(cohort$id), all(cohort$time &gt;= 0),
+          all(cohort$status %in% c(0, 1)))
+
+# Event status at the fixed five-month horizon is unknown after early censoring.
+h &lt;- 5
+known &lt;- with(cohort, status == 1 | time &gt;= h)
+event.by.h &lt;- with(cohort, as.integer(status == 1 &amp; time &lt;= h))
+event.by.h[!known] &lt;- NA_integer_
+lower &lt;- sum(event.by.h == 1, na.rm = TRUE) / nrow(cohort)
+upper &lt;- lower + sum(!known) / nrow(cohort)
+stopifnot(sum(known) == 10, sum(is.na(event.by.h)) == 2,
+          abs(lower - 1/3) &lt; 1e-12, abs(upper - 1/2) &lt; 1e-12)
+cohort$known.at.5 &lt;- known
+cohort$event.by.5 &lt;- event.by.h
+print(cohort, row.names = FALSE)
+
+# Two compatible futures show logical bounds, not population confidence limits.
+event.A &lt;- ifelse(cohort$status == 1, cohort$time, 9)
+event.B &lt;- event.A
+event.B[cohort$id %in% c("C", "D")] &lt;- 4.5
+censor &lt;- ifelse(cohort$status == 0, cohort$time, 10)
+for (tt in list(event.A, event.B)) {
+  stopifnot(identical(pmin(tt, censor), cohort$time),
+            identical(as.numeric(tt &lt;= censor), as.numeric(cohort$status)))
+}
+stopifnot(mean(event.A &lt;= h) == lower, mean(event.B &lt;= h) == upper)
+summary.table &lt;- data.frame(
+  calculation = c("Observed event fraction at variable follow-up",
+                  "Complete five-month status only",
+                  "Known events divided by all participants",
+                  "Logical lower bound for realized cohort",
+                  "Logical upper bound for realized cohort"),
+  value = c(mean(cohort$status), mean(event.by.h, na.rm = TRUE),
+            lower, lower, upper)
+)
+print(summary.table, row.names = FALSE)
+
+# Selection changes the marginal risk despite conditional independence given Z.
+set.seed(67501)
+n.sim &lt;- 200000L
+z &lt;- rbinom(n.sim, 1, 0.5)
+event &lt;- rbinom(n.sim, 1, ifelse(z == 1, 0.6, 0.1))
+observed &lt;- rbinom(n.sim, 1, ifelse(z == 1, 0.5, 1))
+target &lt;- 0.5 * 0.6 + 0.5 * 0.1
+selected.target &lt;- (0.5 * 0.5 * 0.6 + 0.5 * 1 * 0.1) /
+                   (0.5 * 0.5 + 0.5 * 1)
+stopifnot(abs(target - 7/20) &lt; 1e-12,
+          abs(selected.target - 4/15) &lt; 1e-12)
+selection &lt;- data.frame(
+  quantity = c("Population risk", "Observed-case risk", "Observed high-risk fraction"),
+  exact = c(target, selected.target, 1/3),
+  simulated = c(mean(event), mean(event[observed == 1]), mean(z[observed == 1]))
+)
+print(selection, row.names = FALSE)
+
+# Draw follow-up records without inventing trajectories after censoring.
+local({
+  old &lt;- par(mar = c(4.6, 4.5, 1.0, 1.0), las = 1)
+  on.exit(par(old))
+  yy &lt;- rev(seq_len(nrow(cohort)))
+  plot(NA, xlim = c(0, 8.5), ylim = c(0.2, 14.0),
+       xlab = "Months since enrollment", ylab = "Participant", yaxt = "n")
+  axis(2, at = yy, labels = cohort$id)
+  segments(h, 0.5, h, 12.6, lty = 2, col = "gray50")
+  segments(0, yy, cohort$time, yy, col = "#002D72", lwd = 1.4)
+  points(cohort$time, yy, pch = ifelse(cohort$status == 1, 16, 3),
+         cex = 1.05, col = "#002D72")
+  legend(4.25, 13.8, c("Observed event", "Right censoring", "Five-month horizon"),
+         pch = c(16, 3, NA), lty = c(NA, NA, 2),
+         col = c("#002D72", "#002D72", "gray50"), bty = "n", cex = 0.76,
+         horiz = TRUE, xjust = 0.5)
+})
+</code></pre></div></details>
+</section><p class="code-context">This excerpt shows a step inside the preceding <a href="#run-chapter-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"># events, clocks and incomplete observation.
+# Twelve synthetic participants; time is measured in months.
+# status = 1 records an event; status = 0 records right censoring.
+# Only base R is needed. No file download or working-directory setup is needed.
+cohort &lt;- data.frame(
+  id = LETTERS[1:12],
+  time = c(1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 8, 8),
+  status = c(1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0)
+)
+stopifnot(!anyDuplicated(cohort$id), all(cohort$time &gt;= 0),
+          all(cohort$status %in% c(0, 1)))
+
+# Event status at the fixed five-month horizon is unknown after early censoring.
+h &lt;- 5
+known &lt;- with(cohort, status == 1 | time &gt;= h)
+event.by.h &lt;- with(cohort, as.integer(status == 1 &amp; time &lt;= h))
+event.by.h[!known] &lt;- NA_integer_
+lower &lt;- sum(event.by.h == 1, na.rm = TRUE) / nrow(cohort)
+upper &lt;- lower + sum(!known) / nrow(cohort)
+stopifnot(sum(known) == 10, sum(is.na(event.by.h)) == 2,
+          abs(lower - 1/3) &lt; 1e-12, abs(upper - 1/2) &lt; 1e-12)
+cohort$known.at.5 &lt;- known
+cohort$event.by.5 &lt;- event.by.h
+print(cohort, row.names = FALSE)
+
+
+print(c(lower = lower, upper = upper))
+</code></pre></div>
+<p><strong>Executed R output</strong></p>
+<div class="center">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Calculation</th>
+<th style="text-align: right;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Observed event fraction at variable
+follow-up</td>
+<td style="text-align: right;">0.500000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Complete five-month status only</td>
+<td style="text-align: right;">0.400000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Known events divided by all
+participants</td>
+<td style="text-align: right;">0.333333</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Logical lower bound for realized
+cohort</td>
+<td style="text-align: right;">0.333333</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Logical upper bound for realized
+cohort</td>
+<td style="text-align: right;">0.500000</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>The complete R example creates the cohort and prints these
+calculations. We check the exact bounds and verify that both logical
+completions reproduce the same
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo>,</mo><mi>Δ</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(X,\Delta)</annotation></semantics></math></span>
+records. These are checks of the observation logic; a generic test that
+every status lies in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\{0,1\}</annotation></semantics></math></span>
+would not detect confusion between
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Δ</mi><annotation encoding="application/x-tex">\Delta</annotation></semantics></math></span>
+and a fixed-horizon outcome.</p>
+<p>Notice that <code>NA</code> is retained until a specific calculation
+states how it is handled. Calling
+<code>mean(event.by.h,na.rm=TRUE)</code> reports the mean among observed
+horizon outcomes. The software has not justified that selection.
+Removing unknown values is an operation on a data set, not a statistical
+assumption that makes the remaining records representative.</p>
+<h2 id="observation-schemes-that-require-different-analyses">1.6 Observation
+schemes that require different analyses</h2>
+<p>Right censoring is only one way an event time can be incompletely
+observed. Table <a href="#s1-observation-schemes" data-reference-type="ref" data-reference="s1-observation-schemes">1.2</a> describes several
+schemes in terms of the statement the record actually makes. The
+mathematical inequalities should follow the ascertainment process,
+including its endpoint conventions.</p>
+<div id="s1-observation-schemes">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 1.2. Different observations of a single event time.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Record type</th>
+<th style="text-align: left;">Information</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Exact event</td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mi>t</mi></mrow><annotation encoding="application/x-tex">T=t</annotation></semantics></math></span></td>
+<td style="text-align: left;">Dated adjudicated recurrence</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Right censored</td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>c</mi></mrow><annotation encoding="application/x-tex">T&gt;c</annotation></semantics></math></span></td>
+<td style="text-align: left;">Event-free at final contact</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Left censored</td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>≤</mo><mi>r</mi></mrow><annotation encoding="application/x-tex">T\leq r</annotation></semantics></math></span></td>
+<td style="text-align: left;">Event present at first examination</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Interval censored</td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>l</mi><mo>&lt;</mo><mi>T</mi><mo>≤</mo><mi>r</mi></mrow><annotation encoding="application/x-tex">l&lt;T\leq r</annotation></semantics></math></span></td>
+<td style="text-align: left;">Absent at one visit, present at next</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Delayed entry</td>
+<td style="text-align: left;">Included only if
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>L</mi></mrow><annotation encoding="application/x-tex">T&gt;L</annotation></semantics></math></span></td>
+<td style="text-align: left;">Enrollment after the time origin</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>If an event is found at a month-6 visit after a negative month-3
+visit, the time may lie in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>3</mn><mo>,</mo><mn>6</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">(3,6]</annotation></semantics></math></span>.
+Recording it as exactly 6 assigns an event time that was not observed.
+Similarly, an event already present at enrollment can be left censored
+if the time origin precedes enrollment. Such a record is not equivalent
+to someone documented event-free at enrollment and followed
+prospectively.</p>
+<p>Delayed entry, often described as left truncation, concerns selection
+into observation. A person enrolled at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">L=2</annotation></semantics></math></span>
+only after surviving event-free until then supplies information
+conditional on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">T&gt;2</annotation></semantics></math></span>.
+Under a suitable entry mechanism, the probability of surviving beyond
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>&gt;</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">t&gt;2</annotation></semantics></math></span>
+among such entrants is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(t)/S(2)</annotation></semantics></math></span>.
+The missing early failures are absent from the sample, rather than
+present with a censoring flag. A risk set on the original clock must
+include a person only after entry; with an interval convention
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>L</mi><mi>i</mi></msub><mo>,</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">(L_i,X_i]</annotation></semantics></math></span>,
+the indicator is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>L</mi><mi>i</mi></msub><mo>&lt;</mo><mi>t</mi><mo>≤</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\mathbf{1}\{L_i&lt;t\leq X_i\}</annotation></semantics></math></span>.
+Independent entry is a separate selection assumption; right-censoring
+software does not automatically correct an incorrectly specified entry
+population.</p>
+<p>Administrative censoring occurs when observation ends at a
+prespecified study boundary. Loss to follow-up and withdrawal can end
+observation sooner. The reason matters because it helps assess the
+relation between observation and the unobserved event process. A
+participant who stops attending because symptoms are worsening may
+differ from someone whose observation ends only because the study
+closes. Even administrative closure is not automatically independent:
+enrollment calendar time may be associated with both obtainable
+follow-up and the event distribution.</p>
+<h2 id="the-assumptions-that-permit-a-population-interpretation">1.7 The
+assumptions that permit a population interpretation</h2>
+<p>The simple pooled model used in Chapter <a href="03-km.html#s3-km" data-reference-type="ref" data-reference="s3-km">3</a> assumes
+independent, identically distributed subject-level pairs
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>T</mi><mi>i</mi></msub><mo>,</mo><msub><mi>C</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(T_i,C_i)</annotation></semantics></math></span>
+and marginal independence
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>i</mi></msub><mo>⊥</mo><msub><mi>C</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">T_i\perp C_i</annotation></semantics></math></span>.
+This is a sufficient condition, not the only possible formulation of
+independent censoring. The intuition is that among those still
+event-free, remaining observable does not further select the
+distribution of future event times. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>u</mi><mo>&gt;</mo><mi>t</mi></mrow><annotation encoding="application/x-tex">u&gt;t</annotation></semantics></math></span>
+with positive conditioning probabilities,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>&gt;</mo><mi>u</mi><mo>∣</mo><mi>T</mi><mo>&gt;</mo><mi>t</mi><mo>,</mo><mi>C</mi><mo>≥</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>&gt;</mo><mi>u</mi><mo>∣</mo><mi>T</mi><mo>&gt;</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}(T&gt;u\mid T&gt;t,C\geq t)=\mathbb{P}(T&gt;u\mid T&gt;t).
+ \label{s1-independent-censoring}</annotation></semantics></math><span id="s1-independent-censoring" class="equation-anchor"></span><span class="equation-number">(1.5)</span></span>
+Independent subjects are a separate assumption from independent
+censoring. Relatives, clustered recruitment, and repeated event times
+can introduce between-record dependence even when each person’s
+censoring mechanism is well understood.</p>
+<p>Conditional independence
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>⊥</mo><mi>C</mi><mo>∣</mo><mi>Z</mi></mrow><annotation encoding="application/x-tex">T\perp C\mid Z</annotation></semantics></math></span>
+does not imply marginal independence. For a concrete illustration,
+suppose half the population is in a high-risk stratum with five-month
+event probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.60</mn><annotation encoding="application/x-tex">0.60</annotation></semantics></math></span>
+and half is in a low-risk stratum with probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.10</mn><annotation encoding="application/x-tex">0.10</annotation></semantics></math></span>.
+Outcomes are fully observed for every low-risk person but only half the
+high-risk people, with observation independent of the outcome
+<em>within</em> each stratum. Population risk is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.35</mn><annotation encoding="application/x-tex">0.35</annotation></semantics></math></span>,
+whereas risk among those observed is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.6</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>=</mo><mfrac><mn>4</mn><mn>15</mn></mfrac><mo>≈</mo><mn>0.2667</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{(0.5)(0.5)(0.6)+(0.5)(1)(0.1)}
+ {(0.5)(0.5)+(0.5)(1)}=\frac4{15}\approx0.2667.
+ \label{s1-selection-example}</annotation></semantics></math><span id="s1-selection-example" class="equation-anchor"></span><span class="equation-number">(1.6)</span></span> The
+observed group contains only one-third high-risk people. This example
+can be represented by event times 2 or 6 and censoring times 1 or 8;
+conditional generation of event and censoring times separately preserves
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>⊥</mo><mi>C</mi><mo>∣</mo><mi>Z</mi></mrow><annotation encoding="application/x-tex">T\perp C\mid Z</annotation></semantics></math></span>.
+Ignoring
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math></span>
+still changes the observed composition. We simulate the same
+construction in R. The exact calculation above gives a reference against
+which to judge its sampling variation.</p>
+<p>The distinction between these two populations also suggests a repair
+when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math></span>
+is measured. Write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">O=1</annotation></semantics></math></span>
+when five-month status is observed, let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mi>z</mi></msub><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>≤</mo><mn>5</mn><mo>∣</mo><mi>Z</mi><mo>=</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p_z=\mathbb{P}(T\leq5\mid Z=z)</annotation></semantics></math></span>,
+and let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mi>z</mi></msub><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>O</mi><mo>=</mo><mn>1</mn><mo>∣</mo><mi>Z</mi><mo>=</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r_z=\mathbb{P}(O=1\mid Z=z)&gt;0</annotation></semantics></math></span>.
+Conditional independent observation gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>≤</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mi>z</mi></munder><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>Z</mi><mo>=</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>p</mi><mi>z</mi></msub><mo>,</mo><mspace width="2.0em"></mspace><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">[</mo><mfrac><mrow><mi>O</mi><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>T</mi><mo>≤</mo><mn>5</mn><mo stretchy="false" form="postfix">}</mo></mrow><msub><mi>r</mi><mi>Z</mi></msub></mfrac><mo stretchy="true" form="postfix">]</mo></mrow><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>≤</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}(T\leq5)=\sum_z\mathbb{P}(Z=z)p_z,
+ \qquad
+ \mathbb{E}\left[\frac{O\mathbf{1}\{T\leq5\}}{r_Z}\right]
+ =\mathbb{P}(T\leq5).
+ \label{s1-standardization-ipw}</annotation></semantics></math><span id="s1-standardization-ipw" class="equation-anchor"></span><span class="equation-number">(1.7)</span></span> For the
+second identity, condition on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math></span>
+and event status: the conditional mean of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>O</mi><annotation encoding="application/x-tex">O</annotation></semantics></math></span>
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>r</mi><mi>Z</mi></msub><annotation encoding="application/x-tex">r_Z</annotation></semantics></math></span>,
+so weighting cancels the observation probability. The product
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>T</mi><mo>≤</mo><mn>5</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">O\mathbf{1}\{T\leq5\}</annotation></semantics></math></span>
+is observable even though the event indicator itself is unknown when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">O=0</annotation></semantics></math></span>.
+These are two ways to organize an analysis: estimate stratum risks and
+average with baseline population weights, or weight observed outcomes by
+inverse observation probabilities. Neither approach replaces the need
+for measured strata, positive observation probabilities, and a justified
+model for observation. In the twelve-person cohort, censoring is
+observed continuously rather than through a single
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>O</mi><annotation encoding="application/x-tex">O</annotation></semantics></math></span>;
+Chapter <a href="03-km.html#s3-km" data-reference-type="ref" data-reference="s3-km">3</a> uses that richer timing
+information.</p>
+<p>The independence assumption cannot generally be verified from
+right-censored records alone. We do not observe the censored event times
+needed to check their distribution directly. Reasons for dropout,
+measured predictors, follow-up audits, and external outcome
+ascertainment can inform its plausibility. A smooth fitted curve or a
+nonsignificant test is not a proof.</p>
+<p>Identification means that the target is determined by the
+distribution of the observable records under the stated assumptions.
+Identification also requires follow-up support. If nobody can be
+observed past month 3, independence cannot identify unrestricted
+five-month survival. Two event distributions can agree through month 3
+and differ thereafter while generating the same observed law. Positive
+observation probability at the target horizon is a population condition;
+a finite sample may still have a sparse or absent late risk set. We will
+distinguish this problem from sampling uncertainty and from a fitted
+curve that reaches zero.</p>
+<h2 id="keep-the-endpoint-within-scope">1.8 When another event
+changes the question</h2>
+<p>Our single-event example excludes death before recurrence. In a real
+study, death may prevent a nonfatal event. The question “What is the
+probability of recurrence by five months before death?” is then a
+competing-risks question. Treating deaths as ordinary right censoring
+and reporting one minus the resulting survival curve does not generally
+answer it. The event definition and the observation rule must refer to
+the same scientific target.</p>
+<p>For this cohort, we have now specified who enters follow-up, what
+counts as a recurrence, and what the five-month records establish. The
+two unknown outcomes remain unknown. To estimate a population
+probability, we also need the censoring and follow-up-support
+assumptions stated above. We next define the survival and hazard
+functions without confusing them with the status column.</p>
+<h2 id="exercises">1.9 Exercises</h2>
+<ol class="exercises" style='--chapter:"1."'><li id="exercise-1-1"><p><strong>What the horizon reveals.</strong> Use the twelve-person cohort with observed follow-up
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>3</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>5</mn><mo>,</mo><mn>6</mn><mo>,</mo><mn>6</mn><mo>,</mo><mn>7</mn><mo>,</mo><mn>8</mn><mo>,</mo><mn>8</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">x=(1,2,2,3,4,4,5,6,6,7,8,8)</annotation></semantics></math></span>
+months and event indicators
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\delta=(1,1,0,0,1,1,0,1,0,0,1,0)</annotation></semantics></math></span>,
+in participant order A–L. Everyone enters at zero. Same-time events are
+counted before censoring; a censor at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+establishes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T&gt;x</annotation></semantics></math></span>.
+Classify each person’s event status at months 2, 5 and 8 as known event,
+known nonevent or unknown. Derive the lower and upper bounds for the
+realized cohort event fraction at each horizon. Explain why these are
+not population confidence limits.</p>
+</li><li id="exercise-1-2"><p><strong>A clock and a selected population.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>D</mi></msub><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">T_D&gt;0</annotation></semantics></math></span>
+be time from diagnosis to the first event and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mi>D</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">S_D(2)&gt;0</annotation></semantics></math></span>.
+A study recruits every person who remains event-free two months after
+diagnosis, with no additional selection. Express (i) five-month risk
+from diagnosis in the diagnosis population, (ii) risk by diagnosis month
+5 among recruits, and (iii) five-month risk from enrollment among
+recruits, using
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>F</mi><mi>D</mi></msub><annotation encoding="application/x-tex">F_D</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>D</mi></msub><annotation encoding="application/x-tex">S_D</annotation></semantics></math></span>.
+State which information the recruited records cannot recover. Explain
+why expressing the same times in years creates no analogous
+selection.</p>
+</li><li id="exercise-1-3"><p><strong>An observed interval.</strong> Accurate examinations at months 3 and 6 find a person event-free at
+the first visit and with the event present at the second. State the
+observed set for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math></span>.
+Compare it with right censoring at month 6 and an exactly dated event at
+month 6. For each observation, determine whether five-month event status
+is known.</p>
+</li><li id="exercise-1-4"><p><strong>Conditional observation and population risk.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">Z\in\{0,1\}</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Pr</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>Z</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">\Pr(Z=1)=1/2</annotation></semantics></math></span>.
+Five-month event probabilities are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>1</mn></msub><mo>=</mo><mn>0.6</mn></mrow><annotation encoding="application/x-tex">p_1=0.6</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>0</mn></msub><mo>=</mo><mn>0.1</mn></mrow><annotation encoding="application/x-tex">p_0=0.1</annotation></semantics></math></span>.
+Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>O</mi><annotation encoding="application/x-tex">O</annotation></semantics></math></span>
+indicate that five-month status is observed, with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Pr</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>O</mi><mo>=</mo><mn>1</mn><mo>∣</mo><mi>Z</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">\Pr(O=1\mid Z=1)=1/2</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Pr</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>O</mi><mo>=</mo><mn>1</mn><mo>∣</mo><mi>Z</mi><mo>=</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\Pr(O=1\mid Z=0)=1</annotation></semantics></math></span>,
+and assume
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi><mo>⊥</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>T</mi><mo>≤</mo><mn>5</mn><mo stretchy="false" form="postfix">}</mo><mo>∣</mo><mi>Z</mi></mrow><annotation encoding="application/x-tex">O\perp\mathbf1\{T\leq5\}\mid Z</annotation></semantics></math></span>.
+Derive population risk, observed-case risk and the observed high-risk
+proportion. Construct a standardization or inverse-observation-weighting
+identity that targets population risk, stating its positivity and
+information requirements.</p>
+</li><li id="exercise-1-5"><p><strong>A follow-up support boundary.</strong> Every person is administratively censored at month 3:
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mo>=</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">C=3</annotation></semantics></math></span>.
+Construct two probability distributions on positive event times that
+induce exactly the same law of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo>,</mo><mi>Δ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>,</mo><mi>C</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>T</mi><mo>≤</mo><mi>C</mi><mo stretchy="false" form="postfix">}</mo><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">(X,\Delta)=(\min(T,C),\mathbf1\{T\leq C\})</annotation></semantics></math></span>
+but have different
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Pr</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>≤</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\Pr(T\leq5)</annotation></semantics></math></span>.
+Your distributions may be discrete. Explain why an arbitrarily large
+sample under this same observation scheme does not identify five-month
+risk.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="how-to-use.html">Previous: About these notes</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="02-functions.html">Next: 2. Survival, risk, hazard, and lifetime summaries</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

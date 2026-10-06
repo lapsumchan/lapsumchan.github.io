@@ -1,0 +1,1296 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Survival Analysis — Chapter 7: The Cox model: estimation and absolute risk | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: The Cox model: estimation and absolute risk.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/survival/09-cox.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Survival Analysis — Chapter 7: The Cox model: estimation and absolute risk | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: The Cox model: estimation and absolute risk.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/survival/09-cox.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Survival Analysis — Chapter 7: The Cox model: estimation and absolute risk", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Survival Analysis", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/survival/09-cox.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Survival Analysis</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Events, observation, and population functions</p><ol class="contents-chapters"><li><a href="01-observation.html">1. Events, clocks, and incomplete observation</a></li><li><a href="02-functions.html">2. Survival, risk, hazard, and lifetime summaries</a></li></ol><p class="contents-part">Part II: Risk sets and nonparametric estimation</p><ol class="contents-chapters"><li><a href="03-km.html">3. Estimating survival from incomplete follow-up</a></li><li><a href="04-nelson-aalen.html">4. Nelson--Aalen estimation and counting processes</a></li></ol><p class="contents-part">Part III: Likelihood and survival regression</p><ol class="contents-chapters"><li><a href="07-likelihood.html">5. Likelihood under incomplete observation</a></li><li><a href="08-parametric.html">6. Parametric survival regression</a></li><li><a href="09-cox.html" aria-current="page">7. The Cox model: estimation and absolute risk</a></li><li><a href="10-strata-ties.html">8. Stratification and tied event times</a></li><li><a href="11-diagnostics.html">9. Diagnostics that answer model questions</a></li></ol><p class="contents-part">Part IV: Competing events</p><ol class="contents-chapters"><li><a href="15-competing-risks.html">10. Competing risks and first-event probabilities</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#s9-target">7.1 Keep the contrast, relax the baseline shape</a></li><li><a href="#s9-partial">7.2 Condition on which person has the event</a></li><li><a href="#s9-score">7.3 The score compares events with weighted risk sets</a></li><li><a href="#s9-hand-example">7.4 From follow-up records to a hazard ratio</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#s9-computation">7.5 Compute the same likelihood in R</a></li><li><a href="#s9-ordering">7.6 What the event ordering identifies</a></li><li><a href="#s9-baseline">7.7 Estimate the baseline before calculating a probability</a></li><li><a href="#s9-risk">7.8 Relative hazard is not relative risk</a></li><li><a href="#what-a-completed-cox-analysis-still-owes-the-reader">7.9 Interpreting a fitted Cox model</a></li><li><a href="#cox-title">Explore: a hazard ratio is not a risk ratio</a></li><li><a href="#exercises">7.10 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Survival Analysis</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 7</span></p><div class="chapter-content"><h1 id="s9-chapter">Chapter 7. The Cox model: estimation and absolute risk</h1>
+<h2 id="s9-target">7.1 Keep the contrast, relax the baseline shape</h2>
+<p>The Weibull model in Chapter <a href="08-parametric.html#s8-chapter" data-reference-type="ref" data-reference="s8-chapter">6</a>
+made two distinct claims: a specific baseline hazard shape and constant
+hazard ratios across time. The Cox model retains the second claim while
+leaving the baseline hazard unspecified. This allows covariate
+comparisons without selecting an exponential, Weibull, or lognormal
+event-time distribution. It does not make the analysis assumption-free,
+and it does not turn relative hazards into absolute probabilities.</p>
+<p>For fixed baseline covariates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>z</mi><annotation encoding="application/x-tex">z</annotation></semantics></math></span>,
+posit
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>λ</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><mi>z</mi></mrow></msup><mo>,</mo><mspace width="2.0em"></mspace><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>H</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><mi>z</mi></mrow></msup><mo>,</mo><mspace width="2.0em"></mspace><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><msub><mi>H</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><mi>z</mi></mrow></msup><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\lambda(t\mid z)=\lambda_0(t)e^{\beta^Tz},\qquad
+ H(t\mid z)=H_0(t)e^{\beta^Tz},\qquad
+ S(t\mid z)=\exp\{-H_0(t)e^{\beta^Tz}\}.
+ \label{s9-ph-model}</annotation></semantics></math><span id="s9-ph-model" class="equation-anchor"></span><span class="equation-number">(7.1)</span></span> Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>z</mi><annotation encoding="application/x-tex">z</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>
+are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>-component
+columns, with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+baseline predictors and no intercept coordinate. The coefficients are on
+the log-hazard scale, consistent with the mapping in <a href="08-parametric.html#s8-weibull-map" data-reference-type="eqref" data-reference="s8-weibull-map">(6.6)</a>. The baseline
+refers to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">z=0</annotation></semantics></math></span>,
+so centering covariates gives that profile scientific meaning. The model
+has no separately identifiable intercept: multiplying
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>λ</mi><mn>0</mn></msub><annotation encoding="application/x-tex">\lambda_0</annotation></semantics></math></span>
+by a constant and subtracting its logarithm from an intercept leaves
+every individual hazard unchanged.</p>
+<p>Our first derivation assumes independent subjects, fixed baseline
+covariates, conditional independent right censoring, a correctly
+specified PH relationship, and distinct observed event times. Subjects
+enter at the common time origin. Adequate event information and
+variation in covariates within risk sets are needed to estimate
+coefficients. The next chapter develops ties and stratification. Delayed entry or changing covariate histories require corresponding risk-set definitions beyond this initial calculation. The target contrast is
+associational unless an additional causal design argument is
+supplied.</p><h2 id="s9-partial">7.2 Condition on which person has the event</h2>
+<p>At an observed event time
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mi>j</mi></msub><annotation encoding="application/x-tex">t_j</annotation></semantics></math></span>,
+let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>i</mi><mi>j</mi></msub><annotation encoding="application/x-tex">i_j</annotation></semantics></math></span>
+denote the person who fails and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℛ</mi><mi>j</mi></msub><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mi>i</mi><mo>:</mo><msub><mi>X</mi><mi>i</mi></msub><mo>≥</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\mathcal R_j=\{i:X_i\geq t_j\}</annotation></semantics></math></span>
+the risk set immediately before that event. Over a small time interval,
+person
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math></span>
+has event probability approximately
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub></mrow></msup><mspace width="0.167em"></mspace><mi>d</mi><mi>t</mi></mrow><annotation encoding="application/x-tex">\lambda_0(t_j)e^{\beta^Tz_i}\,dt</annotation></semantics></math></span>.
+Conditional on one person in that risk set experiencing the event, the
+relative chance that it is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>i</mi><mi>j</mi></msub><annotation encoding="application/x-tex">i_j</annotation></semantics></math></span>
+is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><msub><mi>i</mi><mi>j</mi></msub></msub></mrow></msup><mrow><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>ℛ</mi><mi>j</mi></msub></mrow></munder><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub></mrow></msup></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{e^{\beta^Tz_{i_j}}}{\sum_{i\in\mathcal R_j}e^{\beta^Tz_i}}.
+ \label{s9-riskset-probability}</annotation></semantics></math><span id="s9-riskset-probability" class="equation-anchor"></span><span class="equation-number">(7.2)</span></span> The
+common baseline and the infinitesimal interval cancel. This is a local
+conditional event-identity argument, not a positive unconditional
+probability that a continuous event occurs at one exact time.
+Predictable risk sets and the event-hazard assumptions support the
+corresponding sequential partial likelihood construction.</p>
+<p>Multiply these event contributions:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mi>P</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munderover><mo>∏</mo><mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow><mi>m</mi></munderover><mfrac><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><msub><mi>i</mi><mi>j</mi></msub></msub></mrow></msup><mrow><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>ℛ</mi><mi>j</mi></msub></mrow></munder><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub></mrow></msup></mrow></mfrac><mo>,</mo><mspace width="2.0em"></mspace><msub><mo>ℓ</mo><mi>P</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mi>j</mi></munder><mrow><mo stretchy="true" form="prefix">[</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><msub><mi>i</mi><mi>j</mi></msub></msub><mo>−</mo><mo>log</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>ℛ</mi><mi>j</mi></msub></mrow></munder><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub></mrow></msup><mo stretchy="true" form="postfix">]</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">L_P(\beta)=\prod_{j=1}^m
+ \frac{e^{\beta^Tz_{i_j}}}{\sum_{i\in\mathcal R_j}e^{\beta^Tz_i}},\qquad
+ \ell_P(\beta)=\sum_j\left[\beta^Tz_{i_j}
+ -\log\sum_{i\in\mathcal R_j}e^{\beta^Tz_i}\right].
+ \label{s9-partial-likelihood}</annotation></semantics></math><span id="s9-partial-likelihood" class="equation-anchor"></span><span class="equation-number">(7.3)</span></span> Censored
+people enter denominators while observable and event-free. They do not
+supply event numerators. It would therefore be wrong to say that partial
+likelihood ignores censored people or to delete them before forming risk
+sets. It would also be wrong to treat event-time factors as independent
+ordinary multinomial samples: later risk sets depend on earlier
+observation history. Partial-likelihood theory handles this sequential
+structure.</p>
+<p>If we multiply all observed times by one positive constant, their
+order and risk sets stay the same;
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mo>ℓ</mo><mi>P</mi></msub><annotation encoding="application/x-tex">\ell_P</annotation></semantics></math></span>
+and its coefficient estimate stay unchanged. By contrast, absolute
+survival at a numerical time requires the time scale and baseline event
+information. This distinction foreshadows why estimation of relative
+hazards can proceed before estimation of absolute risk.</p>
+<h2 id="s9-score">7.3 The score compares events with weighted risk sets</h2>
+<p>Define the risk-set weighted mean and covariance
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><msub><mover><mi>z</mi><mo accent="true">¯</mo></mover><mi>j</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>ℛ</mi><mi>j</mi></msub></mrow></munder><msub><mi>w</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>z</mi><mi>i</mi></msub><mo>,</mo></mtd><mtd columnalign="right" style="text-align: right"><msub><mi>w</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mfrac><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub></mrow></msup><mrow><munder><mo>∑</mo><mrow><mi>k</mi><mo>∈</mo><msub><mi>ℛ</mi><mi>j</mi></msub></mrow></munder><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>k</mi></msub></mrow></msup></mrow></mfrac><mo>,</mo></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"><msub><mi>V</mi><mi>j</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>ℛ</mi><mi>j</mi></msub></mrow></munder><msub><mi>w</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>z</mi><mi>i</mi></msub><msubsup><mi>z</mi><mi>i</mi><mi>T</mi></msubsup><mo>−</mo><msub><mover><mi>z</mi><mo accent="true">¯</mo></mover><mi>j</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><msub><mover><mi>z</mi><mo accent="true">¯</mo></mover><mi>j</mi></msub><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>T</mi></msup><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+ \overline z_j(\beta)&amp;=\sum_{i\in\mathcal R_j}w_{ij}(\beta)z_i,
+ &amp;w_{ij}(\beta)&amp;=\frac{e^{\beta^Tz_i}}
+ {\sum_{k\in\mathcal R_j}e^{\beta^Tz_k}},\label{s9-weighted-mean}\\
+ V_j(\beta)&amp;=\sum_{i\in\mathcal R_j}w_{ij}(\beta)z_iz_i^T
+ -\overline z_j(\beta)\overline z_j(\beta)^T.\label{s9-riskset-variance}
+\end{aligned}</annotation></semantics></math><span id="s9-weighted-mean" class="equation-anchor"></span><span id="s9-riskset-variance" class="equation-anchor"></span><span class="equation-number">(7.4, 7.5)</span></span> Differentiating the log
+partial likelihood gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>U</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mi>j</mi></munder><mo stretchy="false" form="prefix">{</mo><msub><mi>z</mi><msub><mi>i</mi><mi>j</mi></msub></msub><mo>−</mo><msub><mover><mi>z</mi><mo accent="true">¯</mo></mover><mi>j</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="2.0em"></mspace><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>−</mo><mfrac><mrow><msup><mi>∂</mi><mn>2</mn></msup><msub><mo>ℓ</mo><mi>P</mi></msub></mrow><mrow><mi>∂</mi><mi>β</mi><mi>∂</mi><msup><mi>β</mi><mi>T</mi></msup></mrow></mfrac><mo>=</mo><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>V</mi><mi>j</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">U(\beta)=\sum_j\{z_{i_j}-\overline z_j(\beta)\},\qquad
+ J(\beta)=-\frac{\partial^2\ell_P}{\partial\beta\partial\beta^T}
+ =\sum_jV_j(\beta).
+ \label{s9-score-information}</annotation></semantics></math><span id="s9-score-information" class="equation-anchor"></span><span class="equation-number">(7.6)</span></span> For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+predictors,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>U</mi><annotation encoding="application/x-tex">U</annotation></semantics></math></span>
+is a
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>-component
+column and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>J</mi><annotation encoding="application/x-tex">J</annotation></semantics></math></span>
+is a
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+information matrix. Each event compares the failing person’s covariates
+with their weighted risk-set expectation. The information sums covariate
+variation in those comparisons. An event with only one person left at
+risk contributes neither coefficient score nor coefficient information.
+A large participant count with little within-risk-set variation can
+still estimate a contrast poorly.</p>
+<p>The covariance expression follows directly from differentiating the
+normalized weights. For coordinates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>,</mo><mi>b</mi></mrow><annotation encoding="application/x-tex">a,b</annotation></semantics></math></span>,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mi>∂</mi><msub><mi>w</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub></mrow><mrow><mi>∂</mi><msub><mi>β</mi><mi>b</mi></msub></mrow></mfrac><mo>=</mo><msub><mi>w</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>z</mi><mrow><mi>i</mi><mi>b</mi></mrow></msub><mo>−</mo><msub><mover><mi>z</mi><mo accent="true">¯</mo></mover><mrow><mi>j</mi><mi>b</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mfrac><mrow><mi>∂</mi><msub><mover><mi>z</mi><mo accent="true">¯</mo></mover><mrow><mi>j</mi><mi>a</mi></mrow></msub></mrow><mrow><mi>∂</mi><msub><mi>β</mi><mi>b</mi></msub></mrow></mfrac><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>ℛ</mi><mi>j</mi></msub></mrow></munder><msub><mi>w</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>z</mi><mrow><mi>i</mi><mi>a</mi></mrow></msub><mo>−</mo><msub><mover><mi>z</mi><mo accent="true">¯</mo></mover><mrow><mi>j</mi><mi>a</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>z</mi><mrow><mi>i</mi><mi>b</mi></mrow></msub><mo>−</mo><msub><mover><mi>z</mi><mo accent="true">¯</mo></mover><mrow><mi>j</mi><mi>b</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{\partial w_{ij}}{\partial\beta_b}
+ =w_{ij}(z_{ib}-\overline z_{jb}),\qquad
+ \frac{\partial\overline z_{ja}}{\partial\beta_b}
+ =\sum_{i\in\mathcal R_j}w_{ij}
+ (z_{ia}-\overline z_{ja})(z_{ib}-\overline z_{jb}).</annotation></semantics></math></span>
+This is the
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>,</mo><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(a,b)</annotation></semantics></math></span>
+entry of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mi>j</mi></msub><annotation encoding="application/x-tex">V_j</annotation></semantics></math></span>.
+For any vector
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>v</mi><annotation encoding="application/x-tex">v</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>v</mi><mi>T</mi></msup><msub><mi>V</mi><mi>j</mi></msub><mi>v</mi></mrow><annotation encoding="application/x-tex">v^TV_jv</annotation></semantics></math></span>
+is a weighted variance of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>v</mi><mi>T</mi></msup><mi>z</mi></mrow><annotation encoding="application/x-tex">v^Tz</annotation></semantics></math></span>
+and is nonnegative. The Hessian therefore records precisely which
+covariate contrasts the observed risk sets can distinguish.</p>
+<p>The log partial likelihood is concave because
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>J</mi><annotation encoding="application/x-tex">J</annotation></semantics></math></span>
+is positive semidefinite. Strict identification requires enough
+independent covariate contrasts, and existence of a finite maximizer is
+another issue. If events consistently occur on only one side of the
+covariate comparisons, coefficients may move toward infinity while the
+likelihood approaches its supremum. A software warning about convergence
+may therefore reflect a data-information problem, not a request for more
+iterations. An inverse-information variance is a large-sample
+model-based approximation when a regular finite fit exists.</p>
+<p>At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\beta=0</annotation></semantics></math></span>
+with one binary covariate,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>z</mi><mo accent="true">¯</mo></mover><mi>j</mi></msub><annotation encoding="application/x-tex">\overline z_j</annotation></semantics></math></span>
+is the observed fraction of group 1 in the risk set. Its score is the
+number of group-1 events minus the sum of expected group-1 events. This is the untied log-rank comparison.
+The Cox model generalizes that risk-set comparison to covariate-adjusted
+estimation and weighted expectations. It does not convert a log-rank
+rejection into a verified PH assumption.</p><h2 id="s9-hand-example">7.4 From follow-up records to a hazard ratio</h2>
+<h3 id="from-first-principles">7.4.1 From first principles</h3>
+<p>The weighted comparisons above can be followed one record at a time.
+For this hand calculation, we introduce a separate six-person synthetic
+cohort followed from enrollment until the first recorded infection. It
+is not a subset of the 600-person regression cohort or the twelve-person
+recurrence cohort. Here the clock is measured in days, and every
+event-time denominator can be inspected.</p>
+<div class="center">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Person</th>
+<th style="text-align: right;">Follow-up (days)</th>
+<th style="text-align: left;">Recorded outcome</th>
+<th style="text-align: right;">Group
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>z</mi><annotation encoding="application/x-tex">z</annotation></semantics></math></span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">A</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">Infection</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">B</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">Right censored</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">C</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">Infection</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">D</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">Right censored</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">E</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">Infection</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">F</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">Right censored</td>
+<td style="text-align: right;">1</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>For a censored person, the record establishes infection-free
+follow-up through the stated time; their later infection time is
+unknown. Both groups contain three people at enrollment. With one binary
+covariate, the model in <a href="#s9-ph-model" data-reference-type="eqref" data-reference="s9-ph-model">(7.1)</a> is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>λ</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mi>β</mi><mi>z</mi></mrow></msup></mrow><annotation encoding="application/x-tex">\lambda(t\mid z)=\lambda_0(t)e^{\beta z}</annotation></semantics></math></span>.
+The baseline describes group 0, and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><msup><mi>e</mi><mi>β</mi></msup></mrow><annotation encoding="application/x-tex">r=e^\beta</annotation></semantics></math></span>
+is the group-1-to-group-0 hazard ratio. We assume independent subjects,
+a common hazard ratio over time, and independent infection and censoring
+times conditional on group. The six records alone cannot establish these
+assumptions.</p>
+<p>At each infection time, the risk set contains everyone whose
+follow-up has not yet ended. Censored participants contribute to earlier
+risk sets and leave when their follow-up ends.</p>
+<div id="s9-hand-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 7.1. Event-time risk sets for the six-person synthetic cohort.
+Counts are immediately before the event;
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>c</mi><mi>j</mi></msub><annotation encoding="application/x-tex">c_j</annotation></semantics></math></span>
+is its partial-likelihood contribution.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">Day</th>
+<th style="text-align: left;">Event person</th>
+<th style="text-align: left;">People at risk</th>
+<th style="text-align: right;">Group 0</th>
+<th style="text-align: right;">Group 1</th>
+<th style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>c</mi><mi>j</mi></msub><annotation encoding="application/x-tex">c_j</annotation></semantics></math></span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">A</td>
+<td style="text-align: left;">A, B, C, D, E, F</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>3</mn><mo>+</mo><mn>3</mn><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">r/(3+3r)</annotation></semantics></math></span></td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">C</td>
+<td style="text-align: left;">C, D, E, F</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo>+</mo><mn>2</mn><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">r/(2+2r)</annotation></semantics></math></span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">E</td>
+<td style="text-align: left;">E, F</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">1/(1+r)</annotation></semantics></math></span></td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>For example, B contributes to the day-2 comparison but leaves before
+day 4. Censoring supplies no event numerator at day 3, yet it changes
+the next event-time denominator.</p>
+<p>There are no tied infections. Applying <a href="#s9-partial-likelihood" data-reference-type="eqref" data-reference="s9-partial-likelihood">(7.3)</a> gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mi>P</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mi>r</mi><mrow><mn>3</mn><mo>+</mo><mn>3</mn><mi>r</mi></mrow></mfrac><mfrac><mi>r</mi><mrow><mn>2</mn><mo>+</mo><mn>2</mn><mi>r</mi></mrow></mfrac><mfrac><mn>1</mn><mrow><mn>1</mn><mo>+</mo><mi>r</mi></mrow></mfrac><mo>=</mo><mfrac><msup><mi>r</mi><mn>2</mn></msup><mrow><mn>6</mn><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>3</mn></msup></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">L_P(\beta)=\frac{r}{3+3r}\frac{r}{2+2r}\frac{1}{1+r}
+           =\frac{r^2}{6(1+r)^3}.</annotation></semantics></math></span> The
+first two infections occur in group 1 and the third in group 0. Taking
+logarithms and differentiating gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><msub><mo>ℓ</mo><mi>P</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mn>2</mn><mi>β</mi><mo>−</mo><mo>log</mo><mn>6</mn><mo>−</mo><mn>3</mn><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"><mi>U</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mn>2</mn><mo>−</mo><mfrac><mrow><mn>3</mn><msup><mi>e</mi><mi>β</mi></msup></mrow><mrow><mn>1</mn><mo>+</mo><msup><mi>e</mi><mi>β</mi></msup></mrow></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mn>3</mn><msup><mi>e</mi><mi>β</mi></msup></mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mfrac><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+ \ell_P(\beta)&amp;=2\beta-\log6-3\log(1+e^\beta),\\
+ U(\beta)&amp;=2-\frac{3e^\beta}{1+e^\beta},\qquad
+ J(\beta)=\frac{3e^\beta}{(1+e^\beta)^2}.
+ \end{aligned}
+ \label{s9-hand-score}</annotation></semantics></math><span id="s9-hand-score" class="equation-anchor"></span><span class="equation-number">(7.7)</span></span> Setting
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>U</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">U=0</annotation></semantics></math></span>
+gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>3</mn><mi>r</mi></mrow><annotation encoding="application/x-tex">2(1+r)=3r</annotation></semantics></math></span>,
+hence
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo>=</mo><mo>log</mo><mn>2</mn><mo>=</mo><mn>0.693147</mn><mi>…</mi><mo>,</mo><mspace width="2.0em"></mspace><mover><mi>r</mi><mo accent="true">̂</mo></mover><mo>=</mo><mn>2</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat\beta=\log2=0.693147\ldots,\qquad \widehat r=2.</annotation></semantics></math></span>
+The positive information makes the log partial likelihood strictly
+concave. The score decreases from 2 to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">-1</annotation></semantics></math></span>
+as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>
+goes from
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">-\infty</annotation></semantics></math></span>
+to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>∞</mi><annotation encoding="application/x-tex">\infty</annotation></semantics></math></span>,
+so this is the unique finite maximum. At zero,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>U</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">U(0)=1/2</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>3</mn><mi>/</mi><mn>4</mn></mrow><annotation encoding="application/x-tex">J(0)=3/4</annotation></semantics></math></span>:
+a Newton step
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi><mo>+</mo><mi>U</mi><mi>/</mi><mi>J</mi></mrow><annotation encoding="application/x-tex">\beta+U/J</annotation></semantics></math></span>
+moves upward, in the direction indicated by the score. At the maximum,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>2</mn><mi>/</mi><mn>3</mn></mrow><annotation encoding="application/x-tex">J(\widehat\beta)=2/3</annotation></semantics></math></span>,
+its inverse is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">3/2</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mi>P</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>2</mn><mi>/</mi><mn>81</mn></mrow><annotation encoding="application/x-tex">L_P(\widehat\beta)=2/81</annotation></semantics></math></span>.
+The model-based standard-error approximation is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><mrow><mn>3</mn><mi>/</mi><mn>2</mn></mrow></msqrt><mo>=</mo><mn>1.224745</mn><mi>…</mi></mrow><annotation encoding="application/x-tex">\sqrt{3/2}=1.224745\ldots</annotation></semantics></math></span>.
+Three infections provide little information about a population effect;
+an exact arithmetic solution does not remove sampling uncertainty.</p>
+<p>Under the fitted model, group 1 has twice the instantaneous infection
+rate of group 0 at the same time among people still infection-free. This
+is a hazard contrast, not a twofold infection probability. To obtain a
+survival probability, we also need the baseline cumulative hazard.</p>
+<p>By day 5, only the infections at days 2 and 4 have occurred. Adding
+reciprocal risk-set weights, as formalized in <a href="#s9-breslow" data-reference-type="eqref" data-reference="s9-breslow">(7.8)</a>, gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mn>1</mn><mrow><mn>3</mn><mo>+</mo><mn>3</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>+</mo><mfrac><mn>1</mn><mrow><mn>2</mn><mo>+</mo><mn>2</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>=</mo><mfrac><mn>1</mn><mn>9</mn></mfrac><mo>+</mo><mfrac><mn>1</mn><mn>6</mn></mfrac><mo>=</mo><mfrac><mn>5</mn><mn>18</mn></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat H_0(5)=\frac1{3+3(2)}+\frac1{2+2(2)}
+               =\frac19+\frac16=\frac5{18}.</annotation></semantics></math></span>
+The fitted survival probabilities are
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>z</mi></mrow></msup><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="2.0em"></mspace><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo>∣</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>5</mn><mi>/</mi><mn>18</mn></mrow></msup><mo>=</mo><mn>0.757465</mn><mi>…</mi><mo>,</mo><mspace width="2.0em"></mspace><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo>∣</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>5</mn><mi>/</mi><mn>9</mn></mrow></msup><mo>=</mo><mn>0.573753</mn><mi>…</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat S(5\mid z)=\exp\{-\widehat H_0(5)e^{\widehat\beta z}\},
+ \qquad \widehat S(5\mid0)=e^{-5/18}=0.757465\ldots,
+ \qquad \widehat S(5\mid1)=e^{-5/9}=0.573753\ldots.</annotation></semantics></math></span>
+Subtracting each fitted survival probability from one gives the fitted
+probability of infection by day 5 after enrollment for that group. The
+horizon, baseline cumulative hazard, and group coefficient all enter
+this calculation. These are plug-in probabilities under the stated model
+and observation assumptions; they do not say which particular person
+will experience an infection.</p>
+<h3 id="standard-r-workflow">7.4.2 Standard R workflow</h3>
+<p>The complete block below defines the cohort, constructs the risk
+sets, and computes the score, information and baseline directly. It then
+fits the same model with <code>survival::coxph</code> and
+<code>survival::basehaz</code>. Dependencies: base R and
+<code>survival</code>; no input file is required.
+<code>ties="breslow"</code> makes the event-tie convention explicit,
+although there are no tied events here. <code>centered=FALSE</code>
+requests the baseline at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">z=0</annotation></semantics></math></span>,
+matching the calculation above. The package uses numerical convergence
+criteria; the first route solves the score to its stated tolerance.
+Their agreement checks the calculations, not the proportional-hazards or
+censoring assumptions.</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R, survival. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+
+biomedical.cohort &lt;- function(n, seed) {
+  old.seed &lt;- if (exists(".Random.seed", envir=.GlobalEnv)) get(".Random.seed", envir=.GlobalEnv) else NULL
+  on.exit(if (is.null(old.seed)) {if (exists(".Random.seed", envir=.GlobalEnv)) rm(".Random.seed",envir=.GlobalEnv)} else assign(".Random.seed",old.seed,envir=.GlobalEnv))
+  set.seed(seed)
+  z &lt;- rbinom(n,1,.45); age &lt;- runif(n,35,70); age10 &lt;- (age-50)/10
+  eta &lt;- log(9)-.35*z-.20*age10
+  event.time &lt;- exp(eta)*(-log(runif(n)))^(1/1.6)
+  censor.time &lt;- pmin(rexp(n,.035),10)
+  data.frame(id=seq_len(n),z=z,age=age,age10=age10,
+    time=pmin(event.time,censor.time),status=as.integer(event.time&lt;=censor.time),
+    event.time=event.time,censor.time=censor.time)
+}
+
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# partial likelihood, baseline hazard, and supported absolute risk.
+# From first principles: risk sets, score, information, and baseline increments.
+# Standard R workflow: survival::coxph(), basehaz(), and survfit().
+options(digits=10)
+library(survival)
+dir.create("results",showWarnings=FALSE);dir.create("figures",showWarnings=FALSE)
+# Six-person synthetic cohort: first recorded infection after enrollment.
+# event=1 records infection; event=0 records right censoring.
+cohort &lt;- data.frame(
+  id = LETTERS[1:6],
+  time = c(2, 3, 4, 5, 6, 8),
+  event = c(1, 0, 1, 0, 1, 0),
+  z = c(1, 0, 1, 0, 0, 1)
+)
+if (!requireNamespace("survival", quietly = TRUE)) {
+  stop("Install the survival package with install.packages('survival').")
+}
+event.rows &lt;- which(cohort$event == 1)
+
+# Each event compares its group with everyone still at risk at that time.
+risk.sets &lt;- do.call(rbind, lapply(event.rows, function(i) {
+  at.risk &lt;- cohort$time &gt;= cohort$time[i]
+  data.frame(time = cohort$time[i], event.group = cohort$z[i],
+             n0 = sum(at.risk &amp; cohort$z == 0),
+             n1 = sum(at.risk &amp; cohort$z == 1))
+}))
+print(risk.sets)
+
+# Compute the log partial likelihood, score, and observed information
+# directly from the risk sets, without using the simplified formula.
+cox.parts &lt;- function(beta) {
+  answer &lt;- c(loglik = 0, score = 0, information = 0)
+  for (i in event.rows) {
+    z.risk &lt;- cohort$z[cohort$time &gt;= cohort$time[i]]
+    weights &lt;- exp(beta * z.risk)
+    probability &lt;- weights / sum(weights)
+    weighted.mean &lt;- sum(probability * z.risk)
+    answer &lt;- answer + c(
+      loglik = beta * cohort$z[i] - log(sum(weights)),
+      score = cohort$z[i] - weighted.mean,
+      information = sum(probability * (z.risk - weighted.mean)^2)
+    )
+  }
+  answer
+}
+beta.hand &lt;- uniroot(function(b) cox.parts(b)["score"],
+                     interval = c(-5, 5), tol = 1e-12)$root
+
+# Estimate baseline cumulative hazard through day 5, at the z=0 reference.
+H0.hand &lt;- sum(vapply(event.rows[cohort$time[event.rows] &lt;= 5],
+  function(i) 1 / sum(exp(beta.hand *
+    cohort$z[cohort$time &gt;= cohort$time[i]])), numeric(1)))
+S.hand &lt;- exp(-H0.hand * exp(beta.hand * c(0, 1)))
+
+# Standard R workflow: there are no tied events in this cohort.
+fit &lt;- survival::coxph(survival::Surv(time, event) ~ z, data = cohort,
+                       ties = "breslow",
+                       control = survival::coxph.control(eps = 1e-10))
+beta.R &lt;- unname(stats::coef(fit)[1])
+baseline &lt;- survival::basehaz(fit, centered = FALSE)
+H0.R &lt;- tail(baseline$hazard[baseline$time &lt;= 5], 1)
+S.R &lt;- exp(-H0.R * exp(beta.R * c(0, 1)))
+
+comparison &lt;- rbind(
+  first.principles = c(beta = beta.hand, HR = exp(beta.hand),
+                      H0.day5 = H0.hand, S0.day5 = S.hand[1],
+                      S1.day5 = S.hand[2]),
+  standard.R = c(beta = beta.R, HR = exp(beta.R),
+                 H0.day5 = H0.R, S0.day5 = S.R[1], S1.day5 = S.R[2])
+)
+print(round(comparison, 6))
+stopifnot(max(abs(comparison[1, ] - comparison[2, ])) &lt; 1e-7,
+          abs(beta.hand - log(2)) &lt; 1e-10,
+          abs(H0.hand - 5/18) &lt; 1e-10,
+          abs(cox.parts(beta.hand)["loglik"] - fit$loglik[2]) &lt; 1e-7,
+          abs(1 / cox.parts(beta.hand)["information"] -
+              stats::vcov(fit)[1, 1]) &lt; 1e-7)
+
+# Retain the small-cohort numerical summary alongside the recurring-cohort results.
+small &lt;- cohort
+small.event.times &lt;- cohort$time[cohort$event==1]
+small.table &lt;- data.frame(time=small.event.times,nrisk=risk.sets$n0+risk.sets$n1,
+ z0=risk.sets$n0,z1=risk.sets$n1,event.z=risk.sets$event.group)
+small.table$jump &lt;- 1/(small.table$z0+small.table$z1*exp(beta.hand))
+small.table$H0 &lt;- cumsum(small.table$jump)
+small.table$S0 &lt;- exp(-small.table$H0)
+write.csv(small.table,"results/ch09-hand-risksets.csv",row.names=FALSE)
+write.csv(data.frame(quantity=c("hand.beta","hand.hr","hand.se","hand.score0","hand.info0"),
+ value=c(beta.hand,exp(beta.hand),sqrt(1/cox.parts(beta.hand)["information"]),
+ cox.parts(0)["score"],cox.parts(0)["information"])),"results/ch09-hand-summary.csv",row.names=FALSE)
+# Recurring 600-person synthetic cohort from the parametric-regression example.
+dat &lt;- biomedical.cohort(600L,675408)
+stopifnot(nrow(dat)==600,all(dat$time&gt;0),all(dat$time&lt;=10),
+ !anyDuplicated(dat$time[dat$status==1]))
+Z &lt;- as.matrix(dat[,c("z","age10")])
+large.event.rows &lt;- which(dat$status==1)
+# Stabilizing each risk-set log sum prevents exponential overflow.
+partial.loglik &lt;- function(beta) {
+ eta&lt;-drop(Z%*%beta)
+ sum(vapply(large.event.rows,function(i) {
+  vals&lt;-eta[dat$time&gt;=dat$time[i]]; m&lt;-max(vals)
+  eta[i]-m-log(sum(exp(vals-m)))
+ },numeric(1)))
+}
+partial.score &lt;- function(beta) {
+ eta&lt;-drop(Z%*%beta)
+ Reduce(`+`,lapply(large.event.rows,function(i) {
+  rr&lt;-which(dat$time&gt;=dat$time[i]); w&lt;-exp(eta[rr]-max(eta[rr])); w&lt;-w/sum(w)
+  Z[i,]-colSums(Z[rr,,drop=FALSE]*w)
+ }))
+}
+# Observed information sums weighted risk-set covariance matrices.
+partial.information &lt;- function(beta) {
+ eta &lt;- drop(Z %*% beta)
+ Reduce(`+`, lapply(large.event.rows, function(i) {
+  rr &lt;- which(dat$time &gt;= dat$time[i])
+  w &lt;- exp(eta[rr]-max(eta[rr])); w &lt;- w/sum(w)
+  centered &lt;- sweep(Z[rr,,drop=FALSE], 2,
+                    colSums(Z[rr,,drop=FALSE]*w), "-")
+  crossprod(centered, centered*w)
+ }))
+}
+fit &lt;- survival::coxph(Surv(time,status)~z+age10,data=dat,
+ ties="breslow",x=TRUE,model=TRUE)
+# Efron is coxph's default; it gives the same result for untied deaths.
+default.fit &lt;- survival::coxph(Surv(time,status)~z+age10,data=dat)
+stopifnot(identical(default.fit$method, "efron"),
+ max(abs(coef(default.fit)-coef(fit)))&lt;1e-10,
+ abs(default.fit$loglik[2]-fit$loglik[2])&lt;1e-10)
+manual &lt;- optim(c(0,0),function(b)-partial.loglik(b),
+ gr=function(b)-partial.score(b),method="BFGS",hessian=TRUE,
+ control=list(reltol=1e-12,maxit=1000))
+stopifnot(manual$convergence==0,max(abs(manual$par-coef(fit)))&lt;2e-5,
+ abs(partial.loglik(coef(fit))-fit$loglik[2])&lt;1e-8,
+ max(abs(partial.score(coef(fit))))&lt;1e-5,
+ max(abs(solve(manual$hessian)-vcov(fit)))&lt;2e-5,
+ max(abs(solve(partial.information(coef(fit)))-vcov(fit)))&lt;1e-9)
+manual.se &lt;- sqrt(diag(solve(partial.information(manual$par))))
+route.comparison &lt;- data.frame(
+ route=c("From first principles", "Standard R workflow"),
+ beta.z=c(manual$par[1],coef(fit)[1]),
+ se.z=c(manual.se[1],sqrt(vcov(fit)[1,1])),
+ beta.age=c(manual$par[2],coef(fit)[2]),
+ se.age=c(manual.se[2],sqrt(vcov(fit)[2,2])),
+ loglik=c(partial.loglik(manual$par),fit$loglik[2]))
+write.csv(route.comparison,"results/ch09-route-comparison.csv",row.names=FALSE)
+# Breslow baseline cumulative hazard at the scientifically explicit profile z=0, age=50.
+beta &lt;- coef(fit); eta &lt;- drop(Z%*%beta)
+evt &lt;- sort(unique(dat$time[dat$status==1]))
+base &lt;- do.call(rbind,lapply(evt,function(t) {
+ rr&lt;-dat$time&gt;=t
+ data.frame(time=t,events=sum(dat$status==1 &amp; dat$time==t),
+ nrisk=sum(rr),weighted.risk=sum(exp(eta[rr])))
+}))
+base$jump &lt;- base$events/base$weighted.risk
+base$H0 &lt;- cumsum(base$jump)
+pkg.base &lt;- basehaz(fit,centered=FALSE)
+pkg.H0 &lt;- approx(pkg.base$time,pkg.base$hazard,xout=base$time,
+ method="constant",f=0,rule=2)$y
+stopifnot(max(abs(base$H0-pkg.H0))&lt;1e-10)
+write.csv(base,"results/ch09-baseline.csv",row.names=FALSE)
+# Support is observed follow-up, not arbitrary extrapolation of the last step.
+H.at &lt;- function(t) {
+ if(any(t&lt;0 | t&gt;max(dat$time)))stop("Requested horizon outside observed follow-up")
+ idx&lt;-findInterval(t,base$time); c(0,base$H0)[idx+1]
+}
+times &lt;- seq(0,10,by=.25)
+profiles &lt;- data.frame(z=c(0,1),age10=0)
+pred &lt;- do.call(rbind,lapply(seq_len(nrow(profiles)),function(j) {
+ multiplier &lt;- exp(beta[1]*profiles$z[j]+beta[2]*profiles$age10[j])
+ H &lt;- H.at(times)*multiplier
+ data.frame(z=profiles$z[j],age=50,time=times,H=H,survival=exp(-H),
+ risk=-expm1(-H),nrisk=sapply(times,function(t)sum(dat$time&gt;=t)))
+}))
+write.csv(pred,"results/ch09-predictions.csv",row.names=FALSE)
+# Independent survfit check of two profiles at supported horizons.
+pkg.pred &lt;- survival::survfit(fit,newdata=profiles,stype=2,ctype=1,
+ conf.type="log-log",conf.int=.95)
+pkg.s &lt;- summary(pkg.pred,times=c(2,5,8,10),extend=FALSE)$surv
+manual.s &lt;- sapply(seq_len(nrow(profiles)),function(j)
+ exp(-H.at(c(2,5,8,10))*exp(beta[1]*profiles$z[j])))
+stopifnot(max(abs(pkg.s-manual.s))&lt;1e-9)
+# Pointwise intervals include fitted baseline/coefficient uncertainty under the model.
+# Intervals for event risk reverse the endpoints of survival intervals.
+prediction.summary &lt;- summary(pkg.pred,times=c(5,8),extend=FALSE)
+prediction.table &lt;- do.call(rbind,lapply(seq_len(nrow(profiles)),function(j) {
+ data.frame(time=prediction.summary$time,z=profiles$z[j],age=50,
+  risk=1-prediction.summary$surv[,j],
+  lower=1-prediction.summary$upper[,j],
+  upper=1-prediction.summary$lower[,j])
+}))
+stopifnot(all(prediction.table$lower &lt;= prediction.table$risk),
+ all(prediction.table$risk &lt;= prediction.table$upper))
+write.csv(prediction.table,"results/ch09-package-predictions.csv",row.names=FALSE)
+# Checking a conventional centered curve uses the fit's stored reference vector,
+# not an assumed all-covariate-mean person: default nocenter exempts binary z.
+centered.base &lt;- survival::basehaz(fit,centered=TRUE)
+reference.multiplier &lt;- exp(sum(coef(fit)*fit$means))
+stopifnot(fit$means[["z"]]==0,
+ max(abs(centered.base$hazard-pkg.base$hazard*reference.multiplier))&lt;1e-10)
+write.csv(data.frame(term=names(fit$means),stored.reference=fit$means),
+ "results/ch09-package-reference.csv",row.names=FALSE)
+# A change of time units preserves partial-likelihood coefficients, not horizon labels.
+scaled &lt;- dat; scaled$time &lt;- 2*scaled$time
+scaled.fit &lt;- coxph(Surv(time,status)~z+age10,data=scaled,ties="breslow")
+stopifnot(max(abs(coef(scaled.fit)-beta))&lt;1e-10,
+ max(abs(basehaz(scaled.fit,centered=FALSE)$hazard-pkg.base$hazard))&lt;1e-10,
+ max(abs(basehaz(scaled.fit,centered=FALSE)$time-2*pkg.base$time))&lt;1e-10)
+# A deliberate covariate recentering leaves fitted individual hazards unchanged.
+dat$age.from.60 &lt;- dat$age10-1
+recentered &lt;- coxph(Surv(time,status)~z+age.from.60,data=dat,ties="breslow")
+base60 &lt;- basehaz(recentered,centered=FALSE)
+H60 &lt;- approx(base60$time,base60$hazard,xout=base$time,method="constant",f=0,rule=2)$y
+stopifnot(max(abs(coef(recentered)-beta))&lt;1e-10,
+ max(abs(H60-base$H0*exp(beta[2])))&lt;1e-10)
+coef.tab &lt;- data.frame(term=c("Group z","Age per 10 years"),
+ true.ph=c(.56,.32),coefficient=beta,se=sqrt(diag(vcov(fit))),
+ hazard.ratio=exp(beta),lower=exp(beta-qnorm(.975)*sqrt(diag(vcov(fit)))),
+ upper=exp(beta+qnorm(.975)*sqrt(diag(vcov(fit)))))
+write.csv(coef.tab,"results/ch09-coefficients.csv",row.names=FALSE)
+# Interaction: HR changes association while the estimated reference hazard stays fixed.
+hrs &lt;- c(.5,.75,1,1.25,1.5,1.75,2,2.5,3)
+interactive &lt;- do.call(rbind,lapply(hrs,function(hr) {
+ H &lt;- H.at(times); r0 &lt;- -expm1(-H); r1 &lt;- -expm1(-hr*H)
+ data.frame(time=times,hr=hr,H0=H,risk.reference=r0,risk.comparison=r1,
+ risk.ratio=ifelse(r0&gt;0,r1/r0,NA_real_),risk.difference=r1-r0,
+ nrisk=sapply(times,function(t)sum(dat$time&gt;=t)))
+}))
+write.csv(interactive,"results/ch09-risk-interaction.csv",row.names=FALSE,na="")
+write.csv(data.frame(field=names(interactive),meaning=c("Months since baseline, 0 to 10",
+ "Chosen constant hazard multiplier","Breslow baseline cumulative hazard at z=0, age=50",
+ "1-exp(-H0)","1-exp(-hr*H0)","Comparison/reference risk, undefined at zero reference risk",
+ "Comparison minus reference risk","Observed subjects at risk immediately before horizon")),
+ "results/ch09-risk-interaction-schema.csv",row.names=FALSE)
+summary &lt;- data.frame(quantity=c("n","events","partial.loglik","lr.global","global.df",
+ "global.p.value","H0.5","H0.8","risk5.z0.age50","risk5.z1.age50","risk8.z0.age50",
+ "risk8.z1.age50","nrisk5","nrisk8","manual.max.abs.par.difference"),
+ value=c(nrow(dat),sum(dat$status),fit$loglik[2],2*diff(fit$loglik),2,
+ pchisq(2*diff(fit$loglik),2,lower.tail=FALSE),H.at(c(5,8)),
+ -expm1(-H.at(5)*exp(beta[1]*c(0,1))),
+ -expm1(-H.at(8)*exp(beta[1]*c(0,1))),sum(dat$time&gt;=5),sum(dat$time&gt;=8),
+ max(abs(manual$par-beta))))
+write.csv(summary,"results/ch09-summary.csv",row.names=FALSE)
+lines &lt;- c("\\begin{tabular}{lrrrr}\\toprule",
+ "Term &amp; PH coefficient &amp; SE &amp; Hazard ratio &amp; 95\\% HR interval\\\\\\midrule",
+ sapply(seq_len(nrow(coef.tab)),function(i)sprintf("%s &amp; %.4f &amp; %.4f &amp; %.4f &amp; (%.4f, %.4f)\\\\",
+ coef.tab$term[i],coef.tab$coefficient[i],coef.tab$se[i],coef.tab$hazard.ratio[i],
+ coef.tab$lower[i],coef.tab$upper[i])),"\\bottomrule\\end{tabular}")
+writeLines(lines,"results/ch09-coefficient-table.tex")
+lines &lt;- c("\\begin{tabular}{lrrrr}\\toprule",
+ "Route &amp; $\\widehat\\beta_z$ &amp; SE($\\widehat\\beta_z$) &amp; $\\widehat\\beta_A$ &amp; $\\ell_P(\\widehat\\beta)$\\\\\\midrule",
+ vapply(seq_len(nrow(route.comparison)),function(i)
+ sprintf("%s &amp; %.6f &amp; %.6f &amp; %.6f &amp; %.6f\\\\",
+ route.comparison$route[i],route.comparison$beta.z[i],route.comparison$se.z[i],
+ route.comparison$beta.age[i],route.comparison$loglik[i]), ""),
+ "\\bottomrule\\end{tabular}")
+writeLines(lines,"results/ch09-route-table.tex")
+lines &lt;- c("\\begin{tabular}{rrrrr}\\toprule",
+ "Month &amp; Group &amp; Risk &amp; Lower &amp; Upper\\\\\\midrule",
+ vapply(seq_len(nrow(prediction.table)),function(i)
+ sprintf("%.0f &amp; %.0f &amp; %.6f &amp; %.6f &amp; %.6f\\\\",
+ prediction.table$time[i],prediction.table$z[i],prediction.table$risk[i],
+ prediction.table$lower[i],prediction.table$upper[i]), ""),
+ "\\bottomrule\\end{tabular}")
+writeLines(lines,"results/ch09-prediction-table.tex")
+write.csv(data.frame(package=c("R","survival"),
+ version=c(as.character(getRversion()),as.character(packageVersion("survival")))),
+ "results/ch09-software-versions.csv",row.names=FALSE)
+draw &lt;- function() {
+ plot(0,0,type="n",xlim=c(0,10),ylim=c(0,1),xlab="Months since baseline",
+ ylab="Estimated event risk, age 50")
+ for(i in 1:2){
+ multiplier&lt;-exp(beta[1]*(i-1))
+ xx&lt;-c(0,base$time,10); rr&lt;-c(0,-expm1(-base$H0*multiplier),tail(-expm1(-base$H0*multiplier),1))
+ lines(xx,rr,type="s",col=c("#002D72","#555555")[i],lty=i,lwd=2)
+ }
+ legend("topleft",c("z = 0","z = 1"),col=c("#002D72","#555555"),lty=1:2,lwd=2,bty="n")
+}
+cairo_pdf("figures/ch09-risk.pdf",7,4.5);draw();dev.off()
+png("figures/ch09-risk.png",1400,900,res=200);draw();dev.off()
+draw.hr &lt;- function() {
+ H&lt;-seq(.001,2.5,length.out=300);hr&lt;-2
+ ratio &lt;- -expm1(-hr*H)/(-expm1(-H))
+ plot(-expm1(-H),ratio,type="l",col="#002D72",lwd=2,
+ xlab="Reference event risk",ylab="Risk ratio when hazard ratio is 2",ylim=c(1,2.05))
+ abline(h=2,lty=2,col="gray40");abline(h=1,lty=3,col="gray50")
+}
+cairo_pdf("figures/ch09-hazard-risk.pdf",7,4.5);draw.hr();dev.off()
+png("figures/ch09-hazard-risk.png",1400,900,res=200);draw.hr();dev.off()
+cat("Six-person hand example:\n");print(small.table)
+print(route.comparison);print(coef.tab);print(prediction.table);print(summary)
+capture.output(sessionInfo(),file="results/ch09-sessionInfo.txt")
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Six-person synthetic cohort: first recorded infection after enrollment.</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># event=1 records infection; event=0 records right censoring.</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>cohort <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">id =</span> LETTERS[<span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>],</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">time =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">4</span>, <span class="dv">5</span>, <span class="dv">6</span>, <span class="dv">8</span>),</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">event =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>),</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">z =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">requireNamespace</span>(<span class="st">"survival"</span>, <span class="at">quietly =</span> <span class="cn">TRUE</span>)) {</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stop</span>(<span class="st">"Install the survival package with install.packages('survival')."</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>event.rows <span class="ot">&lt;-</span> <span class="fu">which</span>(cohort<span class="sc">$</span>event <span class="sc">==</span> <span class="dv">1</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Each event compares its group with everyone still at risk at that time.</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>risk.sets <span class="ot">&lt;-</span> <span class="fu">do.call</span>(rbind, <span class="fu">lapply</span>(event.rows, <span class="cf">function</span>(i) {</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  at.risk <span class="ot">&lt;-</span> cohort<span class="sc">$</span>time <span class="sc">&gt;=</span> cohort<span class="sc">$</span>time[i]</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>(<span class="at">time =</span> cohort<span class="sc">$</span>time[i], <span class="at">event.group =</span> cohort<span class="sc">$</span>z[i],</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>             <span class="at">n0 =</span> <span class="fu">sum</span>(at.risk <span class="sc">&amp;</span> cohort<span class="sc">$</span>z <span class="sc">==</span> <span class="dv">0</span>),</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>             <span class="at">n1 =</span> <span class="fu">sum</span>(at.risk <span class="sc">&amp;</span> cohort<span class="sc">$</span>z <span class="sc">==</span> <span class="dv">1</span>))</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>}))</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(risk.sets)</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co"># Compute the log partial likelihood, score, and observed information</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co"># directly from the risk sets, without using the simplified formula.</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>cox.parts <span class="ot">&lt;-</span> <span class="cf">function</span>(beta) {</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>  answer <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">loglik =</span> <span class="dv">0</span>, <span class="at">score =</span> <span class="dv">0</span>, <span class="at">information =</span> <span class="dv">0</span>)</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> event.rows) {</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>    z.risk <span class="ot">&lt;-</span> cohort<span class="sc">$</span>z[cohort<span class="sc">$</span>time <span class="sc">&gt;=</span> cohort<span class="sc">$</span>time[i]]</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>    weights <span class="ot">&lt;-</span> <span class="fu">exp</span>(beta <span class="sc">*</span> z.risk)</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    probability <span class="ot">&lt;-</span> weights <span class="sc">/</span> <span class="fu">sum</span>(weights)</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    weighted.mean <span class="ot">&lt;-</span> <span class="fu">sum</span>(probability <span class="sc">*</span> z.risk)</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>    answer <span class="ot">&lt;-</span> answer <span class="sc">+</span> <span class="fu">c</span>(</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>      <span class="at">loglik =</span> beta <span class="sc">*</span> cohort<span class="sc">$</span>z[i] <span class="sc">-</span> <span class="fu">log</span>(<span class="fu">sum</span>(weights)),</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>      <span class="at">score =</span> cohort<span class="sc">$</span>z[i] <span class="sc">-</span> weighted.mean,</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>      <span class="at">information =</span> <span class="fu">sum</span>(probability <span class="sc">*</span> (z.risk <span class="sc">-</span> weighted.mean)<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>  answer</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>beta.hand <span class="ot">&lt;-</span> <span class="fu">uniroot</span>(<span class="cf">function</span>(b) <span class="fu">cox.parts</span>(b)[<span class="st">"score"</span>],</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>                     <span class="at">interval =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">5</span>, <span class="dv">5</span>), <span class="at">tol =</span> <span class="fl">1e-12</span>)<span class="sc">$</span>root</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co"># Estimate baseline cumulative hazard through day 5, at the z=0 reference.</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>H0.hand <span class="ot">&lt;-</span> <span class="fu">sum</span>(<span class="fu">vapply</span>(event.rows[cohort<span class="sc">$</span>time[event.rows] <span class="sc">&lt;=</span> <span class="dv">5</span>],</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>  <span class="cf">function</span>(i) <span class="dv">1</span> <span class="sc">/</span> <span class="fu">sum</span>(<span class="fu">exp</span>(beta.hand <span class="sc">*</span></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>    cohort<span class="sc">$</span>z[cohort<span class="sc">$</span>time <span class="sc">&gt;=</span> cohort<span class="sc">$</span>time[i]])), <span class="fu">numeric</span>(<span class="dv">1</span>)))</span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>S.hand <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="sc">-</span>H0.hand <span class="sc">*</span> <span class="fu">exp</span>(beta.hand <span class="sc">*</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>)))</span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co"># Standard R workflow: there are no tied events in this cohort.</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>fit <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">coxph</span>(survival<span class="sc">::</span><span class="fu">Surv</span>(time, event) <span class="sc">~</span> z, <span class="at">data =</span> cohort,</span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>                       <span class="at">ties =</span> <span class="st">"breslow"</span>,</span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>                       <span class="at">control =</span> survival<span class="sc">::</span><span class="fu">coxph.control</span>(<span class="at">eps =</span> <span class="fl">1e-10</span>))</span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>beta.R <span class="ot">&lt;-</span> <span class="fu">unname</span>(stats<span class="sc">::</span><span class="fu">coef</span>(fit)[<span class="dv">1</span>])</span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>baseline <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">basehaz</span>(fit, <span class="at">centered =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a>H0.R <span class="ot">&lt;-</span> <span class="fu">tail</span>(baseline<span class="sc">$</span>hazard[baseline<span class="sc">$</span>time <span class="sc">&lt;=</span> <span class="dv">5</span>], <span class="dv">1</span>)</span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>S.R <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="sc">-</span>H0.R <span class="sc">*</span> <span class="fu">exp</span>(beta.R <span class="sc">*</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>)))</span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a>comparison <span class="ot">&lt;-</span> <span class="fu">rbind</span>(</span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>  <span class="at">first.principles =</span> <span class="fu">c</span>(<span class="at">beta =</span> beta.hand, <span class="at">HR =</span> <span class="fu">exp</span>(beta.hand),</span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>                      <span class="at">H0.day5 =</span> H0.hand, <span class="at">S0.day5 =</span> S.hand[<span class="dv">1</span>],</span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>                      <span class="at">S1.day5 =</span> S.hand[<span class="dv">2</span>]),</span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a>  <span class="at">standard.R =</span> <span class="fu">c</span>(<span class="at">beta =</span> beta.R, <span class="at">HR =</span> <span class="fu">exp</span>(beta.R),</span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a>                 <span class="at">H0.day5 =</span> H0.R, <span class="at">S0.day5 =</span> S.R[<span class="dv">1</span>], <span class="at">S1.day5 =</span> S.R[<span class="dv">2</span>])</span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">round</span>(comparison, <span class="dv">6</span>))</span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">max</span>(<span class="fu">abs</span>(comparison[<span class="dv">1</span>, ] <span class="sc">-</span> comparison[<span class="dv">2</span>, ])) <span class="sc">&lt;</span> <span class="fl">1e-7</span>,</span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a>          <span class="fu">abs</span>(beta.hand <span class="sc">-</span> <span class="fu">log</span>(<span class="dv">2</span>)) <span class="sc">&lt;</span> <span class="fl">1e-10</span>,</span>
+<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a>          <span class="fu">abs</span>(H0.hand <span class="sc">-</span> <span class="dv">5</span><span class="sc">/</span><span class="dv">18</span>) <span class="sc">&lt;</span> <span class="fl">1e-10</span>,</span>
+<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a>          <span class="fu">abs</span>(<span class="fu">cox.parts</span>(beta.hand)[<span class="st">"loglik"</span>] <span class="sc">-</span> fit<span class="sc">$</span>loglik[<span class="dv">2</span>]) <span class="sc">&lt;</span> <span class="fl">1e-7</span>,</span>
+<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a>          <span class="fu">abs</span>(<span class="dv">1</span> <span class="sc">/</span> <span class="fu">cox.parts</span>(beta.hand)[<span class="st">"information"</span>] <span class="sc">-</span></span>
+<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a>              stats<span class="sc">::</span><span class="fu">vcov</span>(fit)[<span class="dv">1</span>, <span class="dv">1</span>]) <span class="sc">&lt;</span> <span class="fl">1e-7</span>)</span></code></pre></div>
+<p>The executed output shows the event-time group counts followed by the
+two routes:</p>
+<pre data-language="" tabindex="0" aria-label="Executed output; scroll horizontally if needed" class="output"><code>time event.group n0 n1
+1    2           1  3  3
+2    4           1  2  2
+3    6           0  1  1
+                     beta HR  H0.day5  S0.day5  S1.day5
+first.principles 0.693147  2 0.277778 0.757465 0.573753
+standard.R       0.693147  2 0.277778 0.757465 0.573753</code></pre>
+<h5 id="food-for-thought.">Food for thought.</h5>
+<p>Suppose B and D were instead observed infection-free beyond day 6.
+Would the fitted hazard ratio still be 2? Which risk sets and
+denominators would change?</p>
+<p>The balanced risk sets make this example transparent; they are not a
+condition required by Cox regression. We now return to the recurring
+600-person cohort, measured in months, to calculate the same quantities
+with group and age together. The statistical construction is unchanged,
+but the denominators no longer collapse to one simple expression.</p>
+<h2 id="s9-computation">7.5 Compute the same likelihood in R</h2>
+<h3 id="from-first-principles-1">7.5.1 From first principles</h3>
+<p>For our recurring 600-person cohort, the following core code computes
+the two-covariate log partial likelihood directly. Event times are
+unique because the simulation is continuous; administrative ties are
+censoring records and do not create tied event numerators.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb3" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r">dat &lt;- biomedical.cohort(600L,675408)
+Z &lt;- as.matrix(dat[,c("z","age10")])
+large.event.rows &lt;- which(dat$status == 1)
+partial.loglik &lt;- function(beta) {
+  eta &lt;- drop(Z %*% beta)
+  sum(vapply(large.event.rows, function(i) {
+    vals &lt;- eta[dat$time &gt;= dat$time[i]]
+    m &lt;- max(vals)
+    eta[i] - m - log(sum(exp(vals-m)))
+  }, numeric(1)))
+}
+manual &lt;- optim(c(0, 0), function(b) -partial.loglik(b),
+                method="BFGS", control=list(reltol=1e-12))
+manual$par</code></pre></div>
+<p>Here the R matrix <code>Z</code> has 600 subject rows and two
+predictor columns, with no intercept. It is distinct from the binary
+group variable
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math></span>
+used to generate the cohort. Subtracting
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math></span>
+before exponentiation is a log-sum-exp stabilization. It changes no
+likelihood value but protects denominators from overflow. The complete
+script also implements the weighted score, optimizes from zero, and
+compares the maximum, gradient, coefficients, and variance matrix with
+<code>coxph</code>. The score is the sum in <a href="#s9-score-information" data-reference-type="eqref" data-reference="s9-score-information">(7.6)</a>; its
+inverse information gives the model-based covariance estimate. The short
+likelihood function and the complete R example use the same records and
+risk sets.</p>
+<h3 id="standard-r-workflow-1">7.5.2 Standard R workflow</h3>
+<p>Use <code>survival::coxph</code> for the same conditional log-hazard
+target <span class="citation" data-cites="R-survival-coxph"><a class="collection-citation" href="references.html#ref-R-survival-coxph" role="doc-biblioref" aria-label="Reference 6">[6]</a></span>:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb4" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>fit <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">coxph</span>(survival<span class="sc">::</span><span class="fu">Surv</span>(time,status) <span class="sc">~</span> z <span class="sc">+</span> age10,</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>                      <span class="at">data=</span>dat, <span class="at">ties=</span><span class="st">"breslow"</span>, <span class="at">model=</span><span class="cn">TRUE</span>, <span class="at">x=</span><span class="cn">TRUE</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fit)<span class="sc">$</span>coefficients</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>fit<span class="sc">$</span>loglik[<span class="dv">2</span>]</span></code></pre></div>
+<p>The argument <code>model=TRUE</code> retains the model frame for
+subsequent prediction, while <code>x=TRUE</code> retains the covariate
+matrix. In this independent-subject model the reported SEs use inverse
+information, rather than a cluster-robust variance. The 95% HR intervals
+below exponentiate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo>±</mo><mn>1.96</mn><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">S</mi><mi mathvariant="normal">E</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\widehat\beta\pm1.96\,\mathrm{SE}(\widehat\beta)</annotation></semantics></math></span>,
+with the exact normal quantile used in R.</p>
+<div id="s9-route-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 7.2. The two routes use the same 600 records, estimand, and untied
+risk sets. The manual route maximizes the displayed likelihood and
+computes weighted risk-set information. Agreement is numerical, not a
+model diagnostic.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Route</th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>z</mi></msub><annotation encoding="application/x-tex">\widehat\beta_z</annotation></semantics></math></span></th>
+<th style="text-align: right;">SE(<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>z</mi></msub><annotation encoding="application/x-tex">\widehat\beta_z</annotation></semantics></math></span>)</th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>A</mi></msub><annotation encoding="application/x-tex">\widehat\beta_A</annotation></semantics></math></span></th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>ℓ</mo><mi>P</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\ell_P(\widehat\beta)</annotation></semantics></math></span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">From first principles</td>
+<td style="text-align: right;">0.517592</td>
+<td style="text-align: right;">0.102798</td>
+<td style="text-align: right;">0.265851</td>
+<td style="text-align: right;">-2184.645942</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Standard R workflow</td>
+<td style="text-align: right;">0.517592</td>
+<td style="text-align: right;">0.102798</td>
+<td style="text-align: right;">0.265851</td>
+<td style="text-align: right;">-2184.645942</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>The two routes give group coefficient
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.517592</mn><annotation encoding="application/x-tex">0.517592</annotation></semantics></math></span>,
+group SE
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.102798</mn><annotation encoding="application/x-tex">0.102798</annotation></semantics></math></span>,
+age coefficient
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.265851</mn><annotation encoding="application/x-tex">0.265851</annotation></semantics></math></span>,
+and maximized log partial likelihood
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>2184.645942</mn></mrow><annotation encoding="application/x-tex">-2184.645942</annotation></semantics></math></span>.
+The complete script checks the score at the fitted coefficient and
+compares covariance matrices. These checks concern implementation and
+convergence; they do not validate PH or independent censoring.</p>
+<p>The default of <code>coxph</code> is <code>ties="efron"</code>. A
+refit using that default agrees in this untied cohort. The explicit
+<code>ties="breslow"</code> sets a future computational convention, but
+tied-event approximations do not affect this untied sample. With actual
+rounded event times, the single-event factors above are not sufficient
+to justify any tie method. Breslow, Efron, and exact approaches
+represent different treatments of simultaneous or rounded events,
+examined later. Silently changing a default can change a tied-data
+fit.</p>
+<div id="s9-coefficients">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 7.3. Executed Cox fit to the same 600 records as Section <a href="08-parametric.html#s8-cohort" data-reference-type="ref" data-reference="s8-cohort">6.5</a>. Intervals are approximate
+model-based 95% intervals on the hazard-ratio scale. They address
+sampling variation under the model.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Term</th>
+<th style="text-align: right;">PH coefficient</th>
+<th style="text-align: right;">SE</th>
+<th style="text-align: right;">Hazard ratio</th>
+<th style="text-align: right;">95% HR interval</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Group z</td>
+<td style="text-align: right;">0.5176</td>
+<td style="text-align: right;">0.1028</td>
+<td style="text-align: right;">1.6780</td>
+<td style="text-align: right;">(1.3718, 2.0525)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Age per 10 years</td>
+<td style="text-align: right;">0.2659</td>
+<td style="text-align: right;">0.0508</td>
+<td style="text-align: right;">1.3045</td>
+<td style="text-align: right;">(1.1810, 1.4410)</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>The estimated log-hazard coefficients are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.517592</mn><annotation encoding="application/x-tex">0.517592</annotation></semantics></math></span>
+for group and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.265851</mn><annotation encoding="application/x-tex">0.265851</annotation></semantics></math></span>
+per ten years of age, compared with the known synthetic values 0.56 and
+0.32. Group hazard ratio is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1.677983</mn><annotation encoding="application/x-tex">1.677983</annotation></semantics></math></span>,
+close to the fitted Weibull value
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1.688505</mn><annotation encoding="application/x-tex">1.688505</annotation></semantics></math></span>.
+Similarity here is expected from a cohort generated by a PH Weibull
+model, but is not a general identity between parametric and Cox fits.
+Cox does not estimate a common AFT time ratio without a further baseline
+shape assumption. Its coefficient confidence interval is not an interval
+for an individual’s event outcome.</p>
+<h2 id="s9-ordering">7.6 What the event ordering identifies</h2>
+<p>The direct calculation exposes an important limit of coefficient
+information. Multiplying every observation time in the recurring cohort
+by two preserves all event identities and risk sets. Our script refits
+this rescaled data and verifies identical coefficients and partial
+likelihood. The baseline cumulative-hazard jump sizes are also
+identical, but their time locations are doubled. Consequently survival
+at ten new time units corresponds to survival at five original time
+units. Keeping the numerical horizon at five after changing units would
+ask a different question.</p>
+<p>The comparison is a unit-conversion check, not an experiment that
+changes someone’s biological event time. It demonstrates that the
+coefficient likelihood contains relative ordering information without
+supplying the mapping from time to accumulated hazard. A scientific
+report must carry the endpoint’s time scale and horizon alongside a
+coefficient table. Knowing a group HR cannot recover the reference event
+probability at five years, five months, or five days.</p>
+<p>Even with one agreed time unit, two populations can have the same HR
+and very different reference incidence. In a mathematical illustration,
+take constant baseline hazards 0.04 and 0.20 per month. Their five-month
+reference risks are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>0.2</mn></mrow></msup><mo>=</mo><mn>0.181269</mn></mrow><annotation encoding="application/x-tex">1-e^{-0.2}=0.181269</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>=</mo><mn>0.632121</mn></mrow><annotation encoding="application/x-tex">1-e^{-1}=0.632121</annotation></semantics></math></span>.
+The same chosen hazard multiplier
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math></span>
+gives comparison risks
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>0.2</mn><mi>r</mi></mrow></msup></mrow><annotation encoding="application/x-tex">1-e^{-0.2r}</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>r</mi></mrow></msup></mrow><annotation encoding="application/x-tex">1-e^{-r}</annotation></semantics></math></span>.
+Thus a relative coefficient is insufficient to decide how many events a
+cohort is expected to experience or how many people cross a probability
+threshold. The illustration changes the reference incidence while
+preserving the relative hazard; it does not model transport between
+observed populations.</p>
+<p>The distinction also clarifies what censored exposure contributes. A
+record that remains at risk longer changes which people can be compared
+at later events. Observation lengths and event times locate the baseline
+increments on the time axis. The partial likelihood uses those records
+through risk-set membership, while baseline estimation uses the event
+increments and weighted denominators. Calling the first estimate
+semiparametric does not make the second source of information
+dispensable. The next section constructs that missing baseline
+explicitly.</p>
+<h2 id="s9-baseline">7.7 Estimate the baseline before calculating a
+probability</h2>
+<h3 id="from-first-principles-2">7.7.1 From first principles</h3>
+<p>Using the counting-process expectation from Equation <a href="04-nelson-aalen.html#s4-compensator" data-reference-type="eqref" data-reference="s4-compensator">(4.5)</a>, the conditional
+event increment summed across observable subjects has mean
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>Y</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub></mrow></msup><mspace width="0.167em"></mspace><mi>d</mi><msub><mi>H</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sum_iY_i(t)e^{\beta^Tz_i}\,dH_0(t)</annotation></semantics></math></span>.
+Matching an observed event increment to that weighted risk exposure
+motivates the Breslow baseline estimator:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mrow><mi>j</mi><mo>:</mo><msub><mi>t</mi><mi>j</mi></msub><mo>≤</mo><mi>t</mi></mrow></munder><mfrac><msub><mi>d</mi><mi>j</mi></msub><mrow><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>ℛ</mi><mi>j</mi></msub></mrow></munder><msup><mi>e</mi><mrow><msup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub></mrow></msup></mrow></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><msup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>T</mi></msup><mi>z</mi></mrow></msup><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat H_0(t)=\sum_{j:t_j\leq t}
+ \frac{d_j}{\sum_{i\in\mathcal R_j}e^{\widehat\beta^Tz_i}},\qquad
+ \widehat S(t\mid z)=\exp\{-\widehat H_0(t)e^{\widehat\beta^Tz}\}.
+ \label{s9-breslow}</annotation></semantics></math><span id="s9-breslow" class="equation-anchor"></span><span class="equation-number">(7.8)</span></span> Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>j</mi></msub><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">d_j=1</annotation></semantics></math></span>
+in the derivation; the displayed numerator also describes a Breslow
+convention for tied counts, whose approximation needs separate
+justification. With no covariates, this cumulative hazard reduces to
+Nelson–Aalen, not to minus log Kaplan–Meier exactly. Their relationship
+was explained in Chapter <a href="04-nelson-aalen.html#s4-chapter" data-reference-type="ref" data-reference="s4-chapter">4</a>.</p>
+<p>The six-person calculation used the same weighted denominators as <a href="#s9-breslow" data-reference-type="eqref" data-reference="s9-breslow">(7.8)</a>. Its jumps at days 2, 4 and
+6 are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>9</mn></mrow><annotation encoding="application/x-tex">1/9</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>6</mn></mrow><annotation encoding="application/x-tex">1/6</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>3</mn></mrow><annotation encoding="application/x-tex">1/3</annotation></semantics></math></span>,
+giving
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>5</mn><mi>/</mi><mn>18</mn></mrow><annotation encoding="application/x-tex">\widehat H_0(5)=5/18</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>6</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>11</mn><mi>/</mi><mn>18</mn></mrow><annotation encoding="application/x-tex">\widehat H_0(6)=11/18</annotation></semantics></math></span>.
+The final risk set contains one person in each group, so that event
+supplies coefficient information as well as a baseline increment.
+Survival at day 6 is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>S</mi><mo accent="true">̂</mo></mover><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>6</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>11</mn><mi>/</mi><mn>18</mn></mrow></msup></mrow><annotation encoding="application/x-tex">\widehat S_0(6)=e^{-11/18}</annotation></semantics></math></span>;
+it is not forced to zero.</p>
+<p>Exponentiating an estimated cumulative hazard differs from the
+product-limit construction. With no covariates, a last event in a
+one-person risk set makes Kaplan–Meier zero, while an exponentiated
+Nelson–Aalen jump multiplies the preceding survival by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><annotation encoding="application/x-tex">e^{-1}</annotation></semantics></math></span>.
+Sparse late follow-up can make either estimate poorly supported; a
+positive fitted tail is not evidence for a precise tail. The following
+calculation returns to the recurring cohort’s month scale.</p>
+<p>Here is the corresponding calculation at each unique event time:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb5" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>eta <span class="ot">&lt;-</span> <span class="fu">drop</span>(Z <span class="sc">%*%</span> <span class="fu">coef</span>(fit))</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>event.times <span class="ot">&lt;-</span> <span class="fu">sort</span>(<span class="fu">unique</span>(dat<span class="sc">$</span>time[dat<span class="sc">$</span>status <span class="sc">==</span> <span class="dv">1</span>]))</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>jumps <span class="ot">&lt;-</span> <span class="fu">vapply</span>(event.times, <span class="cf">function</span>(t) {</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(dat<span class="sc">$</span>time <span class="sc">==</span> t <span class="sc">&amp;</span> dat<span class="sc">$</span>status <span class="sc">==</span> <span class="dv">1</span>) <span class="sc">/</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sum</span>(<span class="fu">exp</span>(eta[dat<span class="sc">$</span>time <span class="sc">&gt;=</span> t]))</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>}, <span class="fu">numeric</span>(<span class="dv">1</span>))</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>H0 <span class="ot">&lt;-</span> <span class="fu">cumsum</span>(jumps)</span></code></pre></div>
+<p>This cumulative sum implements <a href="#s9-breslow" data-reference-type="eqref" data-reference="s9-breslow">(7.8)</a>; its denominator still
+includes censored participants while they remain observed and at
+risk.</p>
+<h3 id="standard-r-workflow-2">7.7.2 Standard R workflow</h3>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb6" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>baseline <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">basehaz</span>(fit, <span class="at">centered=</span><span class="cn">FALSE</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>profiles <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">z=</span><span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>), <span class="at">age10=</span><span class="dv">0</span>)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>curves <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">survfit</span>(fit, <span class="at">newdata=</span>profiles,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>                           <span class="at">stype=</span><span class="dv">2</span>, <span class="at">ctype=</span><span class="dv">1</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>                           <span class="at">conf.type=</span><span class="st">"log-log"</span>, <span class="at">conf.int=</span>.<span class="dv">95</span>)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(curves, <span class="at">times=</span><span class="fu">c</span>(<span class="dv">5</span>, <span class="dv">8</span>), <span class="at">extend=</span><span class="cn">FALSE</span>)</span></code></pre></div>
+<p><code>basehaz</code> <span class="citation" data-cites="R-survival-basehaz R-survival-survfit-coxph"><a class="collection-citation" href="references.html#ref-R-survival-basehaz" role="doc-biblioref" aria-label="Reference 7">[7]</a>, <a class="collection-citation" href="references.html#ref-R-survival-survfit-coxph" role="doc-biblioref" aria-label="Reference 8">[8]</a></span>
+returns cumulative hazard in its column named <code>hazard</code>, not
+an instantaneous hazard rate. The script checks that it equals the
+cumulative sum above at all event times. The flag requests the baseline
+at zero covariates, which here means
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">Z=0</annotation></semantics></math></span>,
+age 50. With <code>centered=TRUE</code>, the reference is the vector
+stored in <code>fit$means</code>; the default
+<code>nocenter=c(-1,0,1)</code> exempts columns whose values lie in that
+set. Here binary group is left at zero while age is internally centered,
+so the default curve is not an average of individual survival curves.
+The explicit zero reference and <code>newdata</code> avoid relying on an
+implicit profile. Internal recentering is for numerical stability and
+does not alter individual predictions. A zero profile with very large
+linear predictors can be numerically unsafe; an explicit clinically
+interpretable profile in <code>newdata</code> is preferable in that
+situation. Replacing age units
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>A</mi><annotation encoding="application/x-tex">A</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mi>′</mi><mo>=</mo><mi>A</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">A'=A-1</annotation></semantics></math></span>
+makes zero correspond to age 60. Coefficients stay the same, but the new
+baseline is multiplied by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>A</mi></msub></msup><annotation encoding="application/x-tex">e^{\widehat\beta_A}</annotation></semantics></math></span>.
+Predicted hazards for an unchanged person remain identical. Baseline
+survival therefore depends on coding; individual predictions should
+not.</p>
+<p><code>stype=2</code> requests
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><mover><mi>H</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\exp(-\widehat H)</annotation></semantics></math></span>,
+and <code>ctype=1</code> uses the unadjusted cumulative-hazard
+calculation matched to Breslow here. If <code>ctype</code> is omitted,
+<code>survfit</code> selects it from the fitted tie method; this matters
+when event ties are present. <code>extend=FALSE</code> avoids printing
+curves at requested horizons beyond the observed curve. The script
+compares package point predictions with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><msup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>T</mi></msup><mi>z</mi></mrow></msup><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\exp\{-\widehat H_0(t)e^{\widehat\beta^Tz}\}</annotation></semantics></math></span>
+at months 2, 5, 8, and 10. It also obtains pointwise 95% log–log
+survival intervals, including model-based uncertainty from both baseline
+and coefficients, then reverses their endpoints to report intervals for
+event risk:</p>
+<div id="s9-prediction-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 7.4. Package estimates and pointwise 95% risk intervals at age 50.
+These intervals concern fitted survival probabilities under the model,
+not the binary outcome of an individual or independent validation
+performance.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">Month</th>
+<th style="text-align: right;">Group</th>
+<th style="text-align: right;">Risk</th>
+<th style="text-align: right;">Lower</th>
+<th style="text-align: right;">Upper</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.337076</td>
+<td style="text-align: right;">0.291460</td>
+<td style="text-align: right;">0.387677</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.531583</td>
+<td style="text-align: right;">0.475797</td>
+<td style="text-align: right;">0.589557</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.498329</td>
+<td style="text-align: right;">0.443711</td>
+<td style="text-align: right;">0.555750</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.719891</td>
+<td style="text-align: right;">0.663771</td>
+<td style="text-align: right;">0.773675</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<h2 id="s9-risk">7.8 Relative hazard is not relative risk</h2>
+<p>For a profile with multiplier
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><mi>z</mi></mrow></msup></mrow><annotation encoding="application/x-tex">r=e^{\beta^Tz}</annotation></semantics></math></span>
+and reference cumulative hazard
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>H</mi><annotation encoding="application/x-tex">H</annotation></semantics></math></span>,
+event risk is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>F</mi><mi>r</mi></msub><mo>=</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>r</mi><mi>H</mi></mrow></msup><mo>=</mo><mn>1</mn><mo>−</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>F</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>r</mi></msup><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>F</mi><mi>r</mi></msub><mo>−</mo><msub><mi>F</mi><mn>0</mn></msub><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>H</mi></mrow></msup><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>r</mi><mi>H</mi></mrow></msup><mo>,</mo><mspace width="2.0em"></mspace><mfrac><msub><mi>F</mi><mi>r</mi></msub><msub><mi>F</mi><mn>0</mn></msub></mfrac><mo>=</mo><mfrac><mrow><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>r</mi><mi>H</mi></mrow></msup></mrow><mrow><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>H</mi></mrow></msup></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">F_r=1-e^{-rH}=1-(1-F_0)^r,\qquad
+ F_r-F_0=e^{-H}-e^{-rH},\qquad
+ \frac{F_r}{F_0}=\frac{1-e^{-rH}}{1-e^{-H}}.
+ \label{s9-hazard-risk}</annotation></semantics></math><span id="s9-hazard-risk" class="equation-anchor"></span><span class="equation-number">(7.9)</span></span> At small
+positive
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>H</mi><annotation encoding="application/x-tex">H</annotation></semantics></math></span>,
+the risk ratio approaches
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math></span>
+by a first-order expansion. With growing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>H</mi><annotation encoding="application/x-tex">H</annotation></semantics></math></span>
+and fixed positive
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math></span>,
+both risks approach one and their ratio approaches one. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">r=2</annotation></semantics></math></span>,
+doubling the hazard need not double a clinically substantial event
+probability. Even a fixed relative hazard can yield very different risk
+differences across horizons or baseline populations.</p>
+<figure id="s9-hazard-risk-figure">
+<a href="../assets/survival/ch09-hazard-risk.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch09-hazard-risk.png" alt="Figure 7.1. A static probability-scale explanation. The hazard ratio is
+fixed at two while reference event risk varies. The risk ratio
+approaches two only near zero reference risk; it decreases toward one at
+high risks.">
+</a><figcaption>Figure 7.1. A static probability-scale explanation. The hazard ratio is
+fixed at two while reference event risk varies. The risk ratio
+approaches two only near zero reference risk; it decreases toward one at
+high risks.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch09-hazard-risk.png">Open full-size figure</a></p></figure>
+<p>For the saved Cox fit at age 50, five-month risks are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.337076</mn><annotation encoding="application/x-tex">0.337076</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">Z=0</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.498329</mn><annotation encoding="application/x-tex">0.498329</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">Z=1</annotation></semantics></math></span>.
+At eight months they are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.531583</mn><annotation encoding="application/x-tex">0.531583</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.719891</mn><annotation encoding="application/x-tex">0.719891</annotation></semantics></math></span>.
+The hazard ratio stays
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1.677983</mn><annotation encoding="application/x-tex">1.677983</annotation></semantics></math></span>,
+but the risk contrast changes. There are 283 observable participants at
+risk just before month 5 and 161 just before month 8. These counts help
+qualify which horizons have support. The interactive explanation holds
+the fitted reference baseline fixed, varies a proposed hazard
+multiplier, and asks the reader to predict how the risk ratio and
+difference change. It is a model explanation, not a causal intervention
+simulation or a fitted sensitivity analysis with new coefficients.</p>
+<figure id="s9-risk-figure">
+<a href="../assets/survival/ch09-risk.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch09-risk.png" alt="Figure 7.2. Cox event-risk estimates for two fixed profiles in the
+recurring synthetic cohort. Step locations follow observed events.
+Curves stop at ten months, the observed administrative follow-up
+limit.">
+</a><figcaption>Figure 7.2. Cox event-risk estimates for two fixed profiles in the
+recurring synthetic cohort. Step locations follow observed events.
+Curves stop at ten months, the observed administrative follow-up
+limit.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch09-risk.png">Open full-size figure</a></p></figure>
+<p>A flat final segment before the administrative limit reports no
+additional observed baseline increment, not a scientifically established
+zero hazard. Beyond that limit, keeping the last step fixed would
+silently assume no further hazard, while imposing a parametric tail
+would add an extrapolation model. Neither is new follow-up. The
+implementation refuses horizons outside
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>10</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0,10]</annotation></semantics></math></span>.
+Sparse information inside that range still requires caution; a nominally
+supported time is not automatically estimated well.</p>
+<p>These are risks of the single modeled event under the stated setting.
+If a competing event precludes it,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mi>S</mi></mrow><annotation encoding="application/x-tex">1-S</annotation></semantics></math></span>
+from a cause-specific hazard model is not generally the observed
+cumulative incidence of that cause. We will introduce competing-risk
+targets separately. Baseline and coefficient estimation both contribute
+uncertainty to an absolute prediction; transforming only a coefficient
+confidence interval while freezing the baseline does not provide a
+complete prediction interval or confidence interval for risk.</p>
+<h2 id="what-a-completed-cox-analysis-still-owes-the-reader">7.9 Interpreting a fitted Cox
+model</h2>
+<p>A coefficient estimate answers a conditional relative-hazard question
+under PH, functional-form, and observation assumptions. We have
+connected it to a horizon probability by also estimating the baseline
+cumulative hazard. The next chapter examines how stratification and
+recorded ties change these risk sets and event contributions; the
+following chapter examines covariate shape, proportionality, and
+influential records. Neither successful optimization nor agreement
+between computational routes establishes those model assumptions.</p>
+<p>To interpret a fitted probability, report the horizon, endpoint,
+covariate profile, and follow-up support. Its model-based uncertainty
+includes both baseline and coefficient estimation; it does not describe
+variation in an individual binary outcome. This fixed-profile
+calculation uses information available at baseline. Substituting
+measurements obtained later would change the conditioning and require a
+corresponding observation-history argument. A smaller coefficient
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>-value
+cannot settle any of these target or timing questions.</p>
+<section class="interaction" id="cox-explorer" aria-labelledby="cox-title">
+<h2 id="cox-title">Explore: a hazard ratio is not a risk ratio</h2>
+<p>Hold the fitted reference cumulative hazard fixed. Predict how a hazard multiplier of two changes the event probability at a short and a longer horizon. Then reveal the calculation from the chapter’s synthetic cohort.</p>
+<div class="controls"><label>Hazard multiplier<br><select id="cox-hr"><option>0.5</option><option>0.75</option><option>1</option><option>1.25</option><option>1.5</option><option>1.75</option><option selected>2</option><option>2.5</option><option>3</option></select></label><label>Horizon (months) <output id="cox-time-label">5.00</output><br><input id="cox-time" type="range" min="1" max="40" value="20" step="1"></label><button type="button" id="cox-reveal">Reveal absolute risks</button></div>
+<div id="cox-output" hidden aria-live="polite"><p id="cox-numbers" class="result-text"></p><svg id="cox-plot" viewbox="0 0 640 300" role="img" aria-label="Reference and comparison event probabilities over observed follow-up"></svg><p class="result-text">This is a model contrast at a fixed reference hazard, not a causal treatment effect. Horizons remain inside observed follow-up; the at-risk count makes thinning support visible.</p></div>
+<p><small>Static counterpart: the baseline-hazard derivation, profile prediction table, and absolute-risk figure. The web calculation uses the same R-generated grid.</small></p>
+</section>
+<h2 id="exercises">7.10 Exercises</h2>
+<ol class="exercises" style='--chapter:"7."'><li id="exercise-7-1"><p><strong>Condition on who fails.</strong> Assume independent subjects with fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>-dimensional
+covariates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>z</mi><mi>i</mi></msub><annotation encoding="application/x-tex">z_i</annotation></semantics></math></span>,
+hazard
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>λ</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub></mrow></msup></mrow><annotation encoding="application/x-tex">\lambda_i(t)=\lambda_0(t)e^{\beta^Tz_i}</annotation></semantics></math></span>,
+conditionally independent right censoring and distinct observed event
+times. Derive the conditional probability that person
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math></span>
+fails given one event in the risk set in a vanishing interval, and
+explain why the baseline cancels. In the six-person example, person B is
+group 0 and censored at day 3. Explain B’s contributions to the day-2
+and day-4 risk denominators without assigning B an event numerator.</p>
+</li><li id="exercise-7-2"><p><strong>An exact fitted hazard ratio.</strong> In the six-person example, risk sets just before days 2, 4 and 6
+contain group-0/group-1 counts
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>3</mn><mo>,</mo><mn>3</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(3,3)</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo>,</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(2,2)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(1,1)</annotation></semantics></math></span>;
+event groups are 1, 1 and 0. There are no tied events. With
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><msup><mi>e</mi><mi>β</mi></msup><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r=e^\beta&gt;0</annotation></semantics></math></span>,
+derive the partial likelihood, score and observed information. Establish
+the unique finite maximum, compute
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>U</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">U(0)</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">J(0)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">J(\widehat\beta)</annotation></semantics></math></span>,
+and compare coefficient, log partial likelihood and inverse-information
+variance with the chapter’s explicit Breslow <code>coxph</code> fit.
+Explain why the last group-0 event still contributes coefficient
+information.</p>
+</li><li id="exercise-7-3"><p><strong>Change the reference, preserve the fitted hazards.</strong> In a fixed-covariate Cox model, replace
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>z</mi><annotation encoding="application/x-tex">z</annotation></semantics></math></span>
+by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mi>′</mi><mo>=</mo><mi>z</mi><mo>−</mo><mi>c</mi></mrow><annotation encoding="application/x-tex">z'=z-c</annotation></semantics></math></span>
+for fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi><mo>∈</mo><msup><mi>ℝ</mi><mi>p</mi></msup></mrow><annotation encoding="application/x-tex">c\in\mathbb R^p</annotation></semantics></math></span>.
+Prove that the partial-likelihood slopes and individual fitted hazards
+are unchanged when the baseline is transformed consistently, and give
+that transformation. If age is coded as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mo>age</mo><mo>−</mo><mn>50</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mn>10</mn></mrow><annotation encoding="application/x-tex">(\operatorname{age}-50)/10</annotation></semantics></math></span>,
+explain the baseline change when centering instead at age 60. Use an age
+slope of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.2658510368</mn><annotation encoding="application/x-tex">0.2658510368</annotation></semantics></math></span>
+and age-50 baseline cumulative hazard
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.411095620</mn><annotation encoding="application/x-tex">0.411095620</annotation></semantics></math></span>
+at month 5 to calculate the age-60 baseline survival.</p>
+</li><li id="exercise-7-4"><p><strong>Calculate the baseline before interpreting probability.</strong> At days 2, 4 and 6, the six-person risk sets contain group-0/group-1
+counts
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>3</mn><mo>,</mo><mn>3</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(3,3)</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo>,</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(2,2)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(1,1)</annotation></semantics></math></span>,
+with event groups 1, 1 and 0 and fitted hazard ratio 2. Under the
+Breslow baseline construction, calculate the three cumulative-hazard
+increments and reference survival at days 5 and 6. Explain why the
+no-covariate construction equals Nelson–Aalen, whose exponential is not
+exactly Kaplan–Meier. Give the final one-person risk-set case. State
+what extending a positive final survival step unchanged beyond observed
+follow-up assumes.</p>
+</li><li id="exercise-7-5"><p><strong>A hazard multiplier on the risk scale.</strong> Under proportional hazards with reference cumulative hazard
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mo>≥</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">H\geq0</annotation></semantics></math></span>
+and multiplier
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r&gt;0</annotation></semantics></math></span>,
+derive comparison risk from reference risk
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>F</mi><mn>0</mn></msub><mo>=</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>H</mi></mrow></msup></mrow><annotation encoding="application/x-tex">F_0=1-e^{-H}</annotation></semantics></math></span>.
+For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">r=2</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>F</mi><mn>0</mn></msub><mo>=</mo><mn>0.01</mn><mo>,</mo><mn>0.20</mn><mo>,</mo><mn>0.60</mn></mrow><annotation encoding="application/x-tex">F_0=0.01,0.20,0.60</annotation></semantics></math></span>,
+calculate comparison risk, risk ratio and risk difference. Prove the
+risk-ratio limits as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mo>↓</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">H\downarrow0</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mo>→</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">H\to\infty</annotation></semantics></math></span>.
+Explain why holding the baseline fixed while changing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math></span>
+does not validate transport to a new population or identify a causal
+intervention.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="08-parametric.html">Previous: 6. Parametric survival regression</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="10-strata-ties.html">Next: 8. Stratification and tied event times</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

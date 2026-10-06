@@ -1,0 +1,26 @@
+Single-outcome debiased-regression worked example
+
+Copyright (C) 2026 Lap Sum Chan.
+The nodewise.precision helper adapts precM.NL.one and precM.NL.whole from
+drfarm 0.1.0, by Lap Sum Chan, Gen Li, and Peter X. K. Song.
+Original source: https://github.com/lapsumchan/drfarm/tree/406172af67bccede260ec2d6ca137a718c703c03
+The adapted example code is licensed under GNU GPL version 3 or later.
+Changes: one explicit penalty in place of EBIC/CV selection, column RMS
+standardization before fitting, no internal scaling, explanatory dot-separated
+names, transparent coefficient and noise estimation, and numerical checks.
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+A copy is provided in GPL-3.0.txt; see also https://www.gnu.org/licenses/.
+
+This notice applies to the worked-example code. The textbook prose retains
+its existing license. glmnet is a separate dependency under its own license;
+no package binaries or package source are distributed with the reader.

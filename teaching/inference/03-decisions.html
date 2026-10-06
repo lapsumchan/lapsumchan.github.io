@@ -1,0 +1,917 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Statistical Inference — Chapter 4: Can a better estimate lead to a worse decision? | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Can a better estimate lead to a worse decision?.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/inference/03-decisions.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Statistical Inference — Chapter 4: Can a better estimate lead to a worse decision? | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Can a better estimate lead to a worse decision?.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/inference/03-decisions.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Statistical Inference — Chapter 4: Can a better estimate lead to a worse decision?", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Statistical Inference", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/inference/03-decisions.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Statistical Inference</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Questions, probability models, and likelihood</p><ol class="contents-chapters"><li><a href="01-models.html">1. Probability models and statistical targets</a></li><li><a href="02-likelihood.html">2. Likelihood, data reduction, and constructing estimators</a></li></ol><p class="contents-part">Part II: Conditional targets, regression, and loss</p><ol class="contents-chapters"><li><a href="conditional-regression.html">3. Regression and conditional targets</a></li><li><a href="03-decisions.html" aria-current="page">4. Can a better estimate lead to a worse decision?</a></li></ol><p class="contents-part">Part III: Estimation, uncertainty, and testing</p><ol class="contents-chapters"><li><a href="07-limits.html">5. Sampling limits and asymptotic approximations</a></li><li><a href="08-confidence.html">6. Likelihood asymptotics and confidence sets</a></li><li><a href="09-testing.html">7. Hypothesis Testing as a Statistical Procedure</a></li><li><a href="06-bayes.html">8. Bayesian inference and predictive uncertainty</a></li></ol><p class="contents-part">Part IV: Shrinkage and regularized regression</p><ol class="contents-chapters"><li><a href="12-shrinkage.html">9. Empirical Bayes and the geometry of shrinkage</a></li><li><a href="regularization-association.html">10. Regularization, bias correction, and association inference</a></li></ol><p class="contents-part">Part V: Association claims and multiplicity</p><ol class="contents-chapters"><li><a href="14-multiplicity.html">11. Multiplicity, simultaneous claims, and false discoveries</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#one-experiment-several-questions">4.1 One experiment, several questions</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#squared-error-derive-the-comparison-before-simulating">4.2 Squared-error risk and the bias–variance tradeoff</a></li><li><a href="#prediction-for-an-independent-outcome">4.3 Prediction for an independent outcome</a></li><li><a href="#why-reusing-an-outcome-changes-the-answer">4.4 Why reusing an outcome changes the answer</a></li><li><a href="#a-threshold-policy-and-its-actual-cost">4.5 A threshold policy and its actual cost</a></li><li><a href="#a-bayes-rule-is-not-a-pointwise-guarantee">4.6 A Bayes rule is not a pointwise guarantee</a></li><li><a href="#paired-computation-and-comparing-losses">4.7 Exact calculations and paired simulation</a></li><li><a href="#decision-explorer-title">Explore: the loss changes the comparison</a></li><li><a href="#exercises">4.8 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Statistical Inference</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 4</span></p><div class="chapter-content"><h1 id="i3-chapter">Chapter 4. Can a better estimate lead to a worse decision?</h1>
+<p>An estimator can be better at estimating a probability and worse at
+choosing an action. To compare them, we need to say what “better” means.
+Squared error asks how far a reported probability is from the truth. A
+decision loss asks what happens when that report changes an action. The
+first comparison averages the size of numerical errors; the second may
+care almost entirely about errors near one threshold.</p>
+<p>This chapter develops one small experiment far enough that every
+comparison can be checked without an asymptotic approximation. The same
+two estimates will be evaluated as parameter estimates, predictions for
+a new outcome, scores on reused training outcomes, and inputs to a
+binary policy. We will also change the averaging distribution, from a
+fixed true probability to a prior over probabilities. Following each
+change of expectation lets us see which comparisons survive and which
+require a new calculation.</p>
+<p>The regression chapter separated coefficient estimates from fitted
+probabilities. We now return to the independent Bernoulli model from the
+first two chapters to compare two procedures under explicit losses.
+Keeping that model small lets us calculate the bias, variance and
+expected loss of each rule exactly; it does not replace the conditional
+targets introduced by regression. A fresh binary outcome and a decision
+with specified costs add two different uses of the estimate. The action
+is a classification choice; evaluating a treatment that changes the
+outcome would require a causal model as well as a loss function.</p>
+<h2 id="one-experiment-several-questions">4.1 One experiment, several
+questions</h2>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>X</mi><mi>n</mi></msub></mrow><annotation encoding="application/x-tex">X_1,\ldots,X_n</annotation></semantics></math></span>
+be independent Bernoulli variables with common probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+and let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><msubsup><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></msubsup><msub><mi>X</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">K=\sum_{i=1}^n X_i</annotation></semantics></math></span>.
+Initially
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+is fixed, although unknown to the analyst. Repeating the experiment
+generates a new training sample and hence a new
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>∼</mo><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>,</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">K\sim\operatorname{Binomial}(n,p)</annotation></semantics></math></span>.
+Consider
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>U</mi></msub><mo>=</mo><mfrac><mi>K</mi><mi>n</mi></mfrac><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>q</mi><mi>S</mi></msub><mo>=</mo><mfrac><mrow><mi>K</mi><mo>+</mo><mn>1</mn></mrow><mrow><mi>n</mi><mo>+</mo><mn>2</mn></mrow></mfrac><mo>=</mo><mfrac><mi>n</mi><mrow><mi>n</mi><mo>+</mo><mn>2</mn></mrow></mfrac><msub><mi>q</mi><mi>U</mi></msub><mo>+</mo><mfrac><mn>2</mn><mrow><mi>n</mi><mo>+</mo><mn>2</mn></mrow></mfrac><mfrac><mn>1</mn><mn>2</mn></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">q_U=\frac K n,\qquad q_S=\frac{K+1}{n+2}
+      =\frac{n}{n+2}q_U+\frac{2}{n+2}\frac12.
+ \label{i3-estimators}</annotation></semantics></math><span id="i3-estimators" class="equation-anchor"></span><span class="equation-number">(4.1)</span></span> The subscript
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>U</mi><annotation encoding="application/x-tex">U</annotation></semantics></math></span>
+denotes the unbiased sample proportion. The subscript
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>S</mi><annotation encoding="application/x-tex">S</annotation></semantics></math></span>
+denotes shrinkage toward one half. Both are functions of observable
+data; neither uses the unknown
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+Shrinkage is stronger for smaller samples and prevents reports exactly
+equal to zero or one.</p>
+<p>We distinguish a reported probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>q</mi><annotation encoding="application/x-tex">q</annotation></semantics></math></span>
+from an action
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">a\in\{0,1\}</annotation></semantics></math></span>.
+A rule maps the observed sample to a report or an action; its risk is
+expected loss under a specified distribution. Thus an assertion of
+superiority must identify the target, loss, comparison class, and
+expectation. Here our main comparison class contains just the two rules
+in <a href="#i3-estimators" data-reference-type="eqref" data-reference="i3-estimators">(4.1)</a>; we make no claim of
+optimality among every possible rule.</p>
+<p>For the numerical example set
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">n=10</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>.
+The analyst does not know that value; it is the fixed data-generating
+value used to evaluate repeated-sampling performance. In the script, the
+count distribution and the two reports are constructed directly:</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# exact estimation, prediction, and decision comparisons.
+out &lt;- "generated"; out.dir &lt;- out
+dir.create(out,recursive=TRUE,showWarnings=FALSE)
+
+n &lt;- 10L
+p &lt;- 0.15
+c.fp &lt;- 3
+c.fn &lt;- 10
+threshold &lt;- c.fp / (c.fp + c.fn)
+k &lt;- 0:n
+w &lt;- dbinom(k, size = n, prob = p)
+q.u &lt;- k / n
+q.s &lt;- (k + 1) / (n + 2)
+
+# Integer comparisons implement action 0 on an exact threshold tie.
+a.u &lt;- as.integer((c.fp + c.fn) * k &gt; c.fp * n)
+a.s &lt;- as.integer((c.fp + c.fn) * (k + 1) &gt; c.fp * (n + 2))
+stopifnot(identical(which(a.u != a.s) - 1L, 2L))
+stopifnot(identical(a.u, as.integer(q.u &gt; threshold)))
+stopifnot(identical(a.s, as.integer(q.s &gt; threshold)))
+
+# Analytic risks and independent finite-sum evaluations.
+v &lt;- p * (1 - p)
+mse.u &lt;- v / n
+mse.s &lt;- (n * v + (1 - 2 * p)^2) / (n + 2)^2
+fresh.u &lt;- v + mse.u
+fresh.s &lt;- v + mse.s
+train.u &lt;- fresh.u - 2 * v / n
+train.s &lt;- fresh.s - 2 * v / (n + 2)
+cost.given.k &lt;- function(action) {
+  c.fp * (1 - p) * action + c.fn * p * (1 - action)
+}
+cost.u &lt;- sum(w * cost.given.k(a.u))
+cost.s &lt;- sum(w * cost.given.k(a.s))
+cost.diff &lt;- (c.fp - (c.fp + c.fn) * p) * dbinom(2, n, p)
+stopifnot(abs(sum(w) - 1) &lt; 1e-12)
+stopifnot(abs(sum(w * (q.u - p)^2) - mse.u) &lt; 1e-12)
+stopifnot(abs(sum(w * (q.s - p)^2) - mse.s) &lt; 1e-12)
+stopifnot(abs(cost.s - cost.u - cost.diff) &lt; 1e-12)
+stopifnot(abs(sum(w * (p * (1-q.s)^2 + (1-p)*q.s^2)) - fresh.s) &lt; 1e-12)
+stopifnot(abs(sum(w * ((k/n)*(1-q.s)^2 + (1-k/n)*q.s^2)) - train.s) &lt; 1e-12)
+
+# Enumerate every binary training vector, not only the binomial count.
+x &lt;- as.matrix(expand.grid(rep(list(0:1), n)))
+counts &lt;- rowSums(x)
+sequence.weights &lt;- p^counts * (1 - p)^(n - counts)
+qs.all &lt;- (counts + 1) / (n + 2)
+observed.brier &lt;- rowMeans((x - qs.all)^2)
+stopifnot(abs(sum(sequence.weights) - 1) &lt; 1e-12)
+stopifnot(abs(sum(sequence.weights * observed.brier) - train.s) &lt; 1e-12)
+stopifnot(abs(sum(sequence.weights * (qs.all - x[, 1])^2) - train.s) &lt; 1e-12)
+
+exact &lt;- data.frame(
+  rule = c("Unbiased", "Shrinkage"),
+  mse = c(mse.u, mse.s), fresh.brier = c(fresh.u, fresh.s),
+  reused.brier = c(train.u, train.s),
+  optimism = c(2 * v / n, 2 * v / (n + 2)),
+  action.probability = c(sum(w * a.u), sum(w * a.s)),
+  decision.cost = c(cost.u, cost.s)
+)
+write.csv(exact, file.path(out, "ch03-exact.csv"), row.names = FALSE)
+states &lt;- data.frame(k, probability = w, q.u, q.s, a.u, a.s,
+                     cost.u = cost.given.k(a.u), cost.s = cost.given.k(a.s))
+write.csv(states, file.path(out, "ch03-states.csv"), row.names = FALSE)
+
+# A fixed prior is used only for these explicitly prior-averaged checks.
+prior.mse.u &lt;- integrate(function(z) z * (1-z) / n, 0, 1)$value
+prior.mse.s &lt;- integrate(function(z) (n*z*(1-z)+(1-2*z)^2)/(n+2)^2, 0, 1)$value
+prior.policy &lt;- function(a) {
+  mean(c.fp * (1 - q.s) * a + c.fn * q.s * (1 - a))
+}
+stopifnot(abs(prior.mse.u - 1/(6*n)) &lt; 1e-12)
+stopifnot(abs(prior.mse.s - 1/(6*(n+2))) &lt; 1e-12)
+prior.cost.u &lt;- prior.policy(a.u)
+prior.cost.s &lt;- prior.policy(a.s)
+stopifnot(abs(prior.cost.s - prior.cost.u + 1/44) &lt; 1e-12)
+
+# Paired Monte Carlo: both procedures see the same K and fresh Y.
+RNGkind("Mersenne-Twister", "Inversion", "Rejection")
+set.seed(20261004)
+B &lt;- 200000L
+km &lt;- rbinom(B, n, p)
+ym &lt;- rbinom(B, 1L, p)
+qum &lt;- km/n
+qsm &lt;- (km+1)/(n+2)
+aum &lt;- as.integer((c.fp+c.fn)*km &gt; c.fp*n)
+asm &lt;- as.integer((c.fp+c.fn)*(km+1) &gt; c.fp*(n+2))
+cost &lt;- function(a, y) c.fp*a*(1-y) + c.fn*(1-a)*y
+paired &lt;- cbind(
+  MSE = (qsm-p)^2 - (qum-p)^2,
+  Fresh.Brier = (qsm-ym)^2 - (qum-ym)^2,
+  Reused.Brier = (km/n)*((1-qsm)^2-(1-qum)^2) +
+    (1-km/n)*(qsm^2-qum^2),
+  Decision.cost = cost(asm, ym) - cost(aum, ym)
+)
+truth &lt;- c(mse.s-mse.u, fresh.s-fresh.u, train.s-train.u, cost.s-cost.u)
+mc &lt;- data.frame(metric = colnames(paired), exact.difference = truth,
+                 estimate = colMeans(paired),
+                 mcse = apply(paired, 2, sd)/sqrt(B),
+                 replications = B)
+mc$standardized.error &lt;- (mc$estimate - mc$exact.difference)/mc$mcse
+# Exact variance of paired realized decision-cost difference.
+mass.two &lt;- dbinom(2, n, p)
+delta.var &lt;- mass.two * (c.fp^2*(1-p)+c.fn^2*p) - cost.diff^2
+stopifnot(delta.var &gt; 0)
+mc$exact.mcse &lt;- c(NA_real_, NA_real_, NA_real_, sqrt(delta.var/B))
+write.csv(mc, file.path(out, "ch03-monte-carlo.csv"), row.names = FALSE)
+
+latex.table &lt;- function(file, spec, header, rows) {
+  writeLines(c(paste0("\\begin{tabular}{", spec, "}"), "\\toprule",
+               paste0(paste(header, collapse=" &amp; "), " \\\\"),
+               "\\midrule", rows, "\\bottomrule", "\\end{tabular}"), file)
+}
+fmt &lt;- function(x) sprintf("%.8f", x)
+exact.rows &lt;- vapply(seq_len(nrow(exact)), function(i) {
+  paste0(paste(c(exact$rule[i], fmt(exact$mse[i]), fmt(exact$fresh.brier[i]),
+                    fmt(exact$reused.brier[i]), fmt(exact$decision.cost[i])),
+              collapse=" &amp; "), " \\\\")
+}, character(1))
+latex.table(file.path(out,"ch03-exact.tex"), "lrrrr",
+            c("Rule", "MSE", "Fresh Brier", "Reused Brier", "Decision cost"), exact.rows)
+mc.rows &lt;- vapply(seq_len(nrow(mc)), function(i) {
+  metric &lt;- gsub("_", " ", mc$metric[i], fixed=TRUE)
+  paste0(paste(c(metric, fmt(mc$exact.difference[i]), fmt(mc$estimate[i]),
+                    fmt(mc$mcse[i])), collapse=" &amp; "), " \\\\")
+}, character(1))
+latex.table(file.path(out,"ch03-monte-carlo.tex"), "lrrr",
+            c("Metric", "Exact", "Simulation", "MCSE"), mc.rows)
+
+grid &lt;- seq(0, 1, length.out=1001L)
+r.u &lt;- grid*(1-grid)/n
+r.s &lt;- (n*grid*(1-grid)+(1-2*grid)^2)/(n+2)^2
+d.u &lt;- vapply(grid, function(z) sum(dbinom(k,n,z)*
+                   (c.fp*(1-z)*a.u+c.fn*z*(1-a.u))), numeric(1))
+d.s &lt;- vapply(grid, function(z) sum(dbinom(k,n,z)*
+                   (c.fp*(1-z)*a.s+c.fn*z*(1-a.s))), numeric(1))
+grid.result &lt;- data.frame(p=grid, mse.u=r.u, mse.s=r.s,
+                          decision.u=d.u, decision.s=d.s)
+write.csv(grid.result, file.path(out,"ch03-risk-curves.csv"), row.names=FALSE)
+blue &lt;- "#002D72"
+rust &lt;- "#98421E"
+draw.risks &lt;- function() {
+  par(mfrow=c(1,2), mar=c(4.1,4.4,2.1,0.8), las=1, family="serif")
+  matplot(grid,cbind(r.u,r.s),type="l",lty=c(1,2),lwd=2,
+          col=c(blue,rust),xlab="True probability p",ylab="Squared-error risk",
+          main="Estimating the probability")
+  abline(v=p,lty=3,col="gray50")
+  legend("topright",c("Unbiased", "Shrinkage"),lty=c(1,2),
+         col=c(blue,rust),lwd=2,bty="n",cex=.86)
+  matplot(grid,cbind(d.u,d.s),type="l",lty=c(1,2),lwd=2,
+          col=c(blue,rust),xlab="True probability p",ylab="Expected decision cost",
+          main="Acting at threshold 3/13")
+  abline(v=threshold,lty=3,col="gray50")
+  legend("topright",c("Unbiased", "Shrinkage"),lty=c(1,2),
+         col=c(blue,rust),lwd=2,bty="n",cex=.86)
+}
+draw.boundary &lt;- function() {
+  par(mfrow=c(1,2), mar=c(4.1,4.4,2.1,0.8), las=1, family="serif")
+  use &lt;- 0:5
+  matplot(use,cbind(q.u[use+1],q.s[use+1]),type="b",pch=c(1,16),
+          lty=c(1,2),lwd=1.8,col=c(blue,rust),xlab="Observed event count K",
+          ylab="Reported probability",main="Only K = 2 changes the action")
+  abline(h=threshold,lty=3,col="gray40")
+  legend("topleft",c("Unbiased", "Shrinkage", "Threshold"),
+         lty=c(1,2,3),col=c(blue,rust,"gray40"),bty="n",cex=.82)
+  barplot(w,names.arg=k,col=ifelse(k==2,rust,"#B8C7D9"),border=NA,
+          ylim=c(0,max(w)*1.12),cex.names=.8,
+          xlab="Training event count K",ylab="Probability",main="Binomial(10, 0.15)")
+}
+for (name in c("risks", "boundary")) {
+  fun &lt;- if (name=="risks") draw.risks else draw.boundary
+  pdf(file.path(out,paste0("ch03-",name,".pdf")),width=8,height=3.7,
+      useDingbats=FALSE)
+  fun(); dev.off()
+  png(file.path(out,paste0("ch03-",name,".png")),width=1600,height=740,res=200)
+  fun(); dev.off()
+}
+
+
+capture.output(sessionInfo(),file=file.path(out,"ch03-session-info.txt"))
+print(exact,digits=10)
+print(mc,digits=7)
+
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">10</span><span class="dt">L</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fl">0.15</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>c.fp <span class="ot">&lt;-</span> <span class="dv">3</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>c.fn <span class="ot">&lt;-</span> <span class="dv">10</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>threshold <span class="ot">&lt;-</span> c.fp <span class="sc">/</span> (c.fp <span class="sc">+</span> c.fn)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>k <span class="ot">&lt;-</span> <span class="dv">0</span><span class="sc">:</span>n</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>w <span class="ot">&lt;-</span> <span class="fu">dbinom</span>(k, <span class="at">size =</span> n, <span class="at">prob =</span> p)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>q.u <span class="ot">&lt;-</span> k <span class="sc">/</span> n</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>q.s <span class="ot">&lt;-</span> (k <span class="sc">+</span> <span class="dv">1</span>) <span class="sc">/</span> (n <span class="sc">+</span> <span class="dv">2</span>)</span></code></pre></div>
+<p>This is a homogeneous population model: there are no covariates and
+every training subject and future subject shares the same event
+probability. That restriction lets us isolate estimation from action. In
+a heterogeneous population, both prediction error and decision cost
+would additionally average over the covariate distribution. A claim
+about one common probability should not silently become a claim about
+calibration in subgroups or the value of individualized treatment.</p>
+<h2 id="squared-error-derive-the-comparison-before-simulating">4.2 Squared-error
+risk and the bias–variance tradeoff</h2>
+<p>Under squared-error loss, frequentist risk is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">[</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo stretchy="true" form="postfix">]</mo></mrow><mo>=</mo><msub><mo>Var</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mo stretchy="false" form="prefix">{</mo><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mi>p</mi><msup><mo stretchy="false" form="postfix">}</mo><mn>2</mn></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">R_p(q)=\mathbb{E}_p[(q-p)^2]
+       =\operatorname{Var}_p(q)+\{\mathbb{E}_p(q)-p\}^2.
+ \label{i3-mse-decomposition}</annotation></semantics></math><span id="i3-mse-decomposition" class="equation-anchor"></span><span class="equation-number">(4.2)</span></span> To see the
+second equality, write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mo>−</mo><mi>p</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo>−</mo><msub><mi>𝔼</mi><mi>p</mi></msub><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>𝔼</mi><mi>p</mi></msub><mi>q</mi><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">q-p=(q-\mathbb{E}_p q)+(\mathbb{E}_p q-p)</annotation></semantics></math></span>,
+square, and take expectations. The cross term vanishes because
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo>−</mo><msub><mi>𝔼</mi><mi>p</mi></msub><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mathbb{E}_p(q-\mathbb{E}_p q)=0</annotation></semantics></math></span>.
+This calculation assumes a finite second moment, which both bounded
+reports have.</p>
+<p>Since
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mi>p</mi></msub><mi>K</mi><mo>=</mo><mi>n</mi><mi>p</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}_pK=np</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>Var</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>n</mi><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Var}_p(K)=np(1-p)</annotation></semantics></math></span>,
+the sample proportion has zero bias and variance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">p(1-p)/n</annotation></semantics></math></span>.
+For the shrinkage rule,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>q</mi><mi>S</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mi>p</mi></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mfrac><mrow><mn>1</mn><mo>−</mo><mn>2</mn><mi>p</mi></mrow><mrow><mi>n</mi><mo>+</mo><mn>2</mn></mrow></mfrac><mo>,</mo></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"><msub><mo>Var</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>q</mi><mi>S</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mfrac><mrow><mi>n</mi><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>+</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mfrac><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+ \mathbb{E}_p(q_S)-p&amp;=\frac{1-2p}{n+2},\label{i3-bias}\\
+ \operatorname{Var}_p(q_S)&amp;=\frac{np(1-p)}{(n+2)^2}.
+ \label{i3-variance}
+\end{aligned}</annotation></semantics></math><span id="i3-bias" class="equation-anchor"></span><span id="i3-variance" class="equation-anchor"></span><span class="equation-number">(4.3, 4.4)</span></span> Its bias is positive below
+one half, negative above one half, and zero at one half. Its variance is
+always smaller than that of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>U</mi></msub><annotation encoding="application/x-tex">q_U</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>p</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;p&lt;1</annotation></semantics></math></span>.
+Smaller variance alone does not settle the MSE comparison, because the
+squared bias must be included:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>q</mi><mi>U</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mi>n</mi></mfrac><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>R</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>q</mi><mi>S</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>n</mi><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mn>2</mn><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>+</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">R_p(q_U)=\frac{p(1-p)}n,\qquad
+ R_p(q_S)=\frac{np(1-p)+(1-2p)^2}{(n+2)^2}.
+ \label{i3-mse}</annotation></semantics></math><span id="i3-mse" class="equation-anchor"></span><span class="equation-number">(4.5)</span></span></p>
+<p>At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn><mo>,</mo><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">n=10,p=0.15</annotation></semantics></math></span>,
+these risks are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.01275000</mn><annotation encoding="application/x-tex">0.01275000</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.01225694</mn><annotation encoding="application/x-tex">0.01225694</annotation></semantics></math></span>.
+The improvement is real but small. It is also local in the parameter
+space. Subtraction, using
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mn>2</mn><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>=</mo><mn>1</mn><mo>−</mo><mn>4</mn><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">(1-2p)^2=1-4p(1-p)</annotation></semantics></math></span>,
+gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>q</mi><mi>S</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msub><mi>R</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>q</mi><mi>U</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>n</mi><mo>−</mo><mn>4</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mi>n</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>n</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>+</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">R_p(q_S)-R_p(q_U)
+ =\frac{n-4(2n+1)p(1-p)}{n(n+2)^2}.
+ \label{i3-mse-difference}</annotation></semantics></math><span id="i3-mse-difference" class="equation-anchor"></span><span class="equation-number">(4.6)</span></span> Shrinkage
+wins precisely when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&gt;</mo><mi>n</mi><mi>/</mi><mo stretchy="false" form="prefix">{</mo><mn>4</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mi>n</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">p(1-p)&gt;n/\{4(2n+1)\}</annotation></semantics></math></span>.
+At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">n=10</annotation></semantics></math></span>
+the improvement interval is approximately
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.13813</mn><mo>,</mo><mn>0.86187</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.13813,0.86187)</annotation></semantics></math></span>.
+At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">p=0</annotation></semantics></math></span>,
+by contrast,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">K=0</annotation></semantics></math></span>
+certainly and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>U</mi></msub><annotation encoding="application/x-tex">q_U</annotation></semantics></math></span>
+has zero error, whereas
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>S</mi></msub><mo>=</mo><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>+</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">q_S=1/(n+2)</annotation></semantics></math></span>
+has positive error. Therefore shrinkage does not dominate the sample
+proportion under squared error over the full parameter space.</p>
+<p>There is no conflict with a minimum-variance-unbiased theorem. Such a
+theorem compares unbiased estimators;
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>S</mi></msub><annotation encoding="application/x-tex">q_S</annotation></semantics></math></span>
+is generally outside that class. Nor does the existence of a complete
+sufficient count make every function of the count optimal for every
+loss. The qualification “of its expected value” in the Lehmann–Scheffé
+formulation matters.</p>
+<h2 id="prediction-for-an-independent-outcome">4.3 Prediction for an
+independent outcome</h2>
+<p>Squared error has compared the reports with the unknown probability.
+We next compare the same reports with an outcome that has not yet
+occurred. Now introduce a fresh outcome
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Y</mi><mo>∼</mo><mo>Bernoulli</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">Y\sim\operatorname{Bernoulli}(p)</annotation></semantics></math></span>,
+independent of the training sample at fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+Use
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">q(K)</annotation></semantics></math></span>
+to predict
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Y</mi><annotation encoding="application/x-tex">Y</annotation></semantics></math></span>
+and score the prediction by the Brier loss
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>Y</mi><mo>−</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><annotation encoding="application/x-tex">(Y-q)^2</annotation></semantics></math></span>.
+Conditioning on the training count fixes the report, so
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">[</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>Y</mi><mo>−</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">]</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mi>p</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>q</mi><mn>2</mn></msup></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+ \mathbb{E}_p[(Y-q)^2\mid K]
+  &amp;=p(1-q)^2+(1-p)q^2\\
+  &amp;=p(1-p)+(q-p)^2.
+ \label{i3-brier-conditional}
+\end{aligned}</annotation></semantics></math><span id="i3-brier-conditional" class="equation-anchor"></span><span class="equation-number">(4.7)</span></span> A further expectation over
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math></span>
+yields
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>B</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>:=</mo><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">[</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>Y</mi><mo>−</mo><mi>q</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo stretchy="true" form="postfix">]</mo></mrow><mo>=</mo><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><msub><mi>R</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">B_p(q):=\mathbb{E}_p[(Y-q(K))^2]=p(1-p)+R_p(q).
+ \label{i3-brier-fresh}</annotation></semantics></math><span id="i3-brier-fresh" class="equation-anchor"></span><span class="equation-number">(4.8)</span></span> The first term
+is outcome variation even if
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+were known. The second is the cost of estimating it. Because the first
+term is identical for both rules, the MSE ordering transfers exactly to
+fresh-outcome Brier risk in this experiment. At the chosen
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+the Brier risks are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.14025000</mn><annotation encoding="application/x-tex">0.14025000</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.13975694</mn><annotation encoding="application/x-tex">0.13975694</annotation></semantics></math></span>.</p>
+<p>Independence is doing substantive work. We conditioned on training
+data while leaving the outcome distribution
+Bernoulli<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(p)</annotation></semantics></math></span>.
+This describes a new exchangeable individual under the model, not a
+subject selected according to their outcome and not a later population
+with a different event probability. The decomposition is a statement
+about that evaluation design; it does not establish a universal ranking
+under distribution change.</p>
+<p>For a fixed report, <a href="#i3-brier-conditional" data-reference-type="eqref" data-reference="i3-brier-conditional">(4.7)</a> also
+explains strict propriety: the expected score is uniquely minimized at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mo>=</mo><mi>p</mi></mrow><annotation encoding="application/x-tex">q=p</annotation></semantics></math></span>.
+But our reports fluctuate with the training sample. Propriety supplies a
+target, while repeated-sampling risk compares how two procedures
+approach that target. Neither statement says that converting each report
+into a discontinuous action preserves its ordering under a different
+loss. We need both statements: propriety identifies the probability
+target, while risk evaluates a procedure for estimating it.</p>
+<h2 id="why-reusing-an-outcome-changes-the-answer">4.4 Why reusing an
+outcome changes the answer</h2>
+<p>Suppose instead that the report is scored against the observations
+used to calculate it. Write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>U</mi><mo>=</mo><mi>K</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">U=K/n</annotation></semantics></math></span>
+and define the training-average score
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>B</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">t</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">n</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mn>1</mn><mi>n</mi></mfrac><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>−</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>=</mo><mi>U</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>U</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo>−</mo><mi>U</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat{B}_{\mathrm{train}}(q)=\frac1n\sum_{i=1}^n(X_i-q)^2
+       =U(1-U)+(q-U)^2.
+ \label{i3-training-identity}</annotation></semantics></math><span id="i3-training-identity" class="equation-anchor"></span><span class="equation-number">(4.9)</span></span> The
+identity follows by expanding the square, using
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>X</mi><mi>i</mi><mn>2</mn></msubsup><mo>=</mo><msub><mi>X</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">X_i^2=X_i</annotation></semantics></math></span>,
+and collecting terms. For every realized sample,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mo>=</mo><mi>U</mi></mrow><annotation encoding="application/x-tex">q=U</annotation></semantics></math></span>
+minimizes this score over all constant reports. Consequently
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>U</mi></msub><annotation encoding="application/x-tex">q_U</annotation></semantics></math></span>
+always looks at least as good as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>S</mi></msub><annotation encoding="application/x-tex">q_S</annotation></semantics></math></span>
+on the data it summarized. This is an optimization fact, not independent
+evidence of better prediction.</p>
+<p>We can quantify the optimism rather than merely warn about it. For
+any report
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">q(K)</annotation></semantics></math></span>,
+expansion of the fresh and training expectations gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>B</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msub><mi>𝔼</mi><mi>p</mi></msub><msub><mover><mi>B</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">t</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">n</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>2</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mi>U</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mi>p</mi><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>=</mo><mn>2</mn><msub><mo>Cov</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo>,</mo><mi>U</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">B_p(q)-\mathbb{E}_p\widehat{B}_{\mathrm{train}}(q)
+  =2\{\mathbb{E}_p(qU)-p\mathbb{E}_p(q)\}
+  =2\operatorname{Cov}_p(q,U).
+ \label{i3-optimism}</annotation></semantics></math><span id="i3-optimism" class="equation-anchor"></span><span class="equation-number">(4.10)</span></span> For these affine
+rules the covariance is positive: the observed success count increases
+both the fitted report and the outcomes used to judge it. Since
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Var</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>U</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">\operatorname{Var}(U)=p(1-p)/n</annotation></semantics></math></span>,
+the optimism is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">2p(1-p)/n</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>U</mi></msub><annotation encoding="application/x-tex">q_U</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>+</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">2p(1-p)/(n+2)</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>S</mi></msub><annotation encoding="application/x-tex">q_S</annotation></semantics></math></span>.</p>
+<p>The expected reused scores are therefore
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.11475000</mn><annotation encoding="application/x-tex">0.11475000</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.11850694</mn><annotation encoding="application/x-tex">0.11850694</annotation></semantics></math></span>,
+respectively. The reused score favors
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>U</mi></msub><annotation encoding="application/x-tex">q_U</annotation></semantics></math></span>,
+although the fresh score favors
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>S</mi></msub><annotation encoding="application/x-tex">q_S</annotation></semantics></math></span>.
+Shrinkage reduces the degree of optimism as well as changing the report.
+Reporting only the smaller training score would conceal both facts.
+Scoring one fixed training observation has the same expectation here by
+exchangeability; it remains dependent evaluation.</p>
+<p>The following check enumerates all
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>2</mn><mn>10</mn></msup><annotation encoding="application/x-tex">2^{10}</annotation></semantics></math></span>
+training sequences. It verifies the weighted training-average score
+without relying only on a count-level formula. The vector of reports is
+subtracted from each column of the observation matrix, so every row is
+scored against its own report.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Enumerate every binary training vector, not only the binomial count.</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(<span class="fu">expand.grid</span>(<span class="fu">rep</span>(<span class="fu">list</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">1</span>), n)))</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>counts <span class="ot">&lt;-</span> <span class="fu">rowSums</span>(x)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>sequence.weights <span class="ot">&lt;-</span> p<span class="sc">^</span>counts <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">-</span> p)<span class="sc">^</span>(n <span class="sc">-</span> counts)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>qs.all <span class="ot">&lt;-</span> (counts <span class="sc">+</span> <span class="dv">1</span>) <span class="sc">/</span> (n <span class="sc">+</span> <span class="dv">2</span>)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>observed.brier <span class="ot">&lt;-</span> <span class="fu">rowMeans</span>((x <span class="sc">-</span> qs.all)<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">abs</span>(<span class="fu">sum</span>(sequence.weights) <span class="sc">-</span> <span class="dv">1</span>) <span class="sc">&lt;</span> <span class="fl">1e-12</span>)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">abs</span>(<span class="fu">sum</span>(sequence.weights <span class="sc">*</span> observed.brier) <span class="sc">-</span> train.s) <span class="sc">&lt;</span> <span class="fl">1e-12</span>)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">abs</span>(<span class="fu">sum</span>(sequence.weights <span class="sc">*</span> (qs.all <span class="sc">-</span> x[, <span class="dv">1</span>])<span class="sc">^</span><span class="dv">2</span>) <span class="sc">-</span> train.s) <span class="sc">&lt;</span> <span class="fl">1e-12</span>)</span></code></pre></div>
+<h2 id="a-threshold-policy-and-its-actual-cost">4.5 A threshold policy and
+its actual cost</h2>
+<p>Let action 1 mean making a positive decision. A false positive costs
+3 and a false negative costs 10, with zero cost for either correct
+decision:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>,</mo><mi>Y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>3</mn><mi>a</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>Y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mn>10</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>Y</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">L(a,Y)=3a(1-Y)+10(1-a)Y.
+ \label{i3-action-loss}</annotation></semantics></math><span id="i3-action-loss" class="equation-anchor"></span><span class="equation-number">(4.11)</span></span> These are
+illustrative units, not clinical utilities. If a probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>q</mi><annotation encoding="application/x-tex">q</annotation></semantics></math></span>
+is used in the calculation, the expected costs of actions 1 and 0 are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">3(1-q)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>10</mn><mi>q</mi></mrow><annotation encoding="application/x-tex">10q</annotation></semantics></math></span>.
+Action 1 is strictly preferred when
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&lt;</mo><mn>10</mn><mi>q</mi><mspace width="1.0em"></mspace><mo>⇔</mo><mspace width="1.0em"></mspace><mi>q</mi><mo>&gt;</mo><mfrac><mn>3</mn><mn>13</mn></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">3(1-q)&lt;10q\quad\Longleftrightarrow\quad q&gt;\frac3{13}.
+ \label{i3-threshold}</annotation></semantics></math><span id="i3-threshold" class="equation-anchor"></span><span class="equation-number">(4.12)</span></span> We adopt action 0
+at equality. Either action minimizes the calculated cost at an exact
+tie, but fixing the convention makes a policy reproducible.</p>
+<p>For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">n=10</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>U</mi></msub><mo>&gt;</mo><mn>3</mn><mi>/</mi><mn>13</mn></mrow><annotation encoding="application/x-tex">q_U&gt;3/13</annotation></semantics></math></span>
+is equivalent to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>≥</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">K\ge3</annotation></semantics></math></span>,
+whereas
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>S</mi></msub><mo>&gt;</mo><mn>3</mn><mi>/</mi><mn>13</mn></mrow><annotation encoding="application/x-tex">q_S&gt;3/13</annotation></semantics></math></span>
+is equivalent to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>≥</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">K\ge2</annotation></semantics></math></span>.
+Their actions differ only at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">K=2</annotation></semantics></math></span>:
+the reports are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.20</mn><annotation encoding="application/x-tex">0.20</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.25</mn><annotation encoding="application/x-tex">0.25</annotation></semantics></math></span>,
+on opposite sides of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mi>/</mi><mn>13</mn><mo>≈</mo><mn>0.23077</mn></mrow><annotation encoding="application/x-tex">3/13\approx0.23077</annotation></semantics></math></span>.
+Neither report ever equals the threshold in this sample size. Integer
+inequalities implement the policy without using a rounded decimal
+threshold:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb3" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Integer comparisons implement action 0 on an exact threshold tie.</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>a.u <span class="ot">&lt;-</span> <span class="fu">as.integer</span>((c.fp <span class="sc">+</span> c.fn) <span class="sc">*</span> k <span class="sc">&gt;</span> c.fp <span class="sc">*</span> n)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>a.s <span class="ot">&lt;-</span> <span class="fu">as.integer</span>((c.fp <span class="sc">+</span> c.fn) <span class="sc">*</span> (k <span class="sc">+</span> <span class="dv">1</span>) <span class="sc">&gt;</span> c.fp <span class="sc">*</span> (n <span class="sc">+</span> <span class="dv">2</span>))</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">identical</span>(<span class="fu">which</span>(a.u <span class="sc">!=</span> a.s) <span class="sc">-</span> <span class="dv">1</span><span class="dt">L</span>, <span class="dv">2</span><span class="dt">L</span>))</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">identical</span>(a.u, <span class="fu">as.integer</span>(q.u <span class="sc">&gt;</span> threshold)))</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">identical</span>(a.s, <span class="fu">as.integer</span>(q.s <span class="sc">&gt;</span> threshold)))</span></code></pre></div>
+<figure id="i3-boundary-figure">
+<a href="../assets/inference/ch03-boundary.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch03-boundary.png" alt="Figure 4.1. Reports near the decision boundary, and the training-count
+distribution at
+n=10,p=0.15n=10,p=0.15.
+The highlighted count
+K=2K=2
+is the only disagreement state. Larger counts, omitted from the left
+panel for readability, give action 1 under both rules.">
+</a><figcaption>Figure 4.1. Reports near the decision boundary, and the training-count
+distribution at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn><mo>,</mo><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">n=10,p=0.15</annotation></semantics></math></span>.
+The highlighted count
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">K=2</annotation></semantics></math></span>
+is the only disagreement state. Larger counts, omitted from the left
+panel for readability, give action 1 under both rules.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch03-boundary.png">Open full-size figure</a></p></figure>
+<p>Actual performance must be evaluated under the true
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+not under the report that selected the action. For a policy
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">a(K)</annotation></semantics></math></span>,
+independence of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Y</mi><annotation encoding="application/x-tex">Y</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math></span>
+gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>C</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>10</mn><mi>p</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>3</mn><mo>−</mo><mn>13</mn><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>ℙ</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">{</mo><mi>a</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">C_p(a)=10p+(3-13p)\mathbb{P}_p\{a(K)=1\}.
+ \label{i3-policy-risk}</annotation></semantics></math><span id="i3-policy-risk" class="equation-anchor"></span><span class="equation-number">(4.13)</span></span> At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>,
+action 1 costs
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>2.55</mn><annotation encoding="application/x-tex">2.55</annotation></semantics></math></span>
+in expectation and action 0 costs
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1.50</mn><annotation encoding="application/x-tex">1.50</annotation></semantics></math></span>.
+Thus unnecessary positive decisions cost an extra
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1.05</mn><annotation encoding="application/x-tex">1.05</annotation></semantics></math></span>
+each on average. Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>a</mi><mi>U</mi></msub><mo>,</mo><msub><mi>a</mi><mi>S</mi></msub></mrow><annotation encoding="application/x-tex">a_U,a_S</annotation></semantics></math></span>
+be the two threshold policies. Their exact difference is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>C</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>a</mi><mi>S</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msub><mi>C</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>a</mi><mi>U</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>3</mn><mo>−</mo><mn>13</mn><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mn>10</mn><mn>2</mn></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>p</mi><mn>2</mn></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>8</mn></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">C_p(a_S)-C_p(a_U)=(3-13p)\binom{10}{2}p^2(1-p)^8.
+ \label{i3-cost-difference}</annotation></semantics></math><span id="i3-cost-difference" class="equation-anchor"></span><span class="equation-number">(4.14)</span></span> Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>=</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.27589666</mn></mrow><annotation encoding="application/x-tex">\mathbb{P}_p(K=2)=0.27589666</annotation></semantics></math></span>,
+yielding an increase of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.28969149</mn><annotation encoding="application/x-tex">0.28969149</annotation></semantics></math></span>.
+The action probabilities are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.17980352</mn><annotation encoding="application/x-tex">0.17980352</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.45570018</mn><annotation encoding="application/x-tex">0.45570018</annotation></semantics></math></span>,
+and the costs are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1.68879370</mn><annotation encoding="application/x-tex">1.68879370</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1.97848519</mn><annotation encoding="application/x-tex">1.97848519</annotation></semantics></math></span>.</p>
+<p>The explanation is specific: shrinkage moves this disagreement state
+upward across a threshold that exceeds the true probability. Numerical
+errors away from the threshold still contribute to MSE but cannot change
+the action. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>p</mi><mo>&lt;</mo><mn>3</mn><mi>/</mi><mn>13</mn></mrow><annotation encoding="application/x-tex">0&lt;p&lt;3/13</annotation></semantics></math></span>
+shrinkage increases this policy’s cost; for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mi>/</mi><mn>13</mn><mo>&lt;</mo><mi>p</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">3/13&lt;p&lt;1</annotation></semantics></math></span>
+it decreases cost. At the threshold the true expected costs tie.
+Figure <a href="#i3-risks-figure" data-reference-type="ref" data-reference="i3-risks-figure">4.2</a> compares these different risk
+functions.</p>
+<p>There are two distinct sources of variation in this calculation.
+Whether
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">K=2</annotation></semantics></math></span>
+occurs depends on the training sample. Conditional on that count, a new
+nonevent makes the shrinkage policy worse by 3, while a new event makes
+it better by 10. At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>,
+these possibilities have probabilities
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.85</mn><annotation encoding="application/x-tex">0.85</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.15</mn><annotation encoding="application/x-tex">0.15</annotation></semantics></math></span>,
+giving the conditional average
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.85</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mn>10</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.15</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1.05</mn></mrow><annotation encoding="application/x-tex">3(0.85)-10(0.15)=1.05</annotation></semantics></math></span>.
+The expectation does not assert that shrinkage loses on every realized
+subject. It states that the losses average unfavorably across repeated
+subjects and training samples.</p>
+<figure id="i3-risks-figure">
+<a href="../assets/inference/ch03-risks.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch03-risks.png" alt="Figure 4.2. Exact repeated-sampling risks for
+n=10n=10.
+The left reference line marks
+p=0.15p=0.15;
+the right marks the decision threshold
+3/133/13.
+Changing the loss changes the comparison.">
+</a><figcaption>Figure 4.2. Exact repeated-sampling risks for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">n=10</annotation></semantics></math></span>.
+The left reference line marks
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>;
+the right marks the decision threshold
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mi>/</mi><mn>13</mn></mrow><annotation encoding="application/x-tex">3/13</annotation></semantics></math></span>.
+Changing the loss changes the comparison.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch03-risks.png">Open full-size figure</a></p></figure>
+<div id="i3-exact-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 4.1. Exact expectations at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn><mo>,</mo><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">n=10,p=0.15</annotation></semantics></math></span>.
+Reused Brier evaluates the training observations; fresh Brier and
+decision cost concern an independent outcome. Costs and squared-error
+scores are different units.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Rule</th>
+<th style="text-align: right;">MSE</th>
+<th style="text-align: right;">Fresh Brier</th>
+<th style="text-align: right;">Reused Brier</th>
+<th style="text-align: right;">Decision cost</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Unbiased</td>
+<td style="text-align: right;">0.01275000</td>
+<td style="text-align: right;">0.14025000</td>
+<td style="text-align: right;">0.11475000</td>
+<td style="text-align: right;">1.68879370</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Shrinkage</td>
+<td style="text-align: right;">0.01225694</td>
+<td style="text-align: right;">0.13975694</td>
+<td style="text-align: right;">0.11850694</td>
+<td style="text-align: right;">1.97848519</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<h2 id="a-bayes-rule-is-not-a-pointwise-guarantee">4.6 A Bayes rule is not a
+pointwise guarantee</h2>
+<p>The same shrinkage report has a Bayesian interpretation. Put a fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Beta}(1,1)</annotation></semantics></math></span>
+prior on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+Multiplying its density by the binomial likelihood gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∣</mo><mi>K</mi><mo>∼</mo><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>+</mo><mn>1</mn><mo>,</mo><mi>n</mi><mo>−</mo><mi>K</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p\mid K\sim\operatorname{Beta}(K+1,n-K+1)</annotation></semantics></math></span>,
+whose mean is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>S</mi></msub><annotation encoding="application/x-tex">q_S</annotation></semantics></math></span>.
+For a proposed report
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>q</mi><annotation encoding="application/x-tex">q</annotation></semantics></math></span>,
+posterior squared-error loss decomposes as
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">[</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>−</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">]</mo></mrow><mo>=</mo><mo>Var</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mo stretchy="false" form="prefix">{</mo><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">[</mo><mi>p</mi><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">]</mo></mrow><mo>−</mo><mi>q</mi><msup><mo stretchy="false" form="postfix">}</mo><mn>2</mn></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}[(p-q)^2\mid K]=\operatorname{Var}(p\mid K)
+                  +\{\mathbb{E}[p\mid K]-q\}^2.
+ \label{i3-posterior-square}</annotation></semantics></math><span id="i3-posterior-square" class="equation-anchor"></span><span class="equation-number">(4.15)</span></span> Thus the
+posterior mean minimizes posterior expected squared error. It is not the
+definition of a Bayes action for every loss; an absolute-error loss
+instead leads to a posterior median. Posterior expected loss is the
+general principle.</p>
+<p>Under the specified prior-predictive model,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>Y</mi><mo>=</mo><mn>1</mn><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">[</mo><mi>p</mi><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">]</mo></mrow><mo>=</mo><msub><mi>q</mi><mi>S</mi></msub></mrow><annotation encoding="application/x-tex">\mathbb{P}(Y=1\mid K)=\mathbb{E}[p\mid K]=q_S</annotation></semantics></math></span>.
+Thresholding
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>S</mi></msub><annotation encoding="application/x-tex">q_S</annotation></semantics></math></span>
+consequently minimizes posterior expected loss <a href="#i3-action-loss" data-reference-type="eqref" data-reference="i3-action-loss">(4.11)</a> too. This
+conclusion and the
+fixed-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+cost increase are simultaneously correct. One expectation averages over
+the stated posterior; the other evaluates training samples and new
+outcomes at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>.</p>
+<p>Integrating <a href="#i3-mse" data-reference-type="eqref" data-reference="i3-mse">(4.5)</a> over the uniform prior gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>6</mn><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">1/(6n)</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>U</mi></msub><annotation encoding="application/x-tex">q_U</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mo stretchy="false" form="prefix">{</mo><mn>6</mn><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>+</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">1/\{6(n+2)\}</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>S</mi></msub><annotation encoding="application/x-tex">q_S</annotation></semantics></math></span>.
+The prior-averaged decision costs at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">n=10</annotation></semantics></math></span>
+are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>14</mn><mi>/</mi><mn>11</mn></mrow><annotation encoding="application/x-tex">14/11</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>5</mn><mi>/</mi><mn>4</mn></mrow><annotation encoding="application/x-tex">5/4</annotation></semantics></math></span>,
+favoring the shrinkage policy by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>44</mn></mrow><annotation encoding="application/x-tex">1/44</annotation></semantics></math></span>.
+For the decision cost, the prior-predictive count distribution is
+uniform on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>,</mo><mi>…</mi><mo>,</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">0,\ldots,10</annotation></semantics></math></span>.
+The policies differ only at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">K=2</annotation></semantics></math></span>,
+where the posterior predictive event probability is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>4</mn></mrow><annotation encoding="application/x-tex">1/4</annotation></semantics></math></span>.
+Choosing action 1 then costs
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>3</mn><mi>/</mi><mn>4</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>9</mn><mi>/</mi><mn>4</mn></mrow><annotation encoding="application/x-tex">3(3/4)=9/4</annotation></semantics></math></span>,
+rather than
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>10</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mi>/</mi><mn>4</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>5</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">10(1/4)=5/2</annotation></semantics></math></span>
+for action 0. The shrinkage policy saves
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>4</mn></mrow><annotation encoding="application/x-tex">1/4</annotation></semantics></math></span>
+in that state; weighting it by the state probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>11</mn></mrow><annotation encoding="application/x-tex">1/11</annotation></semantics></math></span>
+gives the saving
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>44</mn></mrow><annotation encoding="application/x-tex">1/44</annotation></semantics></math></span>.
+A Bayes improvement is therefore a prior-weighted improvement, not a
+claim at every parameter value. Calling the uniform prior
+“uninformative” does not remove its effect near a decision boundary.
+Estimating prior parameters or introducing a hierarchy changes the
+procedure again. The fixed-prior calculation here does not justify
+silently treating a prior fitted from these outcomes as if it had been
+specified beforehand. Chapter <a href="06-bayes.html#i6-chapter" data-reference-type="ref" data-reference="i6-chapter">8</a>
+develops posterior inference under a stated model and prior.</p>
+<h2 id="paired-computation-and-comparing-losses">4.7 Exact calculations and
+paired simulation</h2>
+<p>The complete R example evaluates all eleven count states, checks the
+analytic equalities numerically, and produces the figures and tables. It
+also simulates 200,000 independent training-count/new-outcome pairs with
+seed 20261004. Both procedures use the same pair in each replication.
+For paired loss differences
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>D</mi><mi>b</mi></msub><mo>=</mo><msub><mi>L</mi><mrow><mi>S</mi><mo>,</mo><mi>b</mi></mrow></msub><mo>−</mo><msub><mi>L</mi><mrow><mi>U</mi><mo>,</mo><mi>b</mi></mrow></msub></mrow><annotation encoding="application/x-tex">D_b=L_{S,b}-L_{U,b}</annotation></semantics></math></span>,
+the Monte Carlo standard error is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mo>MCSE</mo><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>D</mi><mo accent="true">¯</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><msub><mi>s</mi><mi>D</mi></msub><msqrt><mi>B</mi></msqrt></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat{\operatorname{MCSE}}(\overline D)
+       =\frac{s_D}{\sqrt B}.
+ \label{i3-mcse}</annotation></semantics></math><span id="i3-mcse" class="equation-anchor"></span><span class="equation-number">(4.16)</span></span> This quantifies
+simulation error in the estimated expectation, not uncertainty about a
+fitted probability for a particular dataset. Pairing retains the
+covariance between procedures. Adding separate marginal variance
+estimates would discard that information.</p>
+<p>One can instead integrate out the new outcome and simulate only the
+conditional cost given
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math></span>.
+That estimator has the same expectation but a smaller Monte Carlo
+variance; its error bar must be calculated from its own replication
+values. Similarly, many validation subjects evaluated with one training
+sample are not independent training replications. A simulation should
+repeat the entire experiment when its target averages over refitting, or
+clearly state that it conditions on the fitted rule. Here exact
+enumeration makes such distinctions visible and avoids choosing a
+simulation size merely to obtain a desired result.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb4" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>paired <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">MSE =</span> (qsm<span class="sc">-</span>p)<span class="sc">^</span><span class="dv">2</span> <span class="sc">-</span> (qum<span class="sc">-</span>p)<span class="sc">^</span><span class="dv">2</span>,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">Fresh.Brier =</span> (qsm<span class="sc">-</span>ym)<span class="sc">^</span><span class="dv">2</span> <span class="sc">-</span> (qum<span class="sc">-</span>ym)<span class="sc">^</span><span class="dv">2</span>,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">Reused.Brier =</span> (km<span class="sc">/</span>n)<span class="sc">*</span>((<span class="dv">1</span><span class="sc">-</span>qsm)<span class="sc">^</span><span class="dv">2</span><span class="sc">-</span>(<span class="dv">1</span><span class="sc">-</span>qum)<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    (<span class="dv">1</span><span class="sc">-</span>km<span class="sc">/</span>n)<span class="sc">*</span>(qsm<span class="sc">^</span><span class="dv">2</span><span class="sc">-</span>qum<span class="sc">^</span><span class="dv">2</span>),</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">Decision.cost =</span> <span class="fu">cost</span>(asm, ym) <span class="sc">-</span> <span class="fu">cost</span>(aum, ym)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>truth <span class="ot">&lt;-</span> <span class="fu">c</span>(mse.s<span class="sc">-</span>mse.u, fresh.s<span class="sc">-</span>fresh.u, train.s<span class="sc">-</span>train.u, cost.s<span class="sc">-</span>cost.u)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>mc <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">metric =</span> <span class="fu">colnames</span>(paired), <span class="at">exact.difference =</span> truth,</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>                 <span class="at">estimate =</span> <span class="fu">colMeans</span>(paired),</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>                 <span class="at">mcse =</span> <span class="fu">apply</span>(paired, <span class="dv">2</span>, sd)<span class="sc">/</span><span class="fu">sqrt</span>(B),</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>                 <span class="at">replications =</span> B)</span></code></pre></div>
+<div id="i3-mc-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 4.2. Paired simulation with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>B</mi><mo>=</mo><mn>200</mn><mo>,</mo><mn>000</mn></mrow><annotation encoding="application/x-tex">B=200{,}000</annotation></semantics></math></span>
+and seed 20261004. Every difference is shrinkage minus unbiased. Exact
+enumeration supplies the expectation, while the MCSE describes the
+numerical uncertainty of its simulation estimate.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Metric</th>
+<th style="text-align: right;">Exact</th>
+<th style="text-align: right;">Simulation</th>
+<th style="text-align: right;">MCSE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">MSE</td>
+<td style="text-align: right;">-0.00049306</td>
+<td style="text-align: right;">-0.00045982</td>
+<td style="text-align: right;">0.00002242</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Fresh Brier</td>
+<td style="text-align: right;">-0.00049306</td>
+<td style="text-align: right;">-0.00053177</td>
+<td style="text-align: right;">0.00010045</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Reused Brier</td>
+<td style="text-align: right;">0.00375694</td>
+<td style="text-align: right;">0.00374976</td>
+<td style="text-align: right;">0.00000455</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Decision cost</td>
+<td style="text-align: right;">0.28969149</td>
+<td style="text-align: right;">0.28553500</td>
+<td style="text-align: right;">0.00556806</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>We now have three distinct comparisons. Smaller variance need not
+mean smaller squared-error risk, because bias also contributes. A proper
+score identifies the true probability as the optimal report under its
+outcome model; it does not rank every estimated policy under a different
+loss. And a score computed on the training outcomes evaluates a
+different experiment from prediction for a fresh person.</p>
+<p>For each comparison, we first identify the outcome, loss, and
+averaging distribution. At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>,
+this calculation gives a precise conclusion: shrinkage improves MSE and
+fresh Brier risk while increasing the cost of the specified policy. To
+evaluate another action, we would need its consequences and loss rather
+than transfer this ordering unchanged.</p>
+<p>Exact sums were possible because the experiment had only eleven count
+states. When exact sampling calculations become difficult, a limit
+argument can approximate an estimator’s error distribution. The next
+chapter returns to the sample proportion and asks what consistency and a
+normal approximation each establish as the sample size grows.</p>
+<section class="interaction" id="decision-explorer" aria-labelledby="decision-explorer-title">
+<h2 id="decision-explorer-title">Explore: the loss changes the comparison</h2>
+<p>Keep the same two estimators and the same binomial experiment. Before revealing the result, predict whether shrinkage lowers squared error, expected decision cost, both, or neither. The calculation below enumerates all eleven possible counts; it is not a simulation.</p>
+<div class="controls"><label>True probability <output id="p-label">0.15</output><br><input id="truth-p" type="range" min="0" max="1" step="0.01" value="0.15"></label><label>False-positive / false-negative cost<br><select id="costs"><option value="3,10">3 / 10</option><option value="1,1">1 / 1</option><option value="1,9">1 / 9</option></select></label><button id="reveal-decision" type="button">Reveal exact comparison</button></div>
+<p class="prediction" id="decision-prompt">Make your prediction first. Which counts will lead the two rules to choose different actions?</p>
+<div id="decision-result" hidden aria-live="polite"><div class="table-scroll"><table><caption>Repeated-sampling risk at the selected truth</caption><thead><tr><th>Rule</th><th>MSE</th><th>Fresh Brier risk</th><th>Decision cost</th></tr></thead><tbody id="decision-rows"></tbody></table></div><p class="result-text" id="decision-explanation"></p><svg id="decision-plot" viewbox="0 0 640 270" role="img" aria-label="Exact decision cost as a function of the true event probability"></svg><div class="legend"><span class="swatch">Sample proportion</span><span class="swatch orange">Shrinkage</span></div></div>
+<p><small>Static counterpart: the chapter’s exact-risk table, threshold derivation, and risk-curve figure. The numerical illustration evaluates hypothetical policies, not a clinical intervention.</small></p></section>
+<h2 id="exercises">4.8 Exercises</h2>
+<ol class="exercises" style='--chapter:"4."'><li id="exercise-4-1"><p><strong>Shrinking a probability estimate.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>∼</mo><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>,</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">K\sim\operatorname{Binomial}(n,p)</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>≥</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">n\ge1</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">p\in[0,1]</annotation></semantics></math></span>.
+Compare
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>U</mi></msub><mo>=</mo><mi>K</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">q_U=K/n</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>S</mi></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>+</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">q_S=(K+1)/(n+2)</annotation></semantics></math></span>
+for estimating
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+under squared-error loss. Derive each bias, variance, and risk; find the
+exact set of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+at which
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>S</mi></msub><annotation encoding="application/x-tex">q_S</annotation></semantics></math></span>
+has smaller risk. Use a boundary parameter to determine whether it
+dominates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>U</mi></msub><annotation encoding="application/x-tex">q_U</annotation></semantics></math></span>
+on the full parameter space.</p>
+</li><li id="exercise-4-2"><p><strong>A fresh outcome has its own target.</strong> For the same training count
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>∼</mo><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>,</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">K\sim\operatorname{Binomial}(n,p)</annotation></semantics></math></span>,
+let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Y</mi><mo>∼</mo><mo>Bernoulli</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">Y\sim\operatorname{Bernoulli}(r)</annotation></semantics></math></span>
+be independent of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math></span>,
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>,</mo><mi>r</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">p,r\in[0,1]</annotation></semantics></math></span>.
+For a report
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">q(K)</annotation></semantics></math></span>,
+derive the expected Brier loss
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">[</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>Y</mi><mo>−</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb E[(Y-q)^2]</annotation></semantics></math></span>
+in terms of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math></span>,
+the squared-error risk for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+and bias for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+Explain why the MSE ordering for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+transfers when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mi>p</mi></mrow><annotation encoding="application/x-tex">r=p</annotation></semantics></math></span>
+but need not transfer when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>≠</mo><mi>p</mi></mrow><annotation encoding="application/x-tex">r\ne p</annotation></semantics></math></span>.
+Give the sign of the loss difference for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>S</mi></msub><mo>,</mo><msub><mi>q</mi><mi>U</mi></msub></mrow><annotation encoding="application/x-tex">q_S,q_U</annotation></semantics></math></span>
+at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn><mo>,</mo><mi>p</mi><mo>=</mo><mn>0.15</mn><mo>,</mo><mi>r</mi><mo>=</mo><mn>0.10</mn></mrow><annotation encoding="application/x-tex">n=10,p=0.15,r=0.10</annotation></semantics></math></span>.</p>
+</li><li id="exercise-4-3"><p><strong>Costs determine the threshold and its ties.</strong> Let a fresh binary outcome
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Y</mi><annotation encoding="application/x-tex">Y</annotation></semantics></math></span>
+have report
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">q\in[0,1]</annotation></semantics></math></span>,
+and define loss
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>,</mo><mi>Y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>c</mi><mn>0</mn></msub><mi>a</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>Y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><msub><mi>c</mi><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>Y</mi></mrow><annotation encoding="application/x-tex">L(a,Y)=c_0a(1-Y)+c_1(1-a)Y</annotation></semantics></math></span>,
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">a\in\{0,1\}</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mn>0</mn></msub><mo>,</mo><msub><mi>c</mi><mn>1</mn></msub><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">c_0,c_1&gt;0</annotation></semantics></math></span>.
+Choose action zero when expected costs tie. Derive the threshold and the
+smallest integer count leading to action one under
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>U</mi></msub><mo>,</mo><msub><mi>q</mi><mi>S</mi></msub></mrow><annotation encoding="application/x-tex">q_U,q_S</annotation></semantics></math></span>.
+Specialize to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mn>0</mn></msub><mo>=</mo><mn>3</mn><mo>,</mo><msub><mi>c</mi><mn>1</mn></msub><mo>=</mo><mn>10</mn><mo>,</mo><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">c_0=3,c_1=10,n=10</annotation></semantics></math></span>,
+and determine the action for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>U</mi></msub><annotation encoding="application/x-tex">q_U</annotation></semantics></math></span>
+at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>13</mn><mo>,</mo><mi>K</mi><mo>=</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">n=13,K=3</annotation></semantics></math></span>.</p>
+</li><li id="exercise-4-4"><p><strong>A smaller numerical error can give a larger action cost.</strong> Fix
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">n=10</annotation></semantics></math></span>
+and the loss and tie convention of the preceding exercise with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mn>0</mn></msub><mo>=</mo><mn>3</mn><mo>,</mo><msub><mi>c</mi><mn>1</mn></msub><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">c_0=3,c_1=10</annotation></semantics></math></span>.
+Let the fresh outcome and training data be independent at the same
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">p\in[0,1]</annotation></semantics></math></span>.
+Derive the expected cost difference between thresholding
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>S</mi></msub><annotation encoding="application/x-tex">q_S</annotation></semantics></math></span>
+and thresholding
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>U</mi></msub><annotation encoding="application/x-tex">q_U</annotation></semantics></math></span>.
+Find the parameter interval where shrinkage has smaller MSE but larger
+action cost. At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>3</mn><mi>/</mi><mn>13</mn></mrow><annotation encoding="application/x-tex">p=3/13</annotation></semantics></math></span>,
+explain why a zero expected difference does not mean identical realized
+losses.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="conditional-regression.html">Previous: 3. Regression and conditional targets</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="07-limits.html">Next: 5. Sampling limits and asymptotic approximations</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

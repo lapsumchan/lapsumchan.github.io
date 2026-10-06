@@ -1,0 +1,990 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Survival Analysis — Chapter 8: Stratification and tied event times | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Stratification and tied event times.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/survival/10-strata-ties.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Survival Analysis — Chapter 8: Stratification and tied event times | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Stratification and tied event times.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/survival/10-strata-ties.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Survival Analysis — Chapter 8: Stratification and tied event times", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Survival Analysis", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/survival/10-strata-ties.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Survival Analysis</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Events, observation, and population functions</p><ol class="contents-chapters"><li><a href="01-observation.html">1. Events, clocks, and incomplete observation</a></li><li><a href="02-functions.html">2. Survival, risk, hazard, and lifetime summaries</a></li></ol><p class="contents-part">Part II: Risk sets and nonparametric estimation</p><ol class="contents-chapters"><li><a href="03-km.html">3. Estimating survival from incomplete follow-up</a></li><li><a href="04-nelson-aalen.html">4. Nelson--Aalen estimation and counting processes</a></li></ol><p class="contents-part">Part III: Likelihood and survival regression</p><ol class="contents-chapters"><li><a href="07-likelihood.html">5. Likelihood under incomplete observation</a></li><li><a href="08-parametric.html">6. Parametric survival regression</a></li><li><a href="09-cox.html">7. The Cox model: estimation and absolute risk</a></li><li><a href="10-strata-ties.html" aria-current="page">8. Stratification and tied event times</a></li><li><a href="11-diagnostics.html">9. Diagnostics that answer model questions</a></li></ol><p class="contents-part">Part IV: Competing events</p><ol class="contents-chapters"><li><a href="15-competing-risks.html">10. Competing risks and first-event probabilities</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#which-part-of-the-model-should-be-shared">8.1 Which part of the model should be shared?</a></li><li><a href="#a-baseline-curve-for-each-stratum">8.2 A baseline curve for each stratum</a></li><li><a href="#partial-likelihood-within-the-appropriate-risk-sets">8.3 Partial likelihood within the appropriate risk sets</a></li><li><a href="#baseline-estimation-and-interpretation-after-stratification">8.4 Baseline estimation and interpretation after stratification</a></li><li><a href="#a-connected-experiment-with-different-baseline-shapes">8.5 A connected experiment with different baseline shapes</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#what-exactly-is-a-tie">8.6 What exactly is a tie?</a></li><li><a href="#efrons-fractional-removal">8.7 Efron’s fractional removal</a></li><li><a href="#two-meanings-of-exact">8.8 Two meanings of “exact”</a></li><li><a href="#interpreting-a-worked-tied-risk-set">8.9 Interpreting a worked tied risk set</a></li><li><a href="#exercises">8.10 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Survival Analysis</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 8</span></p><div class="chapter-content"><h1 id="s10-chapter">Chapter 8. Stratification and tied event times</h1>
+<h2 id="which-part-of-the-model-should-be-shared">8.1 Which part of the
+model should be shared?</h2>
+<p>Chapter <a href="09-cox.html#s9-chapter" data-reference-type="ref" data-reference="s9-chapter">7</a> separated a relative-hazard
+parameter from an unspecified baseline hazard. That flexibility did not
+remove every restriction. A standard Cox model still says that one
+baseline curve, multiplied by fixed covariate factors, describes
+everyone. In a study spanning hospitals, disease stages, or enrollment
+eras, this may be more structure than the scientific question requires.
+The recording clock raises a separate question: several events can share
+one recorded time even when the underlying times are continuous.</p>
+<p>These issues enter different parts of the argument. Stratification
+changes which people are compared in a risk set and which baseline
+hazards are shared. A tie method changes how a set of simultaneous
+recorded failures contributes to the partial likelihood. Both choices
+affect the statistical comparison. We derive their contributions to the
+partial likelihood before fitting models, then ask what the fitted
+coefficients and baseline curves tell us.</p>
+<p>The starting assumptions remain independent subjects, correctly
+specified event and time-origin definitions, and noninformative
+censoring conditional on the covariates and stratum used in the model.
+Relevant groups must have overlap in covariates and observable follow-up
+through the reporting horizon. The new baseline flexibility does not
+make informative loss to follow-up disappear.</p>
+<h2 id="a-baseline-curve-for-each-stratum">8.2 A baseline curve for each
+stratum</h2>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>s</mi><mi>i</mi></msub><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mi>S</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">s_i\in\{1,\ldots,S\}</annotation></semantics></math></span>
+be a known baseline stratum; here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>S</mi><annotation encoding="application/x-tex">S</annotation></semantics></math></span>
+counts strata, whereas
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(t)</annotation></semantics></math></span>
+denotes survival. We write each covariate profile
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>z</mi><mi>i</mi></msub><annotation encoding="application/x-tex">z_i</annotation></semantics></math></span>
+and its coefficient vector
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>
+as matching
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>-dimensional
+column vectors. The design matrix has one row
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>z</mi><mi>i</mi><mi>T</mi></msubsup><annotation encoding="application/x-tex">z_i^T</annotation></semantics></math></span>
+per person, and a separate intercept is absorbed into the baseline
+hazard. The stratified proportional-hazards model is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><msub><mi>z</mi><mi>i</mi></msub><mo>,</mo><msub><mi>s</mi><mi>i</mi></msub><mo>=</mo><mi>s</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>λ</mi><mrow><mn>0</mn><mi>s</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\lambda_i(t\mid z_i,s_i=s)=\lambda_{0s}(t)\exp(\beta^Tz_i).
+ \label{s10-model}</annotation></semantics></math><span id="s10-model" class="equation-anchor"></span><span class="equation-number">(8.1)</span></span> There is no assumed
+proportionality between
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>λ</mi><mrow><mn>0</mn><mi>s</mi></mrow></msub><annotation encoding="application/x-tex">\lambda_{0s}</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>λ</mi><mrow><mn>0</mn><mi>r</mi></mrow></msub><annotation encoding="application/x-tex">\lambda_{0r}</annotation></semantics></math></span>
+for different strata. The coefficient vector
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>
+is shared. Thus the model allows different underlying time patterns
+while retaining one within-stratum covariate association.</p>
+<p>Compare this with adding stratum indicators:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>λ</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub><mo>+</mo><msub><mi>α</mi><msub><mi>s</mi><mi>i</mi></msub></msub><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\lambda_i(t)=\lambda_0(t)\exp\{\beta^Tz_i+\alpha_{s_i}\}.</annotation></semantics></math></span>
+The indicator model restricts all stratum baseline hazards to be
+constant multiples of one curve. Stratification removes that restriction
+but also removes a single estimated hazard ratio for changing stratum.
+Its baseline functions can cross. They can have different peaks or
+growth rates. A fitted
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>
+still concerns comparisons within the same stratum and at the same
+time.</p>
+<p>A variable constant within each stratum cannot have an identifiable
+separate coefficient in <a href="#s10-model" data-reference-type="eqref" data-reference="s10-model">(8.1)</a>. For example,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>α</mi><mi>s</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\exp(\alpha_s)</annotation></semantics></math></span>
+can always be absorbed into
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>λ</mi><mrow><mn>0</mn><mi>s</mi></mrow></msub><annotation encoding="application/x-tex">\lambda_{0s}</annotation></semantics></math></span>.
+Stratifying on a hospital therefore allows hospital-specific baseline
+curves, but it does not estimate a hospital coefficient alongside those
+unrestricted curves. A continuous age effect can be fitted within broad
+age strata because age still varies inside them. This is different from
+adding a redundant coefficient for the very category used to define a
+stratum.</p>
+<h2 id="partial-likelihood-within-the-appropriate-risk-sets">8.3 Partial
+likelihood within the appropriate risk sets</h2>
+<p>At an event time
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mrow><mi>s</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">t_{sj}</annotation></semantics></math></span>
+in stratum
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math></span>,
+define
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℛ</mi><mrow><mi>s</mi><mi>j</mi></mrow></msub><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mi>i</mi><mo>:</mo><msub><mi>s</mi><mi>i</mi></msub><mo>=</mo><mi>s</mi><mo>,</mo><mspace width="0.222em"></mspace><msub><mi>X</mi><mi>i</mi></msub><mo>≥</mo><msub><mi>t</mi><mrow><mi>s</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathcal R_{sj}=\{i:s_i=s,\ X_i\geq t_{sj}\}.</annotation></semantics></math></span>
+For now assume distinct event times within a stratum, and denote the
+event subject by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>i</mi><mrow><mi>s</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">i_{sj}</annotation></semantics></math></span>.
+Conditional on one event in this risk set, its identity has probability
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><msub><mi>i</mi><mrow><mi>s</mi><mi>j</mi></mrow></msub></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><munder><mo>∑</mo><mrow><mi>k</mi><mo>∈</mo><msub><mi>ℛ</mi><mrow><mi>s</mi><mi>j</mi></mrow></msub></mrow></munder><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{\exp(\beta^Tz_{i_{sj}})}
+      {\sum_{k\in\mathcal R_{sj}}\exp(\beta^Tz_k)}.
+ \label{s10-risk-probability}</annotation></semantics></math><span id="s10-risk-probability" class="equation-anchor"></span><span class="equation-number">(8.2)</span></span> The
+baseline cancels because it is common to the members of this risk set.
+It would not cancel if the denominator mixed subjects from different
+strata with different baseline hazards. Consequently the stratified
+partial likelihood multiplies within-stratum factors:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">r</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∏</mo><mi>s</mi></munder><munder><mo>∏</mo><mi>j</mi></munder><mfrac><mrow><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><msub><mi>i</mi><mrow><mi>s</mi><mi>j</mi></mrow></msub></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><munder><mo>∑</mo><mrow><mi>k</mi><mo>∈</mo><msub><mi>ℛ</mi><mrow><mi>s</mi><mi>j</mi></mrow></msub></mrow></munder><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">L_{\mathrm{str}}(\beta)=
+ \prod_s\prod_j
+ \frac{\exp(\beta^Tz_{i_{sj}})}
+      {\sum_{k\in\mathcal R_{sj}}\exp(\beta^Tz_k)}.
+ \label{s10-partial}</annotation></semantics></math><span id="s10-partial" class="equation-anchor"></span><span class="equation-number">(8.3)</span></span> The construction compares locally, then adds evidence across strata. It does not pretend
+that the marginal populations have identical composition.</p><p>Write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>z</mi><mo accent="true">¯</mo></mover><mrow><mi>s</mi><mi>j</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\overline z_{sj}(\beta)</annotation></semantics></math></span>
+for the exponentially weighted mean in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>ℛ</mi><mrow><mi>s</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">\mathcal R_{sj}</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>s</mi><mi>j</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">V_{sj}(\beta)</annotation></semantics></math></span>
+for its weighted covariance. Differentiating the log likelihood gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>U</mi><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">r</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mi>s</mi></munder><munder><mo>∑</mo><mi>j</mi></munder><mo stretchy="false" form="prefix">{</mo><msub><mi>z</mi><msub><mi>i</mi><mrow><mi>s</mi><mi>j</mi></mrow></msub></msub><mo>−</mo><msub><mover><mi>z</mi><mo accent="true">¯</mo></mover><mrow><mi>s</mi><mi>j</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>I</mi><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">r</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mi>s</mi></munder><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>V</mi><mrow><mi>s</mi><mi>j</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">U_{\mathrm{str}}(\beta)=\sum_s\sum_j
+       \{z_{i_{sj}}-\overline z_{sj}(\beta)\},
+ \qquad
+ I_{\mathrm{str}}(\beta)=\sum_s\sum_j V_{sj}(\beta).
+ \label{s10-score}</annotation></semantics></math><span id="s10-score" class="equation-anchor"></span><span class="equation-number">(8.4)</span></span> The coefficient is
+identified by variation within informative risk sets. A stratum with no
+events supplies no event factor. A risk set in which a covariate is
+constant supplies no information about that covariate. Dividing a study
+into many tiny strata can therefore lose information, even when the
+baseline flexibility is scientifically defensible.</p>
+<p>For example, suppose one event occurs in each of two strata. Stratum
+A has three group-0 and one group-1 participant at risk, and its event
+is in group 1. Stratum B has one group-0 and three group-1 participants
+at risk, and its event is in group 0. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><msup><mi>e</mi><mi>β</mi></msup></mrow><annotation encoding="application/x-tex">r=e^\beta</annotation></semantics></math></span>,
+their contribution is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">r</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mi>r</mi><mrow><mn>3</mn><mo>+</mo><mi>r</mi></mrow></mfrac><mfrac><mn>1</mn><mrow><mn>1</mn><mo>+</mo><mn>3</mn><mi>r</mi></mrow></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mi>U</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mo>−</mo><mfrac><mi>r</mi><mrow><mn>3</mn><mo>+</mo><mi>r</mi></mrow></mfrac><mo>−</mo><mfrac><mrow><mn>3</mn><mi>r</mi></mrow><mrow><mn>1</mn><mo>+</mo><mn>3</mn><mi>r</mi></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">L_{\mathrm{str}}(r)=\frac{r}{3+r}\frac{1}{1+3r},\qquad
+ U(\beta)=1-\frac{r}{3+r}-\frac{3r}{1+3r}.</annotation></semantics></math></span>
+At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">r=1</annotation></semantics></math></span>
+the two score increments are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mi>/</mi><mn>4</mn></mrow><annotation encoding="application/x-tex">3/4</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>3</mn><mi>/</mi><mn>4</mn></mrow><annotation encoding="application/x-tex">-3/4</annotation></semantics></math></span>,
+and their information increments are both
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mi>/</mi><mn>16</mn></mrow><annotation encoding="application/x-tex">3/16</annotation></semantics></math></span>.
+The fitted common coefficient is zero, but the two local comparisons are
+not identical. Pooling all eight participants into each denominator
+would replace the two weighted group fractions by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">r/(1+r)</annotation></semantics></math></span>;
+its information at zero would be
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">1/2</annotation></semantics></math></span>
+rather than
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mi>/</mi><mn>8</mn></mrow><annotation encoding="application/x-tex">3/8</annotation></semantics></math></span>.
+Mixing strata also prevents cancellation of a common baseline when their
+baseline hazards differ. The full implementation therefore subsets the
+risk set before it calculates weights.</p>
+<h2 id="baseline-estimation-and-interpretation-after-stratification">8.4 Baseline
+estimation and interpretation after stratification</h2>
+<p>With
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>β</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat\beta</annotation></semantics></math></span>
+fitted, the Breslow baseline estimator is now stratum-specific:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mrow><mn>0</mn><mi>s</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mrow><msub><mi>t</mi><mrow><mi>s</mi><mi>j</mi></mrow></msub><mo>≤</mo><mi>t</mi></mrow></munder><mfrac><msub><mi>d</mi><mrow><mi>s</mi><mi>j</mi></mrow></msub><mrow><munder><mo>∑</mo><mrow><mi>k</mi><mo>∈</mo><msub><mi>ℛ</mi><mrow><mi>s</mi><mi>j</mi></mrow></msub></mrow></munder><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>T</mi></msup><msub><mi>z</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat H_{0s}(t)=
+ \sum_{t_{sj}\leq t}
+ \frac{d_{sj}}{\sum_{k\in\mathcal R_{sj}}\exp(\widehat\beta^Tz_k)}.
+ \label{s10-baseline}</annotation></semantics></math><span id="s10-baseline" class="equation-anchor"></span><span class="equation-number">(8.5)</span></span> Each denominator
+belongs to the same stratum as its numerator. An absolute survival
+prediction needs both a covariate profile and a stratum:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo>,</mo><mi>s</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mrow><mn>0</mn><mi>s</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>T</mi></msup><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat S(t\mid z,s)=
+ \exp\{-\widehat H_{0s}(t)\exp(\widehat\beta^Tz)\}.
+ \label{s10-survival}</annotation></semantics></math><span id="s10-survival" class="equation-anchor"></span><span class="equation-number">(8.6)</span></span> The shared hazard
+ratio acts on a different baseline in each stratum. Comparing predicted
+risks across strata therefore combines baseline differences with
+covariate associations.</p>
+<p>Standardizing stratum-specific risks to a chosen distribution is
+possible, but the target weights must be stated. For weights
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>a</mi><mi>s</mi></msub><annotation encoding="application/x-tex">a_s</annotation></semantics></math></span>
+summing to one,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>s</mi></msub><msub><mi>a</mi><mi>s</mi></msub><mrow><mo stretchy="true" form="prefix">[</mo><mn>1</mn><mo>−</mo><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo>,</mo><mi>s</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">\sum_s a_s[1-\widehat S(t\mid z,s)]</annotation></semantics></math></span>
+is a standardized descriptive risk for that mixture. It is not the
+prediction for an unspecified new hospital whose baseline curve was
+never observed. Assigning a new stratum requires additional modeling or
+transport assumptions.</p>
+<p>A shared
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>
+is also an assumption. To allow a group effect to differ between two
+strata, include
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>z</mi><annotation encoding="application/x-tex">z</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>s</mi><mo>=</mo><mi>B</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">z\mathbf{1}\{s=B\}</annotation></semantics></math></span>
+while retaining separate baselines. The coefficient of the interaction
+is a difference between within-stratum log hazard ratios. It can be
+tested through an appropriate nested-model comparison if prespecified
+and adequately supported. Allowing stratum-specific baselines alone does
+not allow stratum-specific covariate slopes.</p>
+<h3 id="a-conditional-hazard-ratio-need-not-survive-averaging">8.4.1 A
+conditional hazard ratio need not survive averaging</h3>
+<p>Even if the same
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>
+holds in every stratum, the marginal hazard need not have a constant
+group ratio. For common target weights
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>a</mi><mi>s</mi></msub><annotation encoding="application/x-tex">a_s</annotation></semantics></math></span>
+and a scalar group coefficient, standardize survival as
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mrow><mi mathvariant="normal">m</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">x</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mi>s</mi></munder><msub><mi>a</mi><mi>s</mi></msub><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><msub><mi>H</mi><mrow><mn>0</mn><mi>s</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mi>β</mi><mi>z</mi></mrow></msup><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">S_{\mathrm{mix}}(t\mid z)=\sum_sa_s
+       \exp\{-H_{0s}(t)e^{\beta z}\}.</annotation></semantics></math></span>
+Differentiating its negative logarithm gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mrow><mi mathvariant="normal">m</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">x</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mi>β</mi><mi>z</mi></mrow></msup><mfrac><mrow><munder><mo>∑</mo><mi>s</mi></munder><msub><mi>a</mi><mi>s</mi></msub><msub><mi>λ</mi><mrow><mn>0</mn><mi>s</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>S</mi><mi>s</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><munder><mo>∑</mo><mi>s</mi></munder><msub><mi>a</mi><mi>s</mi></msub><msub><mi>S</mi><mi>s</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\lambda_{\mathrm{mix}}(t\mid z)=e^{\beta z}
+ \frac{\sum_sa_s\lambda_{0s}(t)S_s(t\mid z)}
+      {\sum_sa_sS_s(t\mid z)}.
+ \label{s10-mixture-hazard}</annotation></semantics></math><span id="s10-mixture-hazard" class="equation-anchor"></span><span class="equation-number">(8.7)</span></span> The
+survivors’ stratum weights depend on both time and group because
+survival differs across strata. The weighted baseline rate in this
+fraction therefore need not cancel between
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">z=1</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">z=0</annotation></semantics></math></span>.
+A conditional hazard ratio
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mi>β</mi></msup><annotation encoding="application/x-tex">e^\beta</annotation></semantics></math></span>
+can coexist with a time-varying marginal hazard ratio, even before
+considering different initial group compositions.</p>
+<p>We have changed the target by averaging. A standardized risk contrast
+describes the chosen population mixture, while the common coefficient
+describes a within-stratum hazard comparison. Their different values can
+follow the same fitted model. Reporting each with its target makes the
+comparison interpretable.</p>
+<h2 id="a-connected-experiment-with-different-baseline-shapes">8.5 A
+connected experiment with different baseline shapes</h2>
+<p>The complete R example reuses the 600 baseline covariate profiles
+from Chapter <a href="08-parametric.html#s8-chapter" data-reference-type="ref" data-reference="s8-chapter">6</a>. It leaves that chapter’s
+outcomes intact. For a separate, explicitly synthetic experiment it
+assigns a center and generates new outcomes. Center B is more frequent
+among
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">z=1</annotation></semantics></math></span>
+profiles, so a pooled comparison mixes group association with center
+composition.</p>
+<p>The generating baseline cumulative hazards are
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mrow><mn>0</mn><mi>A</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mi>/</mi><mn>10</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>1.2</mn></msup><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>H</mi><mrow><mn>0</mn><mi>B</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mi>/</mi><mn>6</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>,</mo></mrow><annotation encoding="application/x-tex">H_{0A}(t)=(t/10)^{1.2},\qquad H_{0B}(t)=(t/6)^2,</annotation></semantics></math></span>
+and the shared coefficients are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>β</mi><mi>z</mi></msub><mo>=</mo><mn>0.5</mn></mrow><annotation encoding="application/x-tex">\beta_z=0.5</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>β</mi><mrow><mi mathvariant="normal">a</mi><mi mathvariant="normal">g</mi><mi mathvariant="normal">e</mi></mrow></msub><mo>=</mo><mn>0.3</mn></mrow><annotation encoding="application/x-tex">\beta_{\mathrm{age}}=0.3</annotation></semantics></math></span>,
+with age measured in decades from 50. Their baseline hazard ratio
+changes with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>t</mi><mn>0.8</mn></msup><annotation encoding="application/x-tex">t^{0.8}</annotation></semantics></math></span>;
+a constant center indicator cannot reproduce both shapes. Event times
+are obtained by inverting
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mrow><mn>0</mn><mi>s</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>β</mi><mi>T</mi></msup><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>E</mi></mrow><annotation encoding="application/x-tex">H_{0s}(T)\exp(\beta^Tz)=E</annotation></semantics></math></span>,
+where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>E</mi><annotation encoding="application/x-tex">E</annotation></semantics></math></span>
+is unit exponential. Independent exponential censoring and
+administrative closure at month 10 complete the observation model.</p>
+<div class="center">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Model</th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>z</mi></msub><annotation encoding="application/x-tex">\widehat\beta_z</annotation></semantics></math></span></th>
+<th style="text-align: right;">SE(<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>z</mi></msub><annotation encoding="application/x-tex">\widehat\beta_z</annotation></semantics></math></span>)</th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>A</mi></msub><annotation encoding="application/x-tex">\widehat\beta_A</annotation></semantics></math></span></th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>ℓ</mo><mi>P</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\ell_P(\widehat\beta)</annotation></semantics></math></span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Pooled</td>
+<td style="text-align: right;">0.8099</td>
+<td style="text-align: right;">0.1011</td>
+<td style="text-align: right;">0.2597</td>
+<td style="text-align: right;">-2279.4578</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Center indicator</td>
+<td style="text-align: right;">0.5273</td>
+<td style="text-align: right;">0.1123</td>
+<td style="text-align: right;">0.2669</td>
+<td style="text-align: right;">-2261.7733</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Stratified center</td>
+<td style="text-align: right;">0.5625</td>
+<td style="text-align: right;">0.1114</td>
+<td style="text-align: right;">0.2769</td>
+<td style="text-align: right;">-1970.7171</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>The realized sample contains 410 events. The pooled group coefficient
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.8099</mn><annotation encoding="application/x-tex">0.8099</annotation></semantics></math></span>,
+the group coefficient after adding a center indicator is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.5273</mn><annotation encoding="application/x-tex">0.5273</annotation></semantics></math></span>,
+and the stratified group coefficient is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.5625</mn><annotation encoding="application/x-tex">0.5625</annotation></semantics></math></span>,
+compared with generating
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.5</mn><annotation encoding="application/x-tex">0.5</annotation></semantics></math></span>.
+The indicator model’s group-estimate proximity in this realization does
+not establish proportional center baselines. Nor does the stratified
+estimate have to equal its generating value in a finite sample. The
+stratified likelihood conditions within center-specific risk sets, so
+its raw log likelihood is on a different basis from the pooled rows;
+subtracting these displayed values does not produce a valid ordinary
+likelihood-ratio comparison of those models.</p>
+<h3 id="from-first-principles">8.5.1 From first principles</h3>
+<p>The implementation constructs the stratified log likelihood and score
+directly, maximizes them, and checks the result against
+<code>coxph</code>. It also calculates each baseline from its own risk
+sets and verifies <code>basehaz(centered=FALSE)</code> <span class="citation" data-cites="R-survival-coxph R-survival-basehaz R-survival-survfit-coxph"><a class="collection-citation" href="references.html#ref-R-survival-coxph" role="doc-biblioref" aria-label="Reference 6">[6]</a>, <a class="collection-citation" href="references.html#ref-R-survival-basehaz" role="doc-biblioref" aria-label="Reference 7">[7]</a>, <a class="collection-citation" href="references.html#ref-R-survival-survfit-coxph" role="doc-biblioref" aria-label="Reference 8">[8]</a></span>.
+For event row <code>i</code>, let <code>center</code> and
+<code>time</code> be the observed vectors, <code>Z</code> the group/age
+matrix, and <code>eta</code> its fitted linear predictor. The risk-set
+calculation is:</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R, survival. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+
+biomedical.cohort &lt;- function(n, seed) {
+  old.seed &lt;- if (exists(".Random.seed", envir=.GlobalEnv)) get(".Random.seed", envir=.GlobalEnv) else NULL
+  on.exit(if (is.null(old.seed)) {if (exists(".Random.seed", envir=.GlobalEnv)) rm(".Random.seed",envir=.GlobalEnv)} else assign(".Random.seed",old.seed,envir=.GlobalEnv))
+  set.seed(seed)
+  z &lt;- rbinom(n,1,.45); age &lt;- runif(n,35,70); age10 &lt;- (age-50)/10
+  eta &lt;- log(9)-.35*z-.20*age10
+  event.time &lt;- exp(eta)*(-log(runif(n)))^(1/1.6)
+  censor.time &lt;- pmin(rexp(n,.035),10)
+  data.frame(id=seq_len(n),z=z,age=age,age10=age10,
+    time=pmin(event.time,censor.time),status=as.integer(event.time&lt;=censor.time),
+    event.time=event.time,censor.time=censor.time)
+}
+
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# Stratification and tied-time examples.
+# The opening cohort and parametric-regression data supply the shared examples.
+# From first principles: within-stratum risk sets and explicit tie likelihoods.
+# Standard R workflow: survival::coxph(), basehaz(), and survfit().
+options(stringsAsFactors=FALSE,digits=10)
+library(survival)
+dir.create('results',showWarnings=FALSE);dir.create('figures',showWarnings=FALSE)
+original &lt;- biomedical.cohort(600L,675408)
+stopifnot(nrow(original)==600,all(original$time&gt;0))
+# Reuse baseline profiles; this is a separate new outcome experiment.
+set.seed(675410)
+center &lt;- ifelse(runif(nrow(original)) &lt; ifelse(original$z==1,.75,.30),'B','A')
+k &lt;- ifelse(center=='A',1.2,2); scale &lt;- ifelse(center=='A',10,6)
+eta &lt;- .5*original$z + .3*original$age10
+T &lt;- scale * (rexp(nrow(original))/exp(eta))^(1/k)
+C &lt;- pmin(rexp(nrow(original),.04),10)
+dat &lt;- data.frame(id=original$id,z=original$z,age10=original$age10,
+                  center=factor(center),time=pmin(T,C),status=as.integer(T&lt;=C))
+write.csv(dat,'results/ch10-center-cohort.csv',row.names=FALSE)
+pooled &lt;- coxph(Surv(time,status)~z+age10,data=dat,ties='breslow')
+indicator &lt;- coxph(Surv(time,status)~z+age10+center,data=dat,ties='breslow')
+stratified &lt;- survival::coxph(Surv(time,status)~z+age10+strata(center),data=dat,
+ ties='breslow',x=TRUE,model=TRUE)
+Z &lt;- as.matrix(dat[c('z','age10')])
+strat.ll &lt;- function(b) {
+ eta &lt;- drop(Z%*%b)
+ sum(vapply(which(dat$status==1),function(i) {
+  rr &lt;- which(dat$center==dat$center[i] &amp; dat$time&gt;=dat$time[i])
+  m &lt;- max(eta[rr]);eta[i]-m-log(sum(exp(eta[rr]-m)))
+ },0.0))
+}
+strat.score &lt;- function(b) {
+ eta&lt;-drop(Z%*%b)
+ Reduce(function(a,b)a+b,lapply(which(dat$status==1),function(i) {
+  rr&lt;-which(dat$center==dat$center[i] &amp; dat$time&gt;=dat$time[i])
+  w&lt;-exp(eta[rr]-max(eta[rr]));w&lt;-w/sum(w)
+  Z[i,]-colSums(Z[rr,,drop=FALSE]*w)
+ }))
+}
+manual&lt;-optim(c(0,0),function(b)-strat.ll(b),gr=function(b)-strat.score(b),
+              method='BFGS',hessian=TRUE,control=list(reltol=1e-12,maxit=1000))
+stopifnot(manual$convergence==0,max(abs(manual$par-coef(stratified)))&lt;2e-5,
+          abs(strat.ll(coef(stratified))-stratified$loglik[2])&lt;1e-8,
+          max(abs(strat.score(coef(stratified))))&lt;1e-5,
+          max(abs(solve(manual$hessian)-vcov(stratified)))&lt;2e-5)
+center.table&lt;-data.frame(model=c('Pooled','Center indicator','Stratified center'),
+                         beta.z=c(coef(pooled)['z'],coef(indicator)['z'],coef(stratified)['z']),
+                         beta.age=c(coef(pooled)['age10'],coef(indicator)['age10'],coef(stratified)['age10']),
+ se.z=vapply(list(pooled,indicator,stratified),function(f)sqrt(vcov(f)['z','z']),0.0),
+ loglik=vapply(list(pooled,indicator,stratified),function(f)f$loglik[2],0.0))
+write.csv(center.table,'results/ch10-center-models.csv',row.names=FALSE)
+# Each stratum baseline, at z=0 and age=50, uses only its own risk set.
+b&lt;-coef(stratified)
+base&lt;-do.call(rbind,lapply(levels(dat$center),function(s) {
+ rows&lt;-which(dat$center==s); ds&lt;-dat[rows,]; zz&lt;-Z[rows,,drop=FALSE]
+ evt&lt;-sort(ds$time[ds$status==1]); ee&lt;-drop(zz%*%b)
+ jump&lt;-vapply(evt,function(t)1/sum(exp(ee[ds$time&gt;=t])),0.0)
+ data.frame(center=s,time=evt,jump=jump,H0=cumsum(jump))
+}))
+pkg&lt;-basehaz(stratified,centered=FALSE)
+for(s in levels(dat$center)) {
+ bb&lt;-base[base$center==s,];pp&lt;-pkg[as.character(pkg$strata)==s,]
+ h&lt;-approx(pp$time,pp$hazard,xout=bb$time,method='constant',f=0,rule=2)$y
+ stopifnot(max(abs(h-bb$H0))&lt;1e-9)
+}
+write.csv(base,'results/ch10-stratified-baseline.csv',row.names=FALSE)
+profiles&lt;-do.call(rbind,lapply(levels(dat$center),function(s) {
+ bb&lt;-base[base$center==s,]; grid&lt;-seq(0,10,by=.1)
+ H&lt;-c(0,bb$H0)[findInterval(grid,bb$time)+1L]
+ data.frame(center=s,time=grid,risk.z0=-expm1(-H),risk.z1=-expm1(-H*exp(b['z'])),
+            truth.z0=-expm1(-(grid/ifelse(s=='A',10,6))^ifelse(s=='A',1.2,2)))
+}))
+write.csv(profiles,'results/ch10-stratum-risk.csv',row.names=FALSE)
+# Standard prediction requires a covariate profile AND its fitted stratum.
+new.profiles &lt;- data.frame(z=c(0,1,0,1),age10=0,
+ center=factor(c('A','A','B','B'),levels=levels(dat$center)))
+package.curves &lt;- survival::survfit(stratified,newdata=new.profiles,
+ stype=2,ctype=1,conf.type='log-log',conf.int=.95)
+package.summary &lt;- summary(package.curves,times=c(5,8),extend=FALSE)
+package.predictions &lt;- do.call(rbind,lapply(seq_len(nrow(new.profiles)),function(j) {
+ # A one-row newdata summary is a vector even when several strata were fitted.
+ one.curve &lt;- survival::survfit(stratified,newdata=new.profiles[j,,drop=FALSE],
+  stype=2,ctype=1,conf.type='log-log',conf.int=.95)
+ one.summary &lt;- summary(one.curve,times=c(5,8),extend=FALSE)
+ bb &lt;- base[base$center==new.profiles$center[j],]
+ manual.H &lt;- c(0,bb$H0)[findInterval(one.summary$time,bb$time)+1L]
+ expected &lt;- exp(-manual.H*exp(b['z']*new.profiles$z[j]))
+ stopifnot(max(abs(one.summary$surv-expected))&lt;1e-9)
+ data.frame(center=new.profiles$center[j],z=new.profiles$z[j],age=50,
+  time=one.summary$time,risk=1-one.summary$surv,
+  lower=1-one.summary$upper,upper=1-one.summary$lower)
+}))
+write.csv(package.predictions,'results/ch10-package-predictions.csv',row.names=FALSE)
+# Manual Breslow and Efron for the rounded recurring cohort.
+rounded &lt;- original
+rounded$time &lt;- ceiling(rounded$time/.5)*.5
+Zr&lt;-as.matrix(rounded[c('z','age10')]);evt&lt;-sort(unique(rounded$time[rounded$status==1]))
+tied.ll&lt;-function(b,method) {
+ eta&lt;-drop(Zr%*%b)
+ sum(vapply(evt,function(t) {
+  rr&lt;-which(rounded$time&gt;=t);dd&lt;-which(rounded$time==t &amp; rounded$status==1)
+  m&lt;-max(eta[rr]);S&lt;-sum(exp(eta[rr]-m));D&lt;-sum(exp(eta[dd]-m));d&lt;-length(dd)
+  numerator&lt;-sum(eta[dd]-m)
+  if(method=='breslow')numerator-d*log(S)
+  else numerator-sum(log(S-(0:(d-1))*D/d))
+ },0.0))
+}
+fits&lt;-lapply(c('breslow','efron'),function(method) {
+ pkg&lt;-coxph(Surv(time,status)~z+age10,data=rounded,ties=method)
+ opt&lt;-optim(c(0,0),function(b)-tied.ll(b,method),method='BFGS',
+            hessian=TRUE,control=list(reltol=1e-12,maxit=1000))
+ stopifnot(opt$convergence==0,max(abs(opt$par-coef(pkg)))&lt;2e-5,
+           abs(tied.ll(coef(pkg),method)-pkg$loglik[2])&lt;1e-8,
+           max(abs(solve(opt$hessian)-vcov(pkg)))&lt;2e-5)
+ data.frame(method=method,beta.z=coef(pkg)['z'],se.z=sqrt(vcov(pkg)['z','z']),
+  beta.age=coef(pkg)['age10'],se.age=sqrt(vcov(pkg)['age10','age10']),
+  loglik=pkg$loglik[2],manual.beta.z=opt$par[1],manual.beta.age=opt$par[2])
+})
+ties.table&lt;-do.call(rbind,fits)
+default.rounded &lt;- survival::coxph(Surv(time,status)~z+age10,data=rounded)
+stopifnot(default.rounded$method=='efron',
+ max(abs(coef(default.rounded)-as.numeric(unlist(ties.table[2,c('beta.z','beta.age')]))))&lt;1e-10)
+writeLines(c('coxph default: efron',
+ 'ties=exact: conditional event-subset likelihood (conditional logistic)',
+ 'same-time events are included before same-time censoring'),
+ 'results/ch10-package-convention.txt')
+write.csv(ties.table,'results/ch10-rounded-fits.csv',row.names=FALSE)
+write.csv(rounded[c('id','z','age10','time','status')],'results/ch10-rounded-cohort.csv',row.names=FALSE)
+# Exact conditional subset likelihood: small enough to enumerate independently.
+small&lt;-read.csv(text="id,time,status,known.at.5,event.by.5\nA,1,1,TRUE,1\nB,2,1,TRUE,1\nC,2,0,FALSE,NA\nD,3,0,FALSE,NA\nE,4,1,TRUE,1\nF,4,1,TRUE,1\nG,5,0,TRUE,0\nH,6,1,TRUE,0\nI,6,0,TRUE,0\nJ,7,0,TRUE,0\nK,8,1,TRUE,0\nL,8,0,TRUE,0\n")
+small$z&lt;-as.integer(small$id %in% c('A','C','E','G','I','K'))
+small.ll&lt;-function(beta,method) {
+ w&lt;-exp(beta*small$z)
+ sum(vapply(sort(unique(small$time[small$status==1])),function(t) {
+  rr&lt;-which(small$time&gt;=t);dd&lt;-which(small$time==t &amp; small$status==1);d&lt;-length(dd)
+  S&lt;-sum(w[rr]);D&lt;-sum(w[dd]);num&lt;-sum(log(w[dd]))
+  if(method=='exact')num-log(sum(combn(w[rr],d,FUN=prod)))
+  else if(method=='breslow')num-d*log(S)
+  else num-sum(log(S-(0:(d-1))*D/d))
+ },0.0))
+}
+small.fits&lt;-do.call(rbind,lapply(c('breslow','efron','exact'),function(method) {
+ fit&lt;-coxph(Surv(time,status)~z,data=small,ties=method)
+ opt&lt;-optimize(function(b)-small.ll(b,method),c(-3,3),tol=1e-12)
+ stopifnot(abs(opt$minimum-coef(fit))&lt;1e-6,
+           abs(small.ll(coef(fit),method)-fit$loglik[2])&lt;1e-10)
+ data.frame(method=method,beta=coef(fit),SE=sqrt(vcov(fit)[1,1]),
+  HR=exp(coef(fit)),loglik=fit$loglik[2])
+}))
+write.csv(small.fits,'results/ch10-small-tie-fits.csv',row.names=FALSE)
+# Single tied risk set at month4: one failure from each four-person group.
+beta.grid&lt;-seq(-1.5,1.5,by=.025)
+one.set&lt;-function(beta) {
+ w&lt;-c(rep(1,4),rep(exp(beta),4)); failed&lt;-c(1,5);S&lt;-sum(w);D&lt;-sum(w[failed]);num&lt;-prod(w[failed])
+ order.avg&lt;-mean(c(num/(S*(S-w[failed[1]])),num/(S*(S-w[failed[2]]))))
+ c(Breslow=num/S^2,Efron=num/(S*(S-D/2)),
+   DiscreteExact=num/sum(combn(w,2,FUN=prod)),ContinuousOrderAverage=order.avg)
+}
+likelihood.curves&lt;-data.frame(beta=beta.grid,t(vapply(beta.grid,one.set,numeric(4))))
+write.csv(likelihood.curves,'results/ch10-one-set-likelihood.csv',row.names=FALSE)
+worked&lt;-data.frame(method=names(one.set(log(2))),likelihood=one.set(log(2)))
+write.csv(worked,'results/ch10-one-set-worked.csv',row.names=FALSE)
+stopifnot(abs(worked$likelihood[1]-1/72)&lt;1e-12,
+          abs(worked$likelihood[2]-1/63)&lt;1e-12,
+          abs(worked$likelihood[3]-1/31)&lt;1e-12,
+          abs(worked$likelihood[4]-7/440)&lt;1e-12)
+tab&lt;-c('\\begin{tabular}{lrrrr}\\toprule',
+       'Model &amp; $\\widehat\\beta_z$ &amp; SE($\\widehat\\beta_z$) &amp; $\\widehat\\beta_A$ &amp; $\\ell_P(\\widehat\\beta)$\\\\\\midrule',
+       vapply(seq_len(nrow(center.table)),function(i)sprintf('%s &amp; %.4f &amp; %.4f &amp; %.4f &amp; %.4f\\\\',
+          center.table$model[i],center.table$beta.z[i],center.table$se.z[i],
+          center.table$beta.age[i],center.table$loglik[i]),''),
+       '\\bottomrule\\end{tabular}')
+writeLines(tab,'results/ch10-center-table.tex')
+tab&lt;-c('\\begin{tabular}{lrrrr}\\toprule',
+ 'Tie method &amp; $\\widehat\\beta_z$ &amp; SE &amp; HR &amp; $\\ell_P(\\widehat\\beta)$\\\\\\midrule',
+       vapply(seq_len(nrow(small.fits)),function(i)sprintf('%s &amp; %.5f &amp; %.5f &amp; %.5f &amp; %.5f\\\\',
+          small.fits$method[i],small.fits$beta[i],small.fits$SE[i],
+          small.fits$HR[i],small.fits$loglik[i]),''),'\\bottomrule\\end{tabular}')
+writeLines(tab,'results/ch10-small-table.tex')
+tab&lt;-c('\\begin{tabular}{lrrrr}\\toprule',
+ 'Tie method &amp; $\\widehat\\beta_z$ &amp; SE($\\widehat\\beta_z$) &amp; $\\widehat\\beta_A$ &amp; $\\ell_P(\\widehat\\beta)$\\\\\\midrule',
+ vapply(seq_len(nrow(ties.table)),function(i)sprintf('%s &amp; %.6f &amp; %.6f &amp; %.6f &amp; %.6f\\\\',
+ ties.table$method[i],ties.table$beta.z[i],ties.table$se.z[i],ties.table$beta.age[i],
+ ties.table$loglik[i]),''),'\\bottomrule\\end{tabular}')
+writeLines(tab,'results/ch10-rounded-table.tex')
+write.csv(data.frame(package=c('R','survival'),
+ version=c(as.character(getRversion()),as.character(packageVersion('survival')))),
+ 'results/ch10-software-versions.csv',row.names=FALSE)
+save.plot&lt;-function(stem,draw,width=7.4,height=4.2) {
+ cairo_pdf(paste0('figures/',stem,'.pdf'),width,height,family='serif');draw();dev.off()
+ png(paste0('figures/',stem,'.png'),width*180,height*180,res=180);draw();dev.off()
+}
+save.plot('ch10-strata',function(){
+ par(mfrow=c(1,2),mar=c(4.3,4.3,1,1))
+ for(s in levels(dat$center)) {
+  p&lt;-profiles[profiles$center==s,]
+  plot(p$time,p$risk.z0,type='s',ylim=c(0,1),col='#002D72',lwd=2,
+       xlab='Months since baseline',ylab='Event risk, age 50',main=paste('Center',s))
+  lines(p$time,p$risk.z1,type='s',lty=2,col='#002D72',lwd=2)
+  lines(p$time,p$truth.z0,col='gray45',lty=3,lwd=2)
+  legend('topleft',c('Fitted z=0','Fitted z=1','Generating z=0'),lty=1:3,
+         col=c('#002D72','#002D72','gray45'),bty='n',cex=.8)
+ }
+})
+save.plot('ch10-ties',function(){
+ vals&lt;-as.matrix(likelihood.curves[,-1]);zero&lt;-one.set(0)
+ vals&lt;-sweep(log(vals),2,log(zero),'-')
+ par(mar=c(4.3,4.7,1,1))
+ matplot(beta.grid,vals,type='l',lty=1:4,lwd=2,col=c('#002D72','#4D81BD','gray20','gray55'),
+         xlab='Coefficient beta',ylab='Log likelihood relative to beta=0',
+         ylim=c(min(vals)-.18,.02))
+ legend('bottomleft',c('Breslow','Efron','Discrete exact','Continuous order average'),
+        lty=1:4,lwd=2,col=c('#002D72','#4D81BD','gray20','gray55'),
+        bty='n',ncol=2,cex=.8)
+})
+summary&lt;-data.frame(quantity=c('center.events','center.A.events','center.B.events','stratified.hr.z',
+                              'rounded.distinct.event.times','rounded.largest.event.tie'),
+                     value=c(sum(dat$status),sum(dat$status[dat$center=='A']),sum(dat$status[dat$center=='B']),
+                             exp(b['z']),length(evt),max(table(rounded$time[rounded$status==1]))))
+write.csv(summary,'results/ch10-summary.csv',row.names=FALSE)
+capture.output(sessionInfo(),file='results/ch10-sessionInfo.txt')
+
+print(center.table);print(package.predictions);print(ties.table);print(small.fits);print(worked);print(summary)
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>rr <span class="ot">&lt;-</span> <span class="fu">which</span>(center <span class="sc">==</span> center[i] <span class="sc">&amp;</span> time <span class="sc">&gt;=</span> time[i])</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>weights <span class="ot">&lt;-</span> <span class="fu">exp</span>(eta[rr] <span class="sc">-</span> <span class="fu">max</span>(eta[rr]))</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>weighted.mean <span class="ot">&lt;-</span> <span class="fu">colSums</span>(Z[rr, , <span class="at">drop =</span> <span class="cn">FALSE</span>] <span class="sc">*</span> weights) <span class="sc">/</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>                 <span class="fu">sum</span>(weights)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>score.increment <span class="ot">&lt;-</span> Z[i, ] <span class="sc">-</span> weighted.mean</span></code></pre></div>
+<p>Subtracting the largest predictor stabilizes the exponential weights
+without changing their normalized mean. It is an arithmetic safeguard,
+not a change in the statistical model.</p>
+<h3 id="standard-r-workflow">8.5.2 Standard R workflow</h3>
+<p>The formula encodes a common group/age slope and separate center
+baselines:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(survival)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>stratified <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">coxph</span>(<span class="fu">Surv</span>(time,status) <span class="sc">~</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  z <span class="sc">+</span> age10 <span class="sc">+</span> <span class="fu">strata</span>(center), <span class="at">data=</span>dat, <span class="at">ties=</span><span class="st">"breslow"</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">model=</span><span class="cn">TRUE</span>, <span class="at">x=</span><span class="cn">TRUE</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(stratified)<span class="sc">$</span>coefficients</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>survival<span class="sc">::</span><span class="fu">basehaz</span>(stratified, <span class="at">centered=</span><span class="cn">FALSE</span>)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>new.profiles <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">z=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="dv">0</span>,<span class="dv">1</span>), <span class="at">age10=</span><span class="dv">0</span>,</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>                          <span class="at">center=</span><span class="fu">factor</span>(<span class="fu">c</span>(<span class="st">"A"</span>,<span class="st">"A"</span>,<span class="st">"B"</span>,<span class="st">"B"</span>)))</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>curves <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">survfit</span>(stratified, <span class="at">newdata=</span>new.profiles,</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">stype=</span><span class="dv">2</span>, <span class="at">ctype=</span><span class="dv">1</span>, <span class="at">conf.type=</span><span class="st">"log-log"</span>, <span class="at">conf.int=</span>.<span class="dv">95</span>)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(curves, <span class="at">times=</span><span class="fu">c</span>(<span class="dv">5</span>,<span class="dv">8</span>), <span class="at">extend=</span><span class="cn">FALSE</span>)</span></code></pre></div>
+<p>Here <code>strata(center)</code> is a model special, rather than a
+request to estimate a center coefficient. Every profile carries a center
+label; omitting it leaves the baseline undefined for the requested
+prediction. In both routes age 50 and group 0 define each zero-covariate
+reference. The table reports model-based SEs and maximized log partial
+likelihoods. The two calculations also compare the stratified score and
+information at the fitted coefficient. For prediction it checks all four
+profile curves at months 5 and 8 against <a href="#s10-survival" data-reference-type="eqref" data-reference="s10-survival">(8.6)</a>. These are the same
+estimands as the plotted curves, not marginal risks averaged over
+centers. The printed pointwise log–log intervals account for fitted
+baseline and coefficient uncertainty under the working model; they do
+not validate transport to a new center.</p>
+<figure id="s10-strata-figure">
+<a href="../assets/survival/ch10-strata.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch10-strata.png" alt="Figure 8.1. Stratum-specific absolute-risk curves in the new center
+experiment. A shared group hazard ratio acts on different baseline
+hazards. Dotted curves give the known generating risk for
+z=0z=0,
+age 50.">
+</a><figcaption>Figure 8.1. Stratum-specific absolute-risk curves in the new center
+experiment. A shared group hazard ratio acts on different baseline
+hazards. Dotted curves give the known generating risk for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">z=0</annotation></semantics></math></span>,
+age 50.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch10-strata.png">Open full-size figure</a></p></figure>
+<h2 id="what-exactly-is-a-tie">8.6 What exactly is a tie?</h2>
+<p>Ties can arise from rounding a continuous clock, genuinely discrete
+event opportunities, or grouping an interval observation into one label.
+These mechanisms need not imply the same likelihood. In particular, an
+interval-censored event is not automatically an exact event at its right
+endpoint; Chapter <a href="07-likelihood.html#s7-chapter" data-reference-type="ref" data-reference="s7-chapter">5</a> derived its interval
+probability. Here we discuss recorded exact-time analyses and state
+their working convention.</p>
+<p>At a recorded event time
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mi>j</mi></msub><annotation encoding="application/x-tex">t_j</annotation></semantics></math></span>,
+let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝒟</mi><mi>j</mi></msub><annotation encoding="application/x-tex">\mathcal D_j</annotation></semantics></math></span>
+be the event set,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>j</mi></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">|</mo><msub><mi>𝒟</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">|</mo></mrow></mrow><annotation encoding="application/x-tex">d_j=|\mathcal D_j|</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>ℛ</mi><mi>j</mi></msub><annotation encoding="application/x-tex">\mathcal R_j</annotation></semantics></math></span>
+the risk set before events. A same-time censor belongs to this
+denominator under the event-first convention. In the following tie
+formulas,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>j</mi></msub><annotation encoding="application/x-tex">S_j</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>D</mi><mi>j</mi></msub><annotation encoding="application/x-tex">D_j</annotation></semantics></math></span>
+are sums of relative-hazard weights, not survival probabilities or event
+counts. Define
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>w</mi><mi>i</mi></msub><mo>=</mo><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>S</mi><mi>j</mi></msub><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>ℛ</mi><mi>j</mi></msub></mrow></munder><msub><mi>w</mi><mi>i</mi></msub><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>D</mi><mi>j</mi></msub><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>𝒟</mi><mi>j</mi></msub></mrow></munder><msub><mi>w</mi><mi>i</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">w_i=\exp(\beta^Tz_i),\qquad
+ S_j=\sum_{i\in\mathcal R_j}w_i,\qquad D_j=\sum_{i\in\mathcal D_j}w_i.</annotation></semantics></math></span>
+Using the distinct-event formula
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mi>j</mi></msub><annotation encoding="application/x-tex">d_j</annotation></semantics></math></span>
+times without updating anything is the Breslow approximation:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mrow><mi>B</mi><mo>,</mo><mi>j</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><munder><mo>∏</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>𝒟</mi><mi>j</mi></msub></mrow></munder><msub><mi>w</mi><mi>i</mi></msub></mrow><msubsup><mi>S</mi><mi>j</mi><msub><mi>d</mi><mi>j</mi></msub></msubsup></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">L_{B,j}(\beta)=\frac{\prod_{i\in\mathcal D_j}w_i}{S_j^{d_j}}.
+ \label{s10-breslow}</annotation></semantics></math><span id="s10-breslow" class="equation-anchor"></span><span class="equation-number">(8.8)</span></span> It treats every
+recorded tied event as seeing the full initial risk weight. For distinct
+events
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>j</mi></msub><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">d_j=1</annotation></semantics></math></span>,
+this is exactly the earlier factor. For a sizable tied group, the
+approximation overlooks the removal of earlier failures whose latent
+order was not recorded.</p>
+<h2 id="efrons-fractional-removal">8.7 Efron’s fractional removal</h2>
+<p>If tied failures had an unobserved order, the remaining risk weight
+after each failure would decrease by the weight of that particular
+failure. Efron’s approximation replaces those unknown removals by equal
+fractions of the total tied-event weight:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mrow><mi>E</mi><mo>,</mo><mi>j</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><munder><mo>∏</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>𝒟</mi><mi>j</mi></msub></mrow></munder><msub><mi>w</mi><mi>i</mi></msub></mrow><mrow><munderover><mo>∏</mo><mrow><mo>ℓ</mo><mo>=</mo><mn>0</mn></mrow><mrow><msub><mi>d</mi><mi>j</mi></msub><mo>−</mo><mn>1</mn></mrow></munderover><mo stretchy="false" form="prefix">{</mo><msub><mi>S</mi><mi>j</mi></msub><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><mo>ℓ</mo><mi>/</mi><msub><mi>d</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>D</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">}</mo></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">L_{E,j}(\beta)=
+ \frac{\prod_{i\in\mathcal D_j}w_i}
+ {\prod_{\ell=0}^{d_j-1}\{S_j-(\ell/d_j)D_j\}}.
+ \label{s10-efron}</annotation></semantics></math><span id="s10-efron" class="equation-anchor"></span><span class="equation-number">(8.9)</span></span> At the first failure
+nothing has been removed; before the second,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><msub><mi>d</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">1/d_j</annotation></semantics></math></span>
+of the tied weight is removed; and so on. This reduces to Breslow when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>j</mi></msub><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">d_j=1</annotation></semantics></math></span>.
+It approximates sequential removal of failed risk weight without
+enumerating the missing order. The approximation does not identify the
+recording mechanism, and there is no claim here that it is uniformly
+best for every set of weights or every origin of ties.</p>
+<h3 id="from-first-principles-1">8.7.1 From first principles</h3>
+<p>The log denominator is especially easy to implement:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb3" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>numerator <span class="ot">&lt;-</span> <span class="fu">sum</span>(eta[event.rows] <span class="sc">-</span> shift)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>S <span class="ot">&lt;-</span> <span class="fu">sum</span>(<span class="fu">exp</span>(eta[risk.rows] <span class="sc">-</span> shift))</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>D <span class="ot">&lt;-</span> <span class="fu">sum</span>(<span class="fu">exp</span>(eta[event.rows] <span class="sc">-</span> shift))</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>ell.efron <span class="ot">&lt;-</span> numerator <span class="sc">-</span> <span class="fu">sum</span>(<span class="fu">log</span>(S <span class="sc">-</span> (<span class="dv">0</span><span class="sc">:</span>(d<span class="dv">-1</span>))<span class="sc">*</span>D<span class="sc">/</span>d))</span></code></pre></div>
+<p>The same predictor shift must appear in numerator and denominators. A
+partial likelihood checked numerically at a fitted coefficient can
+reveal a convention mismatch that comparing coefficient signs would
+miss.</p>
+<p>The complete likelihood function sums this contribution over recorded
+event times. Calculating the Breslow denominator
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>S</mi><mi>d</mi></msup><annotation encoding="application/x-tex">S^d</annotation></semantics></math></span>
+alongside it lets us compare each fitted coefficient with the likelihood
+that produced it.</p>
+<h3 id="standard-r-workflow-1">8.7.2 Standard R workflow</h3>
+<p>In the parametric-regression cohort, rounding all exits upward to
+half-month recording times produces 20 distinct event times, with as
+many as 36 events sharing one recorded time. Apply both routes to these
+same rounded records:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb4" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r">rounded &lt;- biomedical.cohort(600L,675408)
+rounded$time &lt;- ceiling(rounded$time/.5)*.5
+breslow.fit &lt;- survival::coxph(Surv(time,status) ~ z + age10,
+                              data=rounded, ties="breslow")
+efron.fit &lt;- survival::coxph(Surv(time,status) ~ z + age10,
+                            data=rounded, ties="efron")
+default.fit &lt;- survival::coxph(Surv(time,status) ~ z + age10,
+                              data=rounded)
+coef(default.fit)  # Efron is the default.</code></pre></div>
+<div id="s10-rounded-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 8.1. Executed fits to the half-month-rounded cohort. Each likelihood
+and numerical inverse Hessian is compared with its corresponding package
+fit. The default fit agrees with the Efron row.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Tie method</th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>z</mi></msub><annotation encoding="application/x-tex">\widehat\beta_z</annotation></semantics></math></span></th>
+<th style="text-align: right;">SE(<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>z</mi></msub><annotation encoding="application/x-tex">\widehat\beta_z</annotation></semantics></math></span>)</th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>A</mi></msub><annotation encoding="application/x-tex">\widehat\beta_A</annotation></semantics></math></span></th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>ℓ</mo><mi>P</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\ell_P(\widehat\beta)</annotation></semantics></math></span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">breslow</td>
+<td style="text-align: right;">0.496990</td>
+<td style="text-align: right;">0.102718</td>
+<td style="text-align: right;">0.257645</td>
+<td style="text-align: right;">-2202.711243</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">efron</td>
+<td style="text-align: right;">0.514936</td>
+<td style="text-align: right;">0.102767</td>
+<td style="text-align: right;">0.265823</td>
+<td style="text-align: right;">-2188.337856</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>Breslow estimates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.4970</mn><mo>,</mo><mn>0.2576</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.4970,0.2576)</annotation></semantics></math></span>
+for group and age, whereas Efron estimates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.5149</mn><mo>,</mo><mn>0.2658</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.5149,0.2658)</annotation></semantics></math></span>.
+Their differences reflect denominator conventions applied after ordering
+information was lost, rather than different data or different
+optimization targets within a method. The SEs are model-based
+approximations for the respective working likelihoods. Manual numerical
+Hessians may differ slightly from the package’s analytical information
+because finite-difference derivatives are approximations. Neither
+coefficient proximity to the known generating value nor a larger raw log
+likelihood selects a superior observation model.</p>
+<h2 id="two-meanings-of-exact">8.8 Two meanings of “exact”</h2>
+<p>For genuinely discrete event opportunities, suppose event odds in a
+risk set satisfy
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><msub><mi>q</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>=</mo><msub><mi>a</mi><mi>j</mi></msub><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{q_i(t_j)}{1-q_i(t_j)}=a_j\exp(\beta^Tz_i).</annotation></semantics></math></span>
+Conditional on exactly
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mi>j</mi></msub><annotation encoding="application/x-tex">d_j</annotation></semantics></math></span>
+events, the nuisance odds multiplier cancels. The conditional
+probability of the observed subset is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mrow><mrow><mi mathvariant="normal">d</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">s</mi><mi mathvariant="normal">c</mi></mrow><mo>,</mo><mi>j</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><munder><mo>∏</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>𝒟</mi><mi>j</mi></msub></mrow></munder><msub><mi>w</mi><mi>i</mi></msub></mrow><mrow><munder><mo>∑</mo><mtable><mtr><mtd columnalign="center" style="text-align: center"><mrow><mi>A</mi><mo>⊆</mo><msub><mi>ℛ</mi><mi>j</mi></msub></mrow></mtd></mtr><mtr><mtd columnalign="center" style="text-align: center"><mrow><mrow><mo stretchy="true" form="prefix">|</mo><mi>A</mi><mo stretchy="true" form="postfix">|</mo></mrow><mo>=</mo><msub><mi>d</mi><mi>j</mi></msub></mrow></mtd></mtr></mtable></munder><munder><mo>∏</mo><mrow><mi>i</mi><mo>∈</mo><mi>A</mi></mrow></munder><msub><mi>w</mi><mi>i</mi></msub></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">L_{\mathrm{disc},j}(\beta)=
+ \frac{\prod_{i\in\mathcal D_j}w_i}
+ {\displaystyle\sum_{\substack{A\subseteq\mathcal R_j\\|A|=d_j}}
+       \prod_{i\in A}w_i}.
+ \label{s10-discrete}</annotation></semantics></math><span id="s10-discrete" class="equation-anchor"></span><span class="equation-number">(8.10)</span></span> The denominator
+sums over subsets, not repeated selections with replacement. It is a
+conditional logistic likelihood. A continuous proportional-hazards model
+over a long recording interval does not generally imply proportional
+event odds;
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>i</mi></msub><mo>=</mo><mn>1</mn><mo>−</mo><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><msub><mi>a</mi><mi>j</mi></msub><msub><mi>w</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">q_i=1-\exp(-a_jw_i)</annotation></semantics></math></span>
+has a different form. Calling <a href="#s10-discrete" data-reference-type="eqref" data-reference="s10-discrete">(8.10)</a> exact names its
+conditional model, not every possible continuous observation
+process.</p>
+<p>Directly listing all
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mi>m</mi><mi>d</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\binom{m}{d}</annotation></semantics></math></span>
+subsets is useful for a small check but quickly becomes impractical. The
+denominator is the
+degree-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math></span>
+elementary symmetric sum of the
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math></span>
+risk weights. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>E</mi><mi>k</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow></msubsup><annotation encoding="application/x-tex">E_k^{(m)}</annotation></semantics></math></span>
+denotes the corresponding sum among the first
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math></span>
+weights, partitioning subsets according to whether they contain the last
+participant gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>E</mi><mi>k</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow></msubsup><mo>=</mo><msubsup><mi>E</mi><mi>k</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></msubsup><mo>+</mo><msub><mi>w</mi><mi>m</mi></msub><msubsup><mi>E</mi><mrow><mi>k</mi><mo>−</mo><mn>1</mn></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></msubsup><mo>,</mo><mspace width="2.0em"></mspace><msubsup><mi>E</mi><mn>0</mn><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow></msubsup><mo>=</mo><mn>1</mn><mo>,</mo><mspace width="1.0em"></mspace><msubsup><mi>E</mi><mi>k</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></msubsup><mo>=</mo><mn>0</mn><mspace width="0.222em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo>&gt;</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">E_k^{(m)}=E_k^{(m-1)}+w_mE_{k-1}^{(m-1)},\qquad
+ E_0^{(m)}=1,\quad E_k^{(0)}=0\ (k&gt;0).</annotation></semantics></math></span>
+An implementation must update degrees downward so that the same weight
+is not reused in the current pass. For the worked eight-person risk
+set:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb5" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>w <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="dv">1</span>,<span class="dv">4</span>), <span class="fu">rep</span>(<span class="dv">2</span>,<span class="dv">4</span>))</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="dv">2</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>E <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="fu">numeric</span>(d))</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (wi <span class="cf">in</span> w) {</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (k <span class="cf">in</span> d<span class="sc">:</span><span class="dv">1</span>) E[k<span class="sc">+</span><span class="dv">1</span>] <span class="ot">&lt;-</span> E[k<span class="sc">+</span><span class="dv">1</span>]<span class="sc">+</span>wi<span class="sc">*</span>E[k]</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>E[d<span class="sc">+</span><span class="dv">1</span>]</span></code></pre></div>
+<p>The result is 62, matching explicit pair enumeration. The recursion
+computes the same conditional denominator; it does not turn a continuous
+observation model into a discrete one.</p>
+<p>A different continuous-order construction averages the distinct-event
+partial-likelihood factors over the
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>j</mi></msub><mi>!</mi></mrow><annotation encoding="application/x-tex">d_j!</annotation></semantics></math></span>
+latent orderings of the tied failures:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mrow><mrow><mi mathvariant="normal">o</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">d</mi></mrow><mo>,</mo><mi>j</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mn>1</mn><mrow><msub><mi>d</mi><mi>j</mi></msub><mi>!</mi></mrow></mfrac><munder><mo>∑</mo><mi>π</mi></munder><munderover><mo>∏</mo><mrow><mo>ℓ</mo><mo>=</mo><mn>1</mn></mrow><msub><mi>d</mi><mi>j</mi></msub></munderover><mfrac><msub><mi>w</mi><msub><mi>π</mi><mo>ℓ</mo></msub></msub><mrow><msub><mi>S</mi><mi>j</mi></msub><mo>−</mo><munder><mo>∑</mo><mrow><mi>r</mi><mo>&lt;</mo><mo>ℓ</mo></mrow></munder><msub><mi>w</mi><msub><mi>π</mi><mi>r</mi></msub></msub></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">L_{\mathrm{ord},j}(\beta)=\frac1{d_j!}
+ \sum_{\pi}
+ \prod_{\ell=1}^{d_j}
+ \frac{w_{\pi_\ell}}{S_j-\sum_{r&lt;\ell}w_{\pi_r}}.
+ \label{s10-order}</annotation></semantics></math><span id="s10-order" class="equation-anchor"></span><span class="equation-number">(8.11)</span></span> Using a sum instead
+of an average changes a parameter-independent factor, so maximization is
+unchanged. It is not the subset denominator in <a href="#s10-discrete" data-reference-type="eqref" data-reference="s10-discrete">(8.10)</a>. The installed
+<code>survival</code> implementation’s <code>ties="exact"</code> uses
+the conditional subset likelihood, which the complete R example
+independently enumerates on a small cohort. Software labels must be
+connected to formulas rather than assumed to mean the same thing across
+programs.</p>
+<p>The order construction retains the initial risk set and supposes only
+the tied failures are removed between these latent choices. A full
+likelihood for rounded times would instead integrate the event and
+observation model over the recording intervals, potentially including
+unobserved censoring order. Equation <a href="#s10-order" data-reference-type="eqref" data-reference="s10-order">(8.11)</a>
+is a partial-likelihood tie construction, not that full coarsened-data
+likelihood.</p>
+<h2 id="interpreting-a-worked-tied-risk-set">8.9 Interpreting a worked tied
+risk set</h2>
+<p>For a separate tie calculation, return to the twelve-person cohort’s
+observation times and statuses. Assign hypothetical group labels: A, C,
+E, G, I, and K have
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">z=1</annotation></semantics></math></span>,
+and the others have
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">z=0</annotation></semantics></math></span>.
+These labels were not part of the original recurrence records. At month
+4, four people from each group remain at risk, and one from each has an
+event. At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi><mo>=</mo><mo>log</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">\beta=\log2</annotation></semantics></math></span>,
+their weights are 1 and 2, the total risk weight is 12, and the
+tied-event weight is 3. The four contributions are
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mi>B</mi></msub><mo>=</mo><mfrac><mn>1</mn><mn>72</mn></mfrac><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>L</mi><mi>E</mi></msub><mo>=</mo><mfrac><mn>1</mn><mn>63</mn></mfrac><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>L</mi><mrow><mi mathvariant="normal">d</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">s</mi><mi mathvariant="normal">c</mi></mrow></msub><mo>=</mo><mfrac><mn>1</mn><mn>31</mn></mfrac><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>L</mi><mrow><mi mathvariant="normal">o</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">d</mi></mrow></msub><mo>=</mo><mfrac><mn>7</mn><mn>440</mn></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">L_B=\frac1{72},\qquad L_E=\frac1{63},\qquad
+ L_{\mathrm{disc}}=\frac1{31},\qquad L_{\mathrm{ord}}=\frac7{440}.</annotation></semantics></math></span>
+For the discrete denominator, the six all-zero pairs have weight 1, the
+sixteen mixed pairs have weight 2, and the six all-one pairs have weight
+4, totaling 62. The numerator is 2. The continuous-order average instead
+averages
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mi>/</mi><mo stretchy="false" form="prefix">{</mo><mn>12</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>11</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">2/\{12(11)\}</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mi>/</mi><mo stretchy="false" form="prefix">{</mo><mn>12</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>10</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">2/\{12(10)\}</annotation></semantics></math></span>.
+Different parameter-independent scales are removed in Figure <a href="#s10-ties-figure" data-reference-type="ref" data-reference="s10-ties-figure">8.2</a> by subtracting each log
+likelihood at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\beta=0</annotation></semantics></math></span>.</p>
+<figure id="s10-ties-figure">
+<a href="../assets/survival/ch10-ties.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch10-ties.png" alt="Figure 8.2. Four tied-risk-set likelihoods relative to their values at
+zero. Before changing
+β\beta,
+predict which denominators will remove failed risk weight and which will
+sum over event subsets. Similar curves do not make their observation
+models identical.">
+</a><figcaption>Figure 8.2. Four tied-risk-set likelihoods relative to their values at
+zero. Before changing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>,
+predict which denominators will remove failed risk weight and which will
+sum over event subsets. Similar curves do not make their observation
+models identical.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch10-ties.png">Open full-size figure</a></p></figure>
+<h3 id="from-first-principles-2">8.9.1 From first principles</h3>
+<p>To compute the subset likelihood for the tiny cohort, enumerate
+possible event subsets at each event time:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb6" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>w <span class="ot">&lt;-</span> <span class="fu">exp</span>(beta<span class="sc">*</span>small<span class="sc">$</span>z)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>risk.rows <span class="ot">&lt;-</span> <span class="fu">which</span>(small<span class="sc">$</span>time <span class="sc">&gt;=</span> t)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>event.rows <span class="ot">&lt;-</span> <span class="fu">which</span>(small<span class="sc">$</span>time <span class="sc">==</span> t <span class="sc">&amp;</span> small<span class="sc">$</span>status <span class="sc">==</span> <span class="dv">1</span>)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="fu">length</span>(event.rows)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>denominator <span class="ot">&lt;-</span> <span class="fu">sum</span>(<span class="fu">combn</span>(w[risk.rows], d, <span class="at">FUN=</span>prod))</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>contribution <span class="ot">&lt;-</span> <span class="fu">prod</span>(w[event.rows])<span class="sc">/</span>denominator</span></code></pre></div>
+<p>This is practical only for small risk sets; the downward recursion
+earlier computes the same denominator more efficiently. It is a subset
+sum, not an average over latent event orders.</p>
+<h3 id="standard-r-workflow-2">8.9.2 Standard R workflow</h3>
+<p>For these same twelve records and the same binary group:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb7" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>exact.fit <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">coxph</span>(<span class="fu">Surv</span>(time,status) <span class="sc">~</span> z,</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>                            <span class="at">data=</span>small, <span class="at">ties=</span><span class="st">"exact"</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">coef</span>(exact.fit)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="fu">sqrt</span>(<span class="fu">diag</span>(<span class="fu">vcov</span>(exact.fit)))</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>exact.fit<span class="sc">$</span>loglik[<span class="dv">2</span>]</span></code></pre></div>
+<p>Fitting all event times in the tiny cohort gives the following
+checked estimates:</p>
+<div class="center">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Tie method</th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>z</mi></msub><annotation encoding="application/x-tex">\widehat\beta_z</annotation></semantics></math></span></th>
+<th style="text-align: right;">SE</th>
+<th style="text-align: right;">HR</th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>ℓ</mo><mi>P</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\ell_P(\widehat\beta)</annotation></semantics></math></span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">breslow</td>
+<td style="text-align: right;">0.09761</td>
+<td style="text-align: right;">0.81886</td>
+<td style="text-align: right;">1.10253</td>
+<td style="text-align: right;">-11.33717</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">efron</td>
+<td style="text-align: right;">0.09761</td>
+<td style="text-align: right;">0.81886</td>
+<td style="text-align: right;">1.10253</td>
+<td style="text-align: right;">-11.20364</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">exact</td>
+<td style="text-align: right;">0.10250</td>
+<td style="text-align: right;">0.83901</td>
+<td style="text-align: right;">1.10794</td>
+<td style="text-align: right;">-10.51013</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>Maximizing all three likelihoods directly gives the displayed
+estimates. The <code>exact</code> row checks the conditional subset
+target implemented by <code>coxph</code> <span class="citation" data-cites="R-survival-coxph"><a class="collection-citation" href="references.html#ref-R-survival-coxph" role="doc-biblioref" aria-label="Reference 6">[6]</a></span>; the continuous-order average
+in Figure <a href="#s10-ties-figure" data-reference-type="ref" data-reference="s10-ties-figure">8.2</a> has a different target and is
+not relabeled as a package fit. Breslow and Efron happen to produce the
+same coefficient here; their likelihoods differ by a constant for the
+balanced tied risk set. That is a property of this example, not an
+identity for general data.</p>
+<p>Indeed at month 4,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mo>=</mo><mn>4</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S=4(1+r)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>=</mo><mn>1</mn><mo>+</mo><mi>r</mi></mrow><annotation encoding="application/x-tex">D=1+r</annotation></semantics></math></span>
+for every
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r&gt;0</annotation></semantics></math></span>.
+Consequently
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mi>E</mi></msub><mi>/</mi><msub><mi>L</mi><mi>B</mi></msub><mo>=</mo><mi>S</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>S</mi><mo>−</mo><mi>D</mi><mi>/</mi><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>8</mn><mi>/</mi><mn>7</mn></mrow><annotation encoding="application/x-tex">L_E/L_B=S/(S-D/2)=8/7</annotation></semantics></math></span>,
+independent of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>.
+All other event factors coincide, so their full log likelihoods differ
+only by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>8</mn><mi>/</mi><mn>7</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\log(8/7)</annotation></semantics></math></span>
+and have the same score. Unequal group composition or an unbalanced
+event subset would generally remove this cancellation.</p>
+<p>An analysis report should name its recording resolution, event/censor
+ordering, stratification variables, shared slopes, and tie method. Show
+a sensitivity comparison if ties are common enough for the method to
+matter. Avoid comparing raw likelihood values across different
+conditional models as if a larger value automatically selected a
+superior model. Distinguish numerical agreement, model adequacy, and
+scientific interpretation. The next chapter asks how to diagnose the
+remaining restrictions rather than equating successful optimization with
+a defensible analysis.</p>
+<h2 id="exercises">8.10 Exercises</h2>
+<ol class="exercises" style='--chapter:"8."'><li id="exercise-8-1"><p><strong>What stratification can identify.</strong> Let independent subjects obey
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>λ</mi><mrow><mn>0</mn><msub><mi>s</mi><mi>i</mi></msub></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub></mrow></msup></mrow><annotation encoding="application/x-tex">\lambda_i(t)=\lambda_{0s_i}(t)e^{\beta^Tz_i}</annotation></semantics></math></span>
+with known baseline stratum
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>s</mi><mi>i</mi></msub><annotation encoding="application/x-tex">s_i</annotation></semantics></math></span>,
+common
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>-slope
+vector, fixed covariates, distinct event times and conditionally
+independent censoring. Derive the within-stratum partial-likelihood
+contribution. Prove that a separate coefficient for a variable constant
+within each stratum is unidentifiable when the stratum baselines are
+unrestricted. Contrast an age-band indicator with continuous age that
+varies within bands.</p>
+</li><li id="exercise-8-2"><p><strong>A common slope with different risks.</strong> In a stratified PH model, assume
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mrow><mn>0</mn><mi>A</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.2</mn></mrow><annotation encoding="application/x-tex">H_{0A}(5)=0.2</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mrow><mn>0</mn><mi>B</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.7</mn></mrow><annotation encoding="application/x-tex">H_{0B}(5)=0.7</annotation></semantics></math></span>
+at five months and a binary group hazard multiplier 2 in both strata.
+Calculate the group’s five-month risk in each stratum and derive the
+survival formula used. Explain why a common hazard multiplier does not
+imply a common absolute risk or establish a causal contrast.</p>
+</li><li id="exercise-8-3"><p><strong>Tied events and removed weight.</strong> At one recorded time, four group-0 and four group-1 people are at
+risk and one from each group has an event. Same-time censoring, if
+present, is processed after these events. At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi><mo>=</mo><mo>log</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">\beta=\log2</annotation></semantics></math></span>,
+derive and evaluate the Breslow and Efron contributions and the average
+of the two distinct-event latent-order contributions. Verify
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>72</mn></mrow><annotation encoding="application/x-tex">1/72</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>63</mn></mrow><annotation encoding="application/x-tex">1/63</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>7</mn><mi>/</mi><mn>440</mn></mrow><annotation encoding="application/x-tex">7/440</annotation></semantics></math></span>,
+respectively. Show why Breslow and Efron coincide for one event, and
+state what each tie construction assumes or approximates.</p>
+</li><li id="exercise-8-4"><p><strong>An exact conditional model must be named.</strong> In a fixed eight-person risk set, suppose independent Bernoulli event
+indicators have odds
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>i</mi></msub><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>a</mi><msup><mi>e</mi><mrow><mi>β</mi><msub><mi>z</mi><mi>i</mi></msub></mrow></msup></mrow><annotation encoding="application/x-tex">q_i/(1-q_i)=a e^{\beta z_i}</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">a&gt;0</annotation></semantics></math></span>,
+four
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>z</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">z_i=0</annotation></semantics></math></span>
+and four
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>z</mi><mi>i</mi></msub><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">z_i=1</annotation></semantics></math></span>.
+Condition on exactly two events. Derive the probability of an observed
+pair with one event from each group and compute its subset denominator
+at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi><mo>=</mo><mo>log</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">\beta=\log2</annotation></semantics></math></span>.
+Explain why this conditional discrete-odds likelihood need not equal a
+continuous PH likelihood over a finite interval. Give the
+elementary-symmetric-sum recursion and explain why in-place updates must
+run downward in degree.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="09-cox.html">Previous: 7. The Cox model: estimation and absolute risk</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="11-diagnostics.html">Next: 9. Diagnostics that answer model questions</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

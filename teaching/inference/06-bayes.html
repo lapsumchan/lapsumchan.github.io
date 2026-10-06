@@ -1,0 +1,1034 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Statistical Inference — Chapter 8: Bayesian inference and predictive uncertainty | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Bayesian inference and predictive uncertainty.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/inference/06-bayes.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Statistical Inference — Chapter 8: Bayesian inference and predictive uncertainty | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Bayesian inference and predictive uncertainty.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/inference/06-bayes.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Statistical Inference — Chapter 8: Bayesian inference and predictive uncertainty", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Statistical Inference", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/inference/06-bayes.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Statistical Inference</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Questions, probability models, and likelihood</p><ol class="contents-chapters"><li><a href="01-models.html">1. Probability models and statistical targets</a></li><li><a href="02-likelihood.html">2. Likelihood, data reduction, and constructing estimators</a></li></ol><p class="contents-part">Part II: Conditional targets, regression, and loss</p><ol class="contents-chapters"><li><a href="conditional-regression.html">3. Regression and conditional targets</a></li><li><a href="03-decisions.html">4. Can a better estimate lead to a worse decision?</a></li></ol><p class="contents-part">Part III: Estimation, uncertainty, and testing</p><ol class="contents-chapters"><li><a href="07-limits.html">5. Sampling limits and asymptotic approximations</a></li><li><a href="08-confidence.html">6. Likelihood asymptotics and confidence sets</a></li><li><a href="09-testing.html">7. Hypothesis Testing as a Statistical Procedure</a></li><li><a href="06-bayes.html" aria-current="page">8. Bayesian inference and predictive uncertainty</a></li></ol><p class="contents-part">Part IV: Shrinkage and regularized regression</p><ol class="contents-chapters"><li><a href="12-shrinkage.html">9. Empirical Bayes and the geometry of shrinkage</a></li><li><a href="regularization-association.html">10. Regularization, bias correction, and association inference</a></li></ol><p class="contents-part">Part V: Association claims and multiplicity</p><ol class="contents-chapters"><li><a href="14-multiplicity.html">11. Multiplicity, simultaneous claims, and false discoveries</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#i6-joint-section">8.1 From a joint model to a posterior</a></li><li><a href="#i6-beta-section">8.2 Beta updating and prediction beyond a point estimate</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#i6-prior-section">8.3 Prior sensitivity and predictive checking</a></li><li><a href="#i6-gamma-section">8.4 Counts with exposure: the gamma–Poisson model</a></li><li><a href="#i6-normal-section">8.5 A normal mean with known observation variance</a></li><li><a href="#i6-coverage-section">8.6 Credible probability and repeated-sampling coverage</a></li><li><a href="#improper-priors-and-numerical-approximation">8.7 Improper priors and numerical approximation</a></li><li><a href="#exercises">8.8 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Statistical Inference</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 8</span></p><div class="chapter-content"><h1 id="i6-chapter">Chapter 8. Bayesian inference and predictive uncertainty</h1>
+<p>Confidence sets and tests evaluated procedures by repeating data
+collection at a fixed parameter. We now ask what a probability model can
+say about that parameter after the observed data are known. Bayesian
+inference combines the likelihood with a prior distribution expressing
+uncertainty before the current observations. Conditioning gives the
+posterior. A posterior mean summarizes a parameter; a predictive
+distribution describes a new observation; an action additionally
+requires the loss function discussed in Chapter <a href="03-decisions.html#i3-chapter" data-reference-type="ref" data-reference="i3-chapter">4</a>.</p>
+<p>We begin with the binary count, then consider counts accumulated over
+an exposure period and a continuous measurement with normal errors. In
+each conjugate model, prior and posterior belong to the same family.
+This makes the conditioning calculation visible and provides exact
+answers against which to check software. The same operations apply
+beyond conjugacy: specify the joint model, condition on what was
+observed, and integrate over parameter uncertainty when predicting.</p>
+<p>The calculations use conditional probability, integration, and the
+laws of total expectation and variance from the earlier chapters. The
+Bayesian joint model lets us average over uncertainty about a parameter.
+When evaluating repeated-sampling performance, we can still hold that
+same population parameter fixed.</p>
+<h2 id="i6-joint-section">8.1 From a joint model to a posterior</h2>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>D</mi><mi>n</mi></msub><annotation encoding="application/x-tex">D_n</annotation></semantics></math></span>
+denote the random data and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mi>n</mi></msub><annotation encoding="application/x-tex">d_n</annotation></semantics></math></span>
+their observed value. For a parameter
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>θ</mi><mo>∈</mo><mi>Θ</mi></mrow><annotation encoding="application/x-tex">\theta\in\Theta</annotation></semantics></math></span>,
+specify a sampling density or mass function
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mi>n</mi></msub><mo>∣</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f(d_n\mid\theta)</annotation></semantics></math></span>
+and a prior probability measure
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Π</mi><annotation encoding="application/x-tex">\Pi</annotation></semantics></math></span>.
+When the latter has density
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>π</mi><annotation encoding="application/x-tex">\pi</annotation></semantics></math></span>
+with respect to the chosen parameter measure, the joint density is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mi>n</mi></msub><mo>,</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mi>n</mi></msub><mo>∣</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mo>∫</mo><mi>Θ</mi></msub><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mi>n</mi></msub><mo>∣</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>t</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">f(d_n,\theta)=f(d_n\mid\theta)\pi(\theta),\qquad
+ m(d_n)=\int_\Theta f(d_n\mid t)\pi(t)\,dt.
+ \label{i6-joint}</annotation></semantics></math><span id="i6-joint" class="equation-anchor"></span><span class="equation-number">(8.1)</span></span> The marginal
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math></span>
+is the prior predictive distribution of the data. Provided
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>&lt;</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">0&lt;m(d_n)&lt;\infty</annotation></semantics></math></span>,
+conditioning gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mi>n</mi></msub><mo>∣</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\pi(\theta\mid d_n)=\frac{f(d_n\mid\theta)\pi(\theta)}{m(d_n)}.
+ \label{i6-posterior}</annotation></semantics></math><span id="i6-posterior" class="equation-anchor"></span><span class="equation-number">(8.2)</span></span> Sums replace
+integrals for a discrete parameter. A prior need not claim that a
+physical parameter is repeatedly redrawn in nature; it is a component of
+the probability model used to represent uncertainty. Its implications
+still deserve scientific scrutiny.</p>
+<p>In Chapter <a href="02-likelihood.html#i2-chapter" data-reference-type="ref" data-reference="i2-chapter">2</a>, factors constant in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>
+could be dropped when comparing likelihood values. They also cancel from
+a posterior ratio, but cannot be discarded when computing the
+probability of the observed data. For example, the binomial coefficient
+belongs in the prior predictive probability of a count, although it
+cancels when deriving that count’s posterior. Nor is a likelihood
+automatically a density over parameters. Declaring it normalized with
+respect to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>θ</mi></mrow><annotation encoding="application/x-tex">d\theta</annotation></semantics></math></span>
+silently selects a prior measure, and a different parameterization
+generally changes that choice.</p>
+<p>Bayesian updating also has a useful sequential interpretation. For
+two data batches conditionally independent given
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>,
+the posterior after the first batch can serve as the prior for the
+second: multiplication by the two likelihoods in sequence gives the same
+posterior as analyzing both batches together. The observations must
+enter only once. Choosing a concentrated prior from the current
+observations and then treating that prior as externally fixed can count
+their information twice. Empirical Bayes methods estimate prior features
+from data, but require an explicit model and an assessment of the
+uncertainty introduced by that estimation. Sequential coherence is an
+algebraic property of a specified joint model; it does not justify
+reusing evidence without describing the dependence.</p>
+<p>The posterior quantifies uncertainty conditional on the model and
+observations. To choose an action
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math></span>
+with loss
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>,</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">L(\theta,a)</annotation></semantics></math></span>,
+use the additional optimization
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>a</mi><mo>*</mo></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>∈</mo><munder><mo>arg min</mo><mi>a</mi></munder><msub><mo>∫</mo><mi>Θ</mi></msub><mi>L</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>,</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>θ</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">a^*(d_n)\in\operatorname*{arg\,min}_a\int_\Theta L(\theta,a)\pi(\theta\mid d_n)\,d\theta.
+ \label{i6-bayes-action}</annotation></semantics></math><span id="i6-bayes-action" class="equation-anchor"></span><span class="equation-number">(8.3)</span></span> Under squared
+error and a finite second posterior moment, we expand around the
+posterior mean
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>m</mi><mi>θ</mi></msub><mo>=</mo><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">m_\theta=\mathbb{E}(\theta\mid d_n)</annotation></semantics></math></span>.
+The subscript distinguishes this mean from the prior predictive density
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">m(d_n)</annotation></semantics></math></span>:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mo stretchy="false" form="prefix">{</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>−</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">}</mo><mo>=</mo><mi>𝔼</mi><mo stretchy="false" form="prefix">{</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>−</mo><msub><mi>m</mi><mi>θ</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">}</mo><mo>+</mo><mn>2</mn><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>m</mi><mi>θ</mi></msub><mo>−</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>−</mo><msub><mi>m</mi><mi>θ</mi></msub><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>m</mi><mi>θ</mi></msub><mo>−</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>=</mo><mo>Var</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>m</mi><mi>θ</mi></msub><mo>−</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}\{(\theta-a)^2\mid d_n\}
+ =\mathbb{E}\{(\theta-m_\theta)^2\mid d_n\}+2(m_\theta-a)\mathbb{E}(\theta-m_\theta\mid d_n)+(m_\theta-a)^2
+ =\operatorname{Var}(\theta\mid d_n)+(m_\theta-a)^2.</annotation></semantics></math></span>
+The cross term is zero, so the posterior mean minimizes this loss.
+Absolute error instead leads to a posterior median. A single posterior
+supports both decisions; the preferred summary depends on the question.
+For a nonlinear target
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">g(\theta)</annotation></semantics></math></span>,
+squared-error estimation uses
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mo stretchy="false" form="prefix">{</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\mathbb{E}\{g(\theta)\mid d_n\}</annotation></semantics></math></span>,
+which need not equal
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo stretchy="false" form="prefix">{</mo><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">g\{\mathbb{E}(\theta\mid d_n)\}</annotation></semantics></math></span>.
+For instance, the posterior mean of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>p</mi><mn>2</mn></msup><annotation encoding="application/x-tex">p^2</annotation></semantics></math></span>
+is the square of the posterior mean of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+plus its posterior variance.</p>
+<h2 id="i6-beta-section">8.2 Beta updating and prediction beyond a point
+estimate</h2>
+<p>Retain the binary sampling model
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>∣</mo><mi>p</mi><mo>∼</mo><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>,</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">K\mid p\sim\operatorname{Binomial}(n,p)</annotation></semantics></math></span>.
+A
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>α</mi><mo>,</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Beta}(\alpha,\beta)</annotation></semantics></math></span>
+prior has density
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>p</mi><mrow><mi>α</mi><mo>−</mo><mn>1</mn></mrow></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>β</mi><mo>−</mo><mn>1</mn></mrow></msup><mi>/</mi><mi>B</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>α</mi><mo>,</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p^{\alpha-1}(1-p)^{\beta-1}/B(\alpha,\beta)</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>p</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;p&lt;1</annotation></semantics></math></span>,
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><mo>,</mo><mi>β</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\alpha,\beta&gt;0</annotation></semantics></math></span>.
+Multiplication by the likelihood gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∣</mo><mi>K</mi><mo>=</mo><mi>k</mi><mo>∼</mo><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>,</mo><mi>B</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>A</mi><mo>=</mo><mi>α</mi><mo>+</mo><mi>k</mi><mo>,</mo><mspace width="1.0em"></mspace><mi>B</mi><mo>=</mo><mi>β</mi><mo>+</mo><mi>n</mi><mo>−</mo><mi>k</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">p\mid K=k\sim\operatorname{Beta}(A,B),\qquad A=\alpha+k,\quad B=\beta+n-k.
+ \label{i6-beta-posterior}</annotation></semantics></math><span id="i6-beta-posterior" class="equation-anchor"></span><span class="equation-number">(8.4)</span></span> Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>A</mi><annotation encoding="application/x-tex">A</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>B</mi><annotation encoding="application/x-tex">B</annotation></semantics></math></span>
+denote posterior shape parameters. This is conjugacy: updating stays
+within the same family. Its convenience does not establish that the
+model of exchangeable binary observations is appropriate.</p>
+<p>Posterior moments follow by recognizing another beta integral. For a
+nonnegative integer
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>p</mi><mi>r</mi></msup><mo>∣</mo><mi>K</mi><mo>=</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>B</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>+</mo><mi>r</mi><mo>,</mo><mi>B</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>B</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>,</mo><mi>B</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{E}(p^r\mid K=k)=B(A+r,B)/B(A,B)</annotation></semantics></math></span>.
+The cases
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>1</mn><mo>,</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">r=1,2</annotation></semantics></math></span>
+give
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mi>A</mi><mrow><mi>A</mi><mo>+</mo><mi>B</mi></mrow></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mo>Var</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>A</mi><mi>B</mi></mrow><mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>+</mo><mi>B</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>+</mo><mi>B</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}(p\mid K)=\frac{A}{A+B},\qquad
+ \operatorname{Var}(p\mid K)=\frac{AB}{(A+B)^2(A+B+1)}.
+ \label{i6-beta-moments}</annotation></semantics></math><span id="i6-beta-moments" class="equation-anchor"></span><span class="equation-number">(8.5)</span></span> An equal-tail
+interval uses posterior quantiles at 0.025 and 0.975, leaving
+probability 0.025 below and above its endpoints. Equal tails are a
+choice, not a requirement of Bayesian inference. Other sets can have the
+same posterior probability and different lengths, especially for
+asymmetric posteriors. The quantile construction is transparent here and
+transforms directly under a strictly increasing change of parameter.</p>
+<p>For a numerical return to the opening binary-count example, take
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn><mo>,</mo><mi>k</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">n=10,k=2</annotation></semantics></math></span>.
+These counts differ from the twenty observations used in the testing
+illustration. With a uniform
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Beta}(1,1)</annotation></semantics></math></span>
+prior, the posterior is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>3</mn><mo>,</mo><mn>9</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Beta}(3,9)</annotation></semantics></math></span>.
+Its mean is 0.25, whereas the observed fraction is 0.20. More of the
+answer is retained by reporting the equal-tail 95% credible interval
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0.060218</mn><mo>,</mo><mn>0.517756</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0.060218,0.517756]</annotation></semantics></math></span>
+and, for example,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>&gt;</mo><mn>0.30</mn><mo>∣</mo><mi>K</mi><mo>=</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.312740</mn></mrow><annotation encoding="application/x-tex">\mathbb{P}(p&gt;0.30\mid K=2)=0.312740</annotation></semantics></math></span>.
+The interval is wide because ten observations leave substantial
+uncertainty. The probability statement concerns
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+under the posterior; it is not a probability that the realized count
+exceeded its observed value. Neither 0.30 nor the event used below is a
+clinical decision threshold in this example.</p>
+<p>Now let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>J</mi><annotation encoding="application/x-tex">J</annotation></semantics></math></span>
+count events in a new cohort of size
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math></span>,
+conditionally independent of the original observations given the same
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+Integrating the binomial probability over the posterior yields
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>J</mi><mo>=</mo><mi>j</mi><mo>∣</mo><mi>K</mi><mo>=</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mn>1</mn></msubsup><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mi>m</mi><mi>j</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>p</mi><mi>j</mi></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>m</mi><mo>−</mo><mi>j</mi></mrow></msup><mfrac><mrow><msup><mi>p</mi><mrow><mi>A</mi><mo>−</mo><mn>1</mn></mrow></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>B</mi><mo>−</mo><mn>1</mn></mrow></msup></mrow><mrow><mi>B</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>,</mo><mi>B</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mspace width="0.167em"></mspace><mi>d</mi><mi>p</mi></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mi>m</mi><mi>j</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mfrac><mrow><mi>B</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>+</mo><mi>j</mi><mo>,</mo><mi>B</mi><mo>+</mo><mi>m</mi><mo>−</mo><mi>j</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>B</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>,</mo><mi>B</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>,</mo><mspace width="1.0em"></mspace><mi>j</mi><mo>=</mo><mn>0</mn><mo>,</mo><mi>…</mi><mo>,</mo><mi>m</mi><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+ \mathbb{P}(J=j\mid K=k)
+ &amp;=\int_0^1\binom mj p^j(1-p)^{m-j}\frac{p^{A-1}(1-p)^{B-1}}{B(A,B)}\,dp\\
+ &amp;=\binom mj\frac{B(A+j,B+m-j)}{B(A,B)},\quad j=0,\ldots,m.
+ \label{i6-beta-binomial}
+\end{aligned}</annotation></semantics></math><span id="i6-beta-binomial" class="equation-anchor"></span><span class="equation-number">(8.6)</span></span> This beta-binomial
+distribution includes both outcome variability at a given
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+and uncertainty about
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+Total expectation and total variance give
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>J</mi><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mi>m</mi><mfrac><mi>A</mi><mrow><mi>A</mi><mo>+</mo><mi>B</mi></mrow></mfrac><mo>,</mo></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"><mo>Var</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>J</mi><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mi>m</mi><mi>𝔼</mi><mo stretchy="false" form="prefix">{</mo><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>∣</mo><mi>K</mi><mo stretchy="false" form="postfix">}</mo><mo>+</mo><msup><mi>m</mi><mn>2</mn></msup><mo>Var</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mfrac><mrow><mi>m</mi><mi>A</mi><mi>B</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>+</mo><mi>B</mi><mo>+</mo><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>+</mo><mi>B</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>+</mo><mi>B</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+ \mathbb{E}(J\mid K)&amp;=m\frac{A}{A+B},\\
+ \operatorname{Var}(J\mid K)&amp;=m\mathbb{E}\{p(1-p)\mid K\}+m^2\operatorname{Var}(p\mid K)\\
+ &amp;=\frac{mAB(A+B+m)}{(A+B)^2(A+B+1)}.
+ \label{i6-predictive-moments}
+\end{aligned}</annotation></semantics></math><span id="i6-predictive-moments" class="equation-anchor"></span><span class="equation-number">(8.7)</span></span> For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">m=10</annotation></semantics></math></span>,
+predictive mean is 2.5 and variance is 3.173077. A plug-in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>10</mn><mo>,</mo><mn>0.25</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Binomial}(10,0.25)</annotation></semantics></math></span>
+has the same mean but variance 1.875. Using the posterior mean as though
+it were known therefore understates the uncertainty in the future
+count.</p>
+<p>For one fresh binary outcome, the predictive event probability does
+equal the posterior mean. For several outcomes, integrating over their
+shared
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+changes the joint distribution. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mn>1</mn></msub><mo>,</mo><msub><mi>Y</mi><mn>2</mn></msub></mrow><annotation encoding="application/x-tex">Y_1,Y_2</annotation></semantics></math></span>
+are two new outcomes, conditional independence gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>Y</mi><mn>1</mn></msub><msub><mi>Y</mi><mn>2</mn></msub><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>p</mi><mn>2</mn></msup><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{E}(Y_1Y_2\mid K)=\mathbb{E}(p^2\mid K)</annotation></semantics></math></span>.
+Subtracting
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>Y</mi><mn>1</mn></msub><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>Y</mi><mn>2</mn></msub><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{E}(Y_1\mid K)\mathbb{E}(Y_2\mid K)</annotation></semantics></math></span>
+therefore gives predictive covariance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Var</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Var}(p\mid K)</annotation></semantics></math></span>.
+With
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math></span>
+outcomes there are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">m(m-1)</annotation></semantics></math></span>
+ordered covariance terms, so predictive variance can also be written
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mover><mi>p</mi><mo accent="true">¯</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mover><mi>p</mi><mo accent="true">¯</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>Var</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mover><mi>p</mi><mo accent="true">¯</mo></mover><mo>=</mo><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">m\overline p(1-\overline p)+m(m-1)\operatorname{Var}(p\mid K),\qquad
+ \overline p=\mathbb{E}(p\mid K).</annotation></semantics></math></span> The
+first term is the plug-in binomial variance; the second explains exactly
+what that calculation omits. Figure <a href="#i6-beta-figure" data-reference-type="ref" data-reference="i6-beta-figure">8.1</a> shows
+the resulting difference in count distributions.</p>
+<p>The following calculation uses log beta functions to avoid
+unnecessarily multiplying small numbers. Summing the resulting
+probabilities verifies normalization and the moment formulas.</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# conjugate posteriors and predictive distributions.
+# No hidden data or packages: all examples use base R and explicit probability laws.
+out &lt;- "generated"; out.dir &lt;- out
+dir.create(out,recursive=TRUE,showWarnings=FALSE)
+close.to &lt;- function(x,y,tol=1e-10) stopifnot(max(abs(x-y))&lt;tol)
+bb &lt;- function(j,m,a,b) exp(lchoose(m,j)+lbeta(a+j,b+m-j)-lbeta(a,b))
+n &lt;- 10L; k &lt;- 2L; m &lt;- 10L; alpha &lt;- 1; beta &lt;- 1
+A &lt;- alpha+k; B &lt;- beta+n-k; j &lt;- 0:m
+post.mean &lt;- A/(A+B); post.var &lt;- A*B/((A+B)^2*(A+B+1))
+post.ci &lt;- qbeta(c(.025,.975),A,B)
+pred &lt;- bb(j,m,A,B); predicted &lt;- sum(pred[j&gt;=3])
+pred.mean &lt;- m*post.mean; pred.var &lt;- m*A*B*(A+B+m)/((A+B)^2*(A+B+1))
+close.to(sum(pred),1);close.to(sum(j*pred),pred.mean)
+close.to(sum((j-pred.mean)^2*pred),pred.var)
+close.to(integrate(function(p) p*dbeta(p,A,B),0,1)$value,post.mean)
+close.to(pbeta(post.ci[2],A,B)-pbeta(post.ci[1],A,B),.95)
+for(h in j) close.to(integrate(function(p) dbinom(h,m,p)*dbeta(p,A,B),0,1,rel.tol=1e-12)$value,pred[h+1],1e-9)
+exact &lt;- data.frame(quantity=c('Posterior mean of p','Posterior variance of p','Predictive mean of J','Predictive variance of J','Predictive P(J &gt;= 3)'),
+                    value=c(post.mean,post.var,pred.mean,pred.var,predicted))
+write.csv(exact,file.path(out,'ch06-exact.csv'),row.names=FALSE)
+writeLines(c('\\begin{table}[htbp]','\\centering\\begin{tabular}{lr}\\toprule',
+             'Quantity &amp; Exact value\\\\\\midrule',
+             sprintf('%s &amp; %.6f\\\\',c('Posterior mean of $p$','Posterior variance of $p$','Predictive mean of $J$','Predictive variance of $J$','Predictive $\\Prb(J\\ge3\\mid K=2)$'),exact$value),
+             '\\bottomrule\\end{tabular}',
+             '\\caption{Exact posterior and predictive summaries for $n=10$, $k=2$, $\\alpha=\\beta=1$, and $m=10$.}',
+             '\\end{table}'),file.path(out,'ch06-exact.tex'))
+# Every row is an R-evaluated prior/posterior combination used by the reader.
+grid &lt;- expand.grid(center=seq(.05,.95,by=.05),strength=c(.5,1,2,5,10,20,50))
+grid$alpha &lt;- grid$center*grid$strength; grid$beta &lt;- (1-grid$center)*grid$strength
+grid$posterior.mean &lt;- (grid$alpha+k)/(grid$strength+n)
+grid$lower &lt;- qbeta(.025,grid$alpha+k,grid$beta+n-k)
+grid$upper &lt;- qbeta(.975,grid$alpha+k,grid$beta+n-k)
+grid$predicted &lt;- vapply(seq_len(nrow(grid)),function(r) sum(bb(3:m,m,grid$alpha[r]+k,grid$beta[r]+n-k)),0.0)
+write.csv(grid,file.path(out,'ch06-prior-strength.csv'),row.names=FALSE)
+predictive.grid &lt;- do.call(rbind,lapply(seq_len(nrow(grid)),function(r){data.frame(center=grid$center[r],strength=grid$strength[r],events=j,probability=bb(j,m,grid$alpha[r]+k,grid$beta[r]+n-k))}))
+stopifnot(nrow(grid)==133L,nrow(predictive.grid)==1463L,
+          all(is.finite(as.matrix(grid))),all(grid$lower&lt;grid$upper))
+close.to(vapply(split(predictive.grid$probability,interaction(predictive.grid$center,predictive.grid$strength)),sum,0.0),rep(1,133))
+write.csv(predictive.grid,file.path(out,'ch06-prior-strength-predictive.csv'),row.names=FALSE)
+writeLines(c('center: prior mean probability, 0.05 to 0.95',
+             'strength: alpha+beta, one of 0.5,1,2,5,10,20,50',
+             'alpha,beta: positive prior beta shapes',
+             'posterior.mean: E(p | K=2,n=10)',
+             'lower,upper: equal-tail 95 percent posterior quantiles',
+             'predicted: posterior predictive Pr(J &gt;=3), m=10',
+             'predictive table events: count 0,...,10; probability: normalized beta-binomial mass'),file.path(out,'ch06-prior-strength-schema.txt'))
+close.to(sum(bb(0:2,n,1,1)),3/11)
+# Exposure-rate example; check normalized mass by direct integration.
+x &lt;- c(2,0,4,1); exposure &lt;- c(1,.5,2,1.5); a &lt;- 2; b &lt;- 1
+Ag &lt;- a+sum(x); Bg &lt;- b+sum(exposure); u &lt;- 2
+rate.mean &lt;- Ag/Bg; rate.var &lt;- Ag/Bg^2; rate.ci &lt;- qgamma(c(.025,.975),shape=Ag,rate=Bg)
+ng.prob &lt;- Bg/(Bg+u); ng.mean &lt;- u*rate.mean; ng.var &lt;- ng.mean+u^2*rate.var
+for(h in 0:12){num &lt;- integrate(function(lambda) dpois(h,u*lambda)*dgamma(lambda,shape=Ag,rate=Bg),0,Inf,rel.tol=1e-11)$value;close.to(num,dnbinom(h,size=Ag,prob=ng.prob),1e-9)}
+close.to(rate.mean,1.5);close.to(rate.var,.25);close.to(ng.mean,3);close.to(ng.var,4)
+close.to(Bg/(Bg+u),(1000*b+sum(1000*exposure))/(1000*b+sum(1000*exposure)+1000*u))
+# Known-variance normal example; complete-square normalization and convolution.
+nn &lt;- 16; xbar &lt;- 3.2; sigma2 &lt;- 16; m0 &lt;- 0; tau2 &lt;- 4
+vn &lt;- 1/(1/tau2+nn/sigma2); mn &lt;- vn*(m0/tau2+nn*xbar/sigma2)
+C &lt;- m0^2/tau2+nn*xbar^2/sigma2-mn^2/vn
+zz &lt;- seq(-10,15,length.out=201)
+close.to((zz-m0)^2/tau2+nn*(zz-xbar)^2/sigma2,(zz-mn)^2/vn+C,1e-10)
+close.to(mn,2.56);close.to(vn,.8)
+normal.ci &lt;- qnorm(c(.025,.975),mn,sqrt(vn))
+normal.predict.ci &lt;- qnorm(c(.025,.975),mn,sqrt(sigma2+vn))
+for(z in c(-5,0,3,8)){
+  convolution &lt;- integrate(function(mu) dnorm(z,mu,sqrt(sigma2))*dnorm(mu,mn,sqrt(vn)),-Inf,Inf,rel.tol=1e-11)$value
+  close.to(convolution,dnorm(z,mn,sqrt(sigma2+vn)),1e-9)
+}
+coverage &lt;- function(p,a,b){lo&lt;-qbeta(.025,a+0:n,b+n-0:n);hi&lt;-qbeta(.975,a+0:n,b+n-0:n);vapply(p,function(z) sum(dbinom(0:n,n,z)*(lo&lt;=z &amp; z&lt;=hi)),0.0)}
+close.to(coverage(c(.15,.5),1,1),c(pbinom(3,n,.15),sum(dbinom(2:8,n,.5))))
+close.to(coverage(c(.15,.5),10,10),c(0,1))
+# Prior-averaged coverage: finite beta integrals, not a coarse grid quadrature.
+for(ab in list(c(1,1),c(10,10))){aa&lt;-ab[1];bb0&lt;-ab[2];kk&lt;-0:n;lo&lt;-qbeta(.025,aa+kk,bb0+n-kk);hi&lt;-qbeta(.975,aa+kk,bb0+n-kk);prior.mass&lt;-bb(kk,n,aa,bb0);avg&lt;-sum(prior.mass*(pbeta(hi,aa+kk,bb0+n-kk)-pbeta(lo,aa+kk,bb0+n-kk)));close.to(avg,.95)}
+pg &lt;- seq(0,1,length.out=4001)
+coverage.grid &lt;- data.frame(p=pg,uniform=coverage(pg,1,1),concentrated=coverage(pg,10,10))
+write.csv(coverage.grid,file.path(out,'ch06-coverage-grid.csv'),row.names=FALSE)
+# Independent posterior and conditional predictive draws.
+set.seed(20261006); R &lt;- 200000L
+p.draw &lt;- rbeta(R,A,B); J &lt;- rbinom(R,m,p.draw)
+rate.draw &lt;- rgamma(R,shape=Ag,rate=Bg); PJ &lt;- rpois(R,u*rate.draw)
+mu.draw &lt;- rnorm(R,mn,sqrt(vn)); Xnew &lt;- rnorm(R,mu.draw,sqrt(sigma2))
+raw &lt;- list(p.draw,as.numeric(J&gt;=3),PJ,as.numeric(PJ==0),Xnew)
+mc &lt;- data.frame(quantity=c('Posterior mean of p','Predictive P(J &gt;= 3)','Poisson predictive mean','Poisson predictive P(J = 0)','Normal predictive mean'),
+                 exact=c(post.mean,predicted,ng.mean,dnbinom(0,Ag,ng.prob),mn),
+                 estimate=vapply(raw,mean,0.0),mcse=vapply(raw,sd,0.0)/sqrt(R))
+rb &lt;- 1-pbinom(2,m,p.draw)
+rb.check &lt;- data.frame(estimator=c('Indicator','Conditional probability'),estimate=c(mean(J&gt;=3),mean(rb)),mcse=c(sd(as.numeric(J&gt;=3)),sd(rb))/sqrt(R))
+write.csv(mc,file.path(out,'ch06-monte-carlo.csv'),row.names=FALSE)
+write.csv(rb.check,file.path(out,'ch06-monte-carlo-rao-blackwell.csv'),row.names=FALSE)
+writeLines(c('\\begin{table}[htbp]','\\centering\\begin{tabular}{lrrr}\\toprule',
+             'Quantity &amp; Exact &amp; Monte Carlo &amp; MCSE\\\\\\midrule',
+             sprintf('%s &amp; %.6f &amp; %.6f &amp; %.6f\\\\',c('Posterior mean of $p$','Predictive $\\Prb(J\\ge3)$','Poisson predictive mean','Poisson predictive $\\Prb(J=0)$','Normal predictive mean'),mc$exact,mc$estimate,mc$mcse),
+             '\\bottomrule\\end{tabular}',
+             '\\caption{Monte Carlo approximations with 200,000 independent replicates and seed 20261006. MCSE measures simulation noise, not posterior uncertainty.}',
+             '\\end{table}'),file.path(out,'ch06-monte-carlo.tex'))
+plot.pair &lt;- function(name,fun,width=8,height=3.5){cairo_pdf(file.path(out,paste0(name,'.pdf')),width=width,height=height);fun();dev.off();png(file.path(out,paste0(name,'.png')),width=1600,height=round(1600*height/width),res=200);fun();dev.off()}
+plot.pair('ch06-beta-predictive',function(){par(mfrow=c(1,2),mar=c(4,4,2,1));pp&lt;-seq(.001,.999,length.out=501);plot(pp,dbeta(pp,A,B),type='l',lwd=2,col='#002D72',xlab='Event probability p',ylab='Density',main='Updating a uniform prior');lines(pp,dbeta(pp,1,1),lty=2);legend('topright',c('Posterior: Beta(3,9)','Prior: Beta(1,1)'),lty=c(1,2),col=c('#002D72','black'),bty='n',cex=.85);plot(j,pred,type='h',lwd=4,col='#002D72',xlab='Events in a new cohort of 10',ylab='Probability',ylim=c(0,.32),main='Integrating uncertainty in p');points(j,pred,pch=16,col='#002D72');lines(j,dbinom(j,m,post.mean),type='b',pch=1,lty=2);legend('topright',c('Beta-binomial','Binomial at p=0.25'),lty=c(1,2),col=c('#002D72','black'),bty='n',cex=.85)})
+plot.pair('ch06-prior-sensitivity',function(){par(mfrow=c(1,2),mar=c(4,4,2,1));ss&lt;-c(.5,1,2,5,10,20,50);centers&lt;-c(.1,.5,.9);colors&lt;-c('#002D72','black','#666666');plot(range(ss),c(0,.9),type='n',log='x',xaxt='n',xlab='Prior strength s (log scale)',ylab='Posterior mean of p',main='Posterior sensitivity');axis(1,at=ss,labels=as.character(ss),cex.axis=.9);for(z in 1:3)lines(ss,(k+centers[z]*ss)/(n+ss),lty=z,col=colors[z],lwd=2);legend('topleft',paste('Prior center =',centers),lty=1:3,col=colors,bty='n',cex=.85);plot(range(ss),c(0,1),type='n',log='x',xaxt='n',xlab='Prior strength s (log scale)',ylab='Predictive Pr(J &gt;= 3)',main='Prediction sensitivity');axis(1,at=ss,labels=as.character(ss),cex.axis=.9);for(z in 1:3)lines(ss,vapply(ss,function(s)sum(bb(3:m,m,k+centers[z]*s,n-k+(1-centers[z])*s)),0.0),lty=z,col=colors[z],lwd=2);legend('topleft',paste('Prior center =',centers),lty=1:3,col=colors,bty='n',cex=.85)})
+plot.pair('ch06-normal-predictive',function(){par(mar=c(4,4,2,1));z&lt;-seq(-10,15,length.out=601);plot(z,dnorm(z,mn,sqrt(vn)),type='l',col='#002D72',lwd=2,xlab='Mean parameter / future observation',ylab='Density',main='Uncertainty about a mean and about a new observation');lines(z,dnorm(z,mn,sqrt(sigma2+vn)),lty=2,lwd=2);legend('topright',c('Posterior of mean','Predictive for new observation'),lty=c(1,2),col=c('#002D72','black'),bty='n')},width=8,height=3)
+plot.pair('ch06-coverage',function(){par(mar=c(4,4,2,1));plot(pg,coverage.grid$uniform,type='l',lwd=2,col='#002D72',ylim=c(0,1),xlab='Fixed generating probability p',ylab='Repeated-sampling coverage',main='Equal-tail 95 percent credible intervals; n = 10');lines(pg,coverage.grid$concentrated,lty=2,lwd=2);abline(h=.95,lty=3,col='#777777');legend('bottom',c('Beta(1,1) prior','Beta(10,10) prior','0.95 reference'),lty=c(1,2,3),col=c('#002D72','black','#777777'),bty='n')},width=8,height=3.5)
+writeLines(capture.output(sessionInfo()),file.path(out,'ch06-session-info.txt'))
+print(exact);print(mc);print(rb.check)
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>bb <span class="ot">&lt;-</span> <span class="cf">function</span>(j,m,a,b) {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">exp</span>(<span class="fu">lchoose</span>(m,j)<span class="sc">+</span><span class="fu">lbeta</span>(a<span class="sc">+</span>j,b<span class="sc">+</span>m<span class="sc">-</span>j)<span class="sc">-</span><span class="fu">lbeta</span>(a,b))</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>A <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">+</span><span class="dv">2</span>; B <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">+</span><span class="dv">10-2</span>; m <span class="ot">&lt;-</span> <span class="dv">10</span>; j <span class="ot">&lt;-</span> <span class="dv">0</span><span class="sc">:</span>m</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>pred <span class="ot">&lt;-</span> <span class="fu">bb</span>(j,m,A,B)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(pred)                     <span class="co"># 1</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(j<span class="sc">*</span>pred)                   <span class="co"># 2.5</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>((j<span class="fl">-2.5</span>)<span class="sc">^</span><span class="dv">2</span><span class="sc">*</span>pred)            <span class="co"># 3.173076923</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(pred[j<span class="sc">&gt;=</span><span class="dv">3</span>])               <span class="co"># 0.450243255</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">qbeta</span>(<span class="fu">c</span>(.<span class="dv">025</span>,.<span class="dv">975</span>),A,B)        <span class="co"># 0.060217734, 0.517755852</span></span></code></pre></div>
+<figure id="i6-beta-figure">
+<a href="../assets/inference/ch06-beta-predictive.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch06-beta-predictive.png" alt="Figure 8.1. The uniform prior updates to
+Beta(3,9)\operatorname{Beta}(3,9)
+after two events in ten observations. Integrating this posterior
+produces a broader predictive count distribution than plugging its mean
+into a binomial model.">
+</a><figcaption>Figure 8.1. The uniform prior updates to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>3</mn><mo>,</mo><mn>9</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Beta}(3,9)</annotation></semantics></math></span>
+after two events in ten observations. Integrating this posterior
+produces a broader predictive count distribution than plugging its mean
+into a binomial model.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch06-beta-predictive.png">Open full-size figure</a></p></figure>
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Exact posterior and predictive summaries for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">n=10</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">k=2</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><mo>=</mo><mi>β</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\alpha=\beta=1</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">m=10</annotation></semantics></math></span>.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Quantity</th>
+<th style="text-align: right;">Exact value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Posterior mean of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span></td>
+<td style="text-align: right;">0.250000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Posterior variance of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span></td>
+<td style="text-align: right;">0.014423</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Predictive mean of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>J</mi><annotation encoding="application/x-tex">J</annotation></semantics></math></span></td>
+<td style="text-align: right;">2.500000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Predictive variance of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>J</mi><annotation encoding="application/x-tex">J</annotation></semantics></math></span></td>
+<td style="text-align: right;">3.173077</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Predictive
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>J</mi><mo>≥</mo><mn>3</mn><mo>∣</mo><mi>K</mi><mo>=</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}(J\ge3\mid K=2)</annotation></semantics></math></span></td>
+<td style="text-align: right;">0.450243</td>
+</tr>
+</tbody>
+</table>
+</div><h2 id="i6-prior-section">8.3 Prior sensitivity and predictive checking</h2>
+<p>The preceding calculations used a uniform prior. To see what that
+choice contributes, hold the observed count fixed and vary the prior. A
+useful beta parameterization separates prior center
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>c</mi><annotation encoding="application/x-tex">c</annotation></semantics></math></span>
+from concentration
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math></span>:
+set
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><mo>=</mo><mi>c</mi><mi>s</mi></mrow><annotation encoding="application/x-tex">\alpha=cs</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>s</mi></mrow><annotation encoding="application/x-tex">\beta=(1-c)s</annotation></semantics></math></span>,
+where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>c</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;c&lt;1</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">s&gt;0</annotation></semantics></math></span>.
+Then
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>∣</mo><mi>K</mi><mo>=</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>k</mi><mo>+</mo><mi>c</mi><mi>s</mi></mrow><mrow><mi>n</mi><mo>+</mo><mi>s</mi></mrow></mfrac><mo>=</mo><mfrac><mi>n</mi><mrow><mi>n</mi><mo>+</mo><mi>s</mi></mrow></mfrac><mfrac><mi>k</mi><mi>n</mi></mfrac><mo>+</mo><mfrac><mi>s</mi><mrow><mi>n</mi><mo>+</mo><mi>s</mi></mrow></mfrac><mi>c</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}(p\mid K=k)=\frac{k+cs}{n+s}
+ =\frac n{n+s}\frac kn+\frac s{n+s}c.
+ \label{i6-prior-mean}</annotation></semantics></math><span id="i6-prior-mean" class="equation-anchor"></span><span class="equation-number">(8.8)</span></span> The concentration
+behaves like a prior sample size in this mean formula, but should not be
+presented as a literal set of previously observed patients. For fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math></span>,
+changing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>c</mi><annotation encoding="application/x-tex">c</annotation></semantics></math></span>
+changes both location and predictive implications. For fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>c</mi><annotation encoding="application/x-tex">c</annotation></semantics></math></span>,
+large
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math></span>
+asserts increasingly precise prior knowledge.</p>
+<p>Figure <a href="#i6-prior-figure" data-reference-type="ref" data-reference="i6-prior-figure">8.2</a> varies these assumptions while
+holding the data at two events in ten observations. The second panel
+displays
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>J</mi><mo>≥</mo><mn>3</mn><mo>∣</mo><mi>K</mi><mo>=</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}(J\ge3\mid K=2)</annotation></semantics></math></span>
+for ten future observations. A conclusion about a future event can be
+sensitive even when a point estimate appears unremarkable. Sensitivity
+analysis should use scientifically defensible alternatives and report
+consequential changes, rather than select the prior that produces a
+preferred answer.</p>
+<p>The complete R example evaluates 133 combinations: centers
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0.05</mn><mo>,</mo><mn>0.10</mn><mo>,</mo><mi>…</mi><mo>,</mo><mn>0.95</mn></mrow><annotation encoding="application/x-tex">0.05,0.10,\ldots,0.95</annotation></semantics></math></span>
+and strengths
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0.5</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>5</mn><mo>,</mo><mn>10</mn><mo>,</mo><mn>20</mn><mo>,</mo><mn>50</mn></mrow><annotation encoding="application/x-tex">0.5,1,2,5,10,20,50</annotation></semantics></math></span>.
+Each row contains the two prior shapes, posterior mean, equal-tail
+interval, and predictive probability of at least three future events. A
+second table records every predictive count probability. These finite
+grids support inspection; they do not optimize a prior or establish
+robustness outside the values examined.</p>
+<figure id="i6-prior-figure">
+<a href="../assets/inference/ch06-prior-sensitivity.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch06-prior-sensitivity.png" alt="Figure 8.2. Posterior and predictive sensitivity to prior center and
+strength. The observed data and future cohort size remain fixed. Line
+types distinguish centers even without color.">
+</a><figcaption>Figure 8.2. Posterior and predictive sensitivity to prior center and
+strength. The observed data and future cohort size remain fixed. Line
+types distinguish centers even without color.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch06-prior-sensitivity.png">Open full-size figure</a></p></figure>
+<p>Prior predictive checks ask what observations were plausible before
+seeing the data. With the uniform prior,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math></span>
+is uniform on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mi>…</mi><mo>,</mo><mn>10</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\{0,\ldots,10\}</annotation></semantics></math></span>,
+so
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>≤</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>3</mn><mi>/</mi><mn>11</mn><mo>=</mo><mn>0.272727</mn></mrow><annotation encoding="application/x-tex">\mathbb{P}(K\le2)=3/11=0.272727</annotation></semantics></math></span>.
+Under a more concentrated
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>10</mn><mo>,</mo><mn>10</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Beta}(10,10)</annotation></semantics></math></span>
+prior, that probability is 0.095638. This selected lower-tail comparison
+exposes the latter prior’s preference for counts near five. It is not,
+by itself, a universal rejection rule; the direction and discrepancy
+were chosen explicitly.</p>
+<p>Posterior predictive checks instead simulate replicated observations
+from
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>∫</mo><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>d</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">p</mi></mrow></msup><mo>∣</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>θ</mi></mrow><annotation encoding="application/x-tex">\int f(d^{\mathrm{rep}}\mid\theta)\pi(\theta\mid d_n)\,d\theta</annotation></semantics></math></span>
+under the original sampling design, then compare a discrepancy with the
+observed one. A new-cohort prediction and a replicated-data check can
+use the same probability formula, but serve different purposes. Data
+used for fitting also inform the reference distribution in a posterior
+predictive check, so its tail probability does not generally have a
+uniform null distribution like an exactly calibrated classical
+continuous
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>-value.
+Moreover, a count-only model cannot check patterns discarded when
+reducing observations to a count, such as temporal clustering.</p>
+<p>For the uniform-prior example, a replicated count of size ten has the
+same
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>BetaBinomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>10</mn><mo>,</mo><mn>3</mn><mo>,</mo><mn>9</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{BetaBinomial}(10,3,9)</annotation></semantics></math></span>
+law as the fresh count. Its posterior predictive probability of at most
+two events is 0.549757. A count near the observed two is therefore
+unsurprising after fitting, even though the prior predictive probability
+of at most two was 0.272727. This is an instructive check but not
+independent confirmation: the count informed the posterior used to judge
+it. If the scientific concern is dependence or subgroup heterogeneity,
+retain relevant observation labels and choose a discrepancy that can
+reveal it.</p>
+<h2 id="i6-gamma-section">8.4 Counts with exposure: the gamma–Poisson
+model</h2>
+<p>We now change the observation: each record contains a count
+accumulated over a known exposure, rather than one binary outcome. This
+is a separate example. Suppose
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>i</mi></msub><mo>∣</mo><mi>λ</mi><mo>∼</mo><mo>Poisson</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>e</mi><mi>i</mi></msub><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">X_i\mid\lambda\sim\operatorname{Poisson}(e_i\lambda)</annotation></semantics></math></span>
+independently, where known exposure
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mi>i</mi></msub><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">e_i&gt;0</annotation></semantics></math></span>
+may differ between observations. The shared
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\lambda&gt;0</annotation></semantics></math></span>
+is an event rate per exposure unit. Write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mo>=</mo><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>X</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">S=\sum_iX_i</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>e</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">T=\sum_ie_i</annotation></semantics></math></span>.
+Use a gamma prior with shape
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">a&gt;0</annotation></semantics></math></span>
+and rate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">b&gt;0</annotation></semantics></math></span>:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><msup><mi>b</mi><mi>a</mi></msup><mrow><mi>Γ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><msup><mi>λ</mi><mrow><mi>a</mi><mo>−</mo><mn>1</mn></mrow></msup><msup><mi>e</mi><mrow><mo>−</mo><mi>b</mi><mi>λ</mi></mrow></msup><mo>,</mo><mspace width="1.0em"></mspace><mi>λ</mi><mo>&gt;</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\pi(\lambda)=\frac{b^a}{\Gamma(a)}\lambda^{a-1}e^{-b\lambda},\quad\lambda&gt;0.
+ \label{i6-gamma-prior}</annotation></semantics></math><span id="i6-gamma-prior" class="equation-anchor"></span><span class="equation-number">(8.9)</span></span> Its mean is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mi>/</mi><mi>b</mi></mrow><annotation encoding="application/x-tex">a/b</annotation></semantics></math></span>
+and variance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mi>/</mi><msup><mi>b</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">a/b^2</annotation></semantics></math></span>.
+An equivalent scale parameterization uses scale
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mi>b</mi></mrow><annotation encoding="application/x-tex">1/b</annotation></semantics></math></span>.
+Stating the density prevents an otherwise consequential ambiguity.</p>
+<p>The likelihood kernel is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>λ</mi><mi>S</mi></msup><msup><mi>e</mi><mrow><mo>−</mo><mi>T</mi><mi>λ</mi></mrow></msup></mrow><annotation encoding="application/x-tex">\lambda^Se^{-T\lambda}</annotation></semantics></math></span>,
+so
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo>∼</mo><mo>Gamma</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>A</mi><mi>λ</mi></msub><mo>,</mo><msub><mi>B</mi><mi>λ</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>A</mi><mi>λ</mi></msub><mo>=</mo><mi>a</mi><mo>+</mo><mi>S</mi><mo>,</mo><mspace width="1.0em"></mspace><msub><mi>B</mi><mi>λ</mi></msub><mo>=</mo><mi>b</mi><mo>+</mo><mi>T</mi><mo>,</mo></mrow><annotation encoding="application/x-tex">\lambda\mid d_n\sim\operatorname{Gamma}(A_\lambda,B_\lambda),
+ \qquad A_\lambda=a+S,\quad B_\lambda=b+T,
+ \label{i6-gamma-posterior}</annotation></semantics></math><span id="i6-gamma-posterior" class="equation-anchor"></span><span class="equation-number">(8.10)</span></span> again using
+a rate. Counts
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(2,0,4,1)</annotation></semantics></math></span>
+with exposures
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>0.5</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>1.5</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(1,0.5,2,1.5)</annotation></semantics></math></span>
+have
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mo>=</mo><mn>7</mn><mo>,</mo><mi>T</mi><mo>=</mo><mn>5</mn></mrow><annotation encoding="application/x-tex">S=7,T=5</annotation></semantics></math></span>.
+A
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Gamma</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Gamma}(2,1)</annotation></semantics></math></span>
+prior gives a
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Gamma</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>9</mn><mo>,</mo><mn>6</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Gamma}(9,6)</annotation></semantics></math></span>
+posterior, mean 1.5, variance 0.25, and equal-tail 95% interval
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0.685896</mn><mo>,</mo><mn>2.627198</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0.685896,2.627198]</annotation></semantics></math></span>.
+The prior rate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math></span>
+has exposure units; adding it to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math></span>
+is dimensionally meaningful. Changing the exposure unit requires
+transforming both the numerical event rate and its prior.</p>
+<p>For positive total exposure, posterior mean can also be written
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">{</mo><mi>b</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>b</mi><mo>+</mo><mi>T</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mi>/</mi><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mo stretchy="false" form="prefix">{</mo><mi>T</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>b</mi><mo>+</mo><mi>T</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>S</mi><mi>/</mi><mi>T</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\{b/(b+T)\}(a/b)+\{T/(b+T)\}(S/T)</annotation></semantics></math></span>.
+It combines prior mean rate and observed rate using their exposure
+weights. Here observed rate is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>7</mn><mi>/</mi><mn>5</mn><mo>=</mo><mn>1.4</mn></mrow><annotation encoding="application/x-tex">7/5=1.4</annotation></semantics></math></span>,
+prior mean is 2, and the result is 1.5. This parallels the beta mean’s
+weighted average, while making the weights appropriate to a rate
+experiment. Ten short exposure periods need not carry the same
+information about a Poisson rate as ten long ones; the number of records
+alone is not the relevant weight in this model.</p>
+<p>For future exposure
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>u</mi><annotation encoding="application/x-tex">u</annotation></semantics></math></span>,
+let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mo>∣</mo><mi>λ</mi><mo>∼</mo><mo>Poisson</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">J\mid\lambda\sim\operatorname{Poisson}(u\lambda)</annotation></semantics></math></span>,
+conditionally independent of the observed data given
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math></span>.
+Direct integration gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>J</mi><mo>=</mo><mi>j</mi><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>Γ</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>A</mi><mi>λ</mi></msub><mo>+</mo><mi>j</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>Γ</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>A</mi><mi>λ</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>j</mi><mi>!</mi></mrow></mfrac><msup><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><msub><mi>B</mi><mi>λ</mi></msub><mrow><msub><mi>B</mi><mi>λ</mi></msub><mo>+</mo><mi>u</mi></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>A</mi><mi>λ</mi></msub></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mi>u</mi><mrow><msub><mi>B</mi><mi>λ</mi></msub><mo>+</mo><mi>u</mi></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mi>j</mi></msup><mo>,</mo><mspace width="1.0em"></mspace><mi>j</mi><mo>≥</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}(J=j\mid d_n)=\frac{\Gamma(A_\lambda+j)}{\Gamma(A_\lambda)j!}
+ \left(\frac{B_\lambda}{B_\lambda+u}\right)^{A_\lambda}
+ \left(\frac{u}{B_\lambda+u}\right)^j,\quad j\ge0.
+ \label{i6-negative-binomial}</annotation></semantics></math><span id="i6-negative-binomial" class="equation-anchor"></span><span class="equation-number">(8.11)</span></span> This is
+R’s negative binomial parameterization, with size
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>A</mi><mi>λ</mi></msub><annotation encoding="application/x-tex">A_\lambda</annotation></semantics></math></span>
+and success probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>B</mi><mi>λ</mi></msub><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>B</mi><mi>λ</mi></msub><mo>+</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">B_\lambda/(B_\lambda+u)</annotation></semantics></math></span>.
+For example:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dnbinom</span>(j, <span class="at">size =</span> Ag, <span class="at">prob =</span> Bg<span class="sc">/</span>(Bg<span class="sc">+</span>u))</span></code></pre></div>
+<p>Its moments are
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>J</mi><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>u</mi><mfrac><msub><mi>A</mi><mi>λ</mi></msub><msub><mi>B</mi><mi>λ</mi></msub></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mo>Var</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>J</mi><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>u</mi><mfrac><msub><mi>A</mi><mi>λ</mi></msub><msub><mi>B</mi><mi>λ</mi></msub></mfrac><mo>+</mo><msup><mi>u</mi><mn>2</mn></msup><mfrac><msub><mi>A</mi><mi>λ</mi></msub><msubsup><mi>B</mi><mi>λ</mi><mn>2</mn></msubsup></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}(J\mid d_n)=u\frac{A_\lambda}{B_\lambda},\qquad
+ \operatorname{Var}(J\mid d_n)=u\frac{A_\lambda}{B_\lambda}+u^2\frac{A_\lambda}{B_\lambda^2}.
+ \label{i6-poisson-predictive-moments}</annotation></semantics></math><span id="i6-poisson-predictive-moments" class="equation-anchor"></span><span class="equation-number">(8.12)</span></span>
+At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>u</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">u=2</annotation></semantics></math></span>,
+these are 3 and 4. Predictive zero probability is 0.075085, compared
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>e</mi><mrow><mo>−</mo><mn>3</mn></mrow></msup><mo>=</mo><mn>0.049787</mn></mrow><annotation encoding="application/x-tex">e^{-3}=0.049787</annotation></semantics></math></span>
+under a plug-in Poisson distribution. Posterior uncertainty changes tail
+probabilities as well as variance.</p>
+<p>The common-rate assumption enables aggregation through
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mo>,</mo><mi>T</mi></mrow><annotation encoding="application/x-tex">S,T</annotation></semantics></math></span>.
+It does not demonstrate that individual rates are equal or observations
+independent. Heterogeneity or clustering calls for checking the original
+observation structure and possibly extending the model. A gamma mixing
+distribution here describes uncertainty about a shared rate; it should
+not automatically be interpreted as a distribution of different
+individuals’ rates.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb3" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>Ag <span class="ot">&lt;-</span> <span class="dv">2</span> <span class="sc">+</span> <span class="fu">sum</span>(<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">0</span>,<span class="dv">4</span>,<span class="dv">1</span>))</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>Bg <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">+</span> <span class="fu">sum</span>(<span class="fu">c</span>(<span class="dv">1</span>,.<span class="dv">5</span>,<span class="dv">2</span>,<span class="fl">1.5</span>))</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>u <span class="ot">&lt;-</span> <span class="dv">2</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="fu">qgamma</span>(<span class="fu">c</span>(.<span class="dv">025</span>,.<span class="dv">975</span>),<span class="at">shape=</span>Ag,<span class="at">rate=</span>Bg)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 0.685895516, 2.627198203</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="fu">dnbinom</span>(<span class="dv">0</span>,<span class="at">size=</span>Ag,<span class="at">prob=</span>Bg<span class="sc">/</span>(Bg<span class="sc">+</span>u))</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 0.075084686</span></span></code></pre></div>
+<h2 id="i6-normal-section">8.5 A normal mean with known observation
+variance</h2>
+<p>For a separate continuous-outcome example, we return to the normal
+mean used in the sampling and confidence calculations. Suppose
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>X</mi><mi>n</mi></msub><mo>∣</mo><mi>μ</mi></mrow><annotation encoding="application/x-tex">X_1,\ldots,X_n\mid\mu</annotation></semantics></math></span>
+are independent
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>,</mo><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">N(\mu,\sigma^2)</annotation></semantics></math></span>
+observations, with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>σ</mi><mn>2</mn></msup><annotation encoding="application/x-tex">\sigma^2</annotation></semantics></math></span>
+known, and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>μ</mi><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>m</mi><mn>0</mn></msub><mo>,</mo><msup><mi>τ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mu\sim N(m_0,\tau^2)</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>τ</mi><mn>2</mn></msup><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau^2&gt;0</annotation></semantics></math></span>.
+The identity
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>i</mi></msub><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>μ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>=</mo><msub><mo>∑</mo><mi>i</mi></msub><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mover><mi>x</mi><mo accent="true">¯</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>+</mo><mi>n</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>−</mo><mover><mi>x</mi><mo accent="true">¯</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">\sum_i(x_i-\mu)^2=\sum_i(x_i-\overline x)^2+n(\mu-\overline x)^2</annotation></semantics></math></span>
+isolates the part depending on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>.
+Consequently,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>∝</mo><mo>exp</mo><mrow><mo stretchy="true" form="prefix">[</mo><mo>−</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mrow><mo stretchy="true" form="prefix">{</mo><mfrac><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>−</mo><msub><mi>m</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><msup><mi>τ</mi><mn>2</mn></msup></mfrac><mo>+</mo><mfrac><mrow><mi>n</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>−</mo><mover><mi>x</mi><mo accent="true">¯</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><msup><mi>σ</mi><mn>2</mn></msup></mfrac><mo stretchy="true" form="postfix">}</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\pi(\mu\mid d_n)\propto\exp\left[-\frac12\left\{
+ \frac{(\mu-m_0)^2}{\tau^2}+\frac{n(\mu-\overline x)^2}{\sigma^2}\right\}\right].</annotation></semantics></math></span>
+Define
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>v</mi><mi>n</mi></msub><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mn>1</mn><msup><mi>τ</mi><mn>2</mn></msup></mfrac><mo>+</mo><mfrac><mi>n</mi><msup><mi>σ</mi><mn>2</mn></msup></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>m</mi><mi>n</mi></msub><mo>=</mo><msub><mi>v</mi><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><msub><mi>m</mi><mn>0</mn></msub><msup><mi>τ</mi><mn>2</mn></msup></mfrac><mo>+</mo><mfrac><mrow><mi>n</mi><mover><mi>x</mi><mo accent="true">¯</mo></mover></mrow><msup><mi>σ</mi><mn>2</mn></msup></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">v_n=\left(\frac1{\tau^2}+\frac n{\sigma^2}\right)^{-1},\qquad
+ m_n=v_n\left(\frac{m_0}{\tau^2}+\frac{n\overline x}{\sigma^2}\right).
+ \label{i6-normal-parameters}</annotation></semantics></math><span id="i6-normal-parameters" class="equation-anchor"></span><span class="equation-number">(8.13)</span></span> Expanding
+the two squared terms gives coefficient
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><msub><mi>v</mi><mi>n</mi></msub></mrow><annotation encoding="application/x-tex">1/v_n</annotation></semantics></math></span>
+on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>μ</mi><mn>2</mn></msup><annotation encoding="application/x-tex">\mu^2</annotation></semantics></math></span>
+and coefficient
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>2</mn><msub><mi>m</mi><mi>n</mi></msub><mi>/</mi><msub><mi>v</mi><mi>n</mi></msub></mrow><annotation encoding="application/x-tex">-2m_n/v_n</annotation></semantics></math></span>
+on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>.
+Thus the expression in braces equals
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>−</mo><msub><mi>m</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mi>/</mi><msub><mi>v</mi><mi>n</mi></msub><mo>+</mo><mi>C</mi></mrow><annotation encoding="application/x-tex">(\mu-m_n)^2/v_n+C</annotation></semantics></math></span>,
+where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>C</mi><annotation encoding="application/x-tex">C</annotation></semantics></math></span>
+does not depend on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>.
+Normalizing gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>μ</mi><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>m</mi><mi>n</mi></msub><mo>,</mo><msub><mi>v</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\mu\mid d_n\sim N(m_n,v_n).
+ \label{i6-normal-posterior}</annotation></semantics></math><span id="i6-normal-posterior" class="equation-anchor"></span><span class="equation-number">(8.14)</span></span> This
+derivation explains why precisions, the reciprocals of variances, add.
+The posterior mean weights prior center and sample mean by their
+precisions, not by arbitrary preference.</p>
+<p>The prior also implies a distribution for the sample mean before
+observing it:
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>X</mi><mo accent="true">¯</mo></mover><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>m</mi><mn>0</mn></msub><mo>,</mo><msup><mi>τ</mi><mn>2</mn></msup><mo>+</mo><msup><mi>σ</mi><mn>2</mn></msup><mi>/</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\overline X\sim N(m_0,\tau^2+\sigma^2/n)</annotation></semantics></math></span>.
+This offers an interpretable way to assess a proposed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>τ</mi><mn>2</mn></msup><annotation encoding="application/x-tex">\tau^2</annotation></semantics></math></span>:
+ask whether the resulting range of plausible sample means fits existing
+knowledge. A diffuse prior on one parameter scale is not a substitute
+for this assessment. A small prior variance asserts substantial
+information even when its center has been chosen casually.</p>
+<p>For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>16</mn></mrow><annotation encoding="application/x-tex">n=16</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>x</mi><mo accent="true">¯</mo></mover><mo>=</mo><mn>3.2</mn></mrow><annotation encoding="application/x-tex">\overline x=3.2</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>σ</mi><mn>2</mn></msup><mo>=</mo><mn>16</mn></mrow><annotation encoding="application/x-tex">\sigma^2=16</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>m</mi><mn>0</mn></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">m_0=0</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>τ</mi><mn>2</mn></msup><mo>=</mo><mn>4</mn></mrow><annotation encoding="application/x-tex">\tau^2=4</annotation></semantics></math></span>,
+the posterior is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2.56</mn><mo>,</mo><mn>0.8</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">N(2.56,0.8)</annotation></semantics></math></span>.
+Its equal-tail 95% interval is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0.806955</mn><mo>,</mo><mn>4.313045</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0.806955,4.313045]</annotation></semantics></math></span>.
+A fresh observation, conditionally independent of the observed data
+given
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>,
+includes another observation error:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mrow><mi mathvariant="normal">n</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">w</mi></mrow></msub><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>m</mi><mi>n</mi></msub><mo>,</mo><msup><mi>σ</mi><mn>2</mn></msup><mo>+</mo><msub><mi>v</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">X_{\mathrm{new}}\mid d_n\sim N(m_n,\sigma^2+v_n).
+ \label{i6-normal-predictive}</annotation></semantics></math><span id="i6-normal-predictive" class="equation-anchor"></span><span class="equation-number">(8.15)</span></span> The
+corresponding predictive interval is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mo>−</mo><mn>5.473462</mn><mo>,</mo><mn>10.593462</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[-5.473462,10.593462]</annotation></semantics></math></span>.
+A narrow interval for an average does not imply accurate prediction of
+each individual observation. As
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+increases, posterior variance can approach zero while predictive
+variance for one individual approaches
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>σ</mi><mn>2</mn></msup><annotation encoding="application/x-tex">\sigma^2</annotation></semantics></math></span>.</p>
+<figure id="i6-normal-figure">
+<a href="../assets/inference/ch06-normal-predictive.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch06-normal-predictive.png" alt="Figure 8.3. Posterior uncertainty about a normal mean and predictive
+uncertainty about one new observation. Both distributions have mean
+2.56; predictive variance includes the known observation variance
+16.">
+</a><figcaption>Figure 8.3. Posterior uncertainty about a normal mean and predictive
+uncertainty about one new observation. Both distributions have mean
+2.56; predictive variance includes the known observation variance
+16.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch06-normal-predictive.png">Open full-size figure</a></p></figure>
+<h2 id="i6-coverage-section">8.6 Credible probability and repeated-sampling
+coverage</h2>
+<p>The intervals above summarize posterior uncertainty after a fixed set
+of observations. To compare them with the confidence procedures
+developed earlier, we must change what is held fixed and what is
+repeated. A credible set
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">C(d_n)</annotation></semantics></math></span>
+with posterior probability 0.95 satisfies
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mo stretchy="false" form="prefix">{</mo><mi>θ</mi><mo>∈</mo><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>∣</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">}</mo><mo>=</mo><mn>0.95</mn></mrow><annotation encoding="application/x-tex">\mathbb{P}\{\theta\in C(d_n)\mid d_n\}=0.95</annotation></semantics></math></span>
+under the specified model. Frequentist coverage instead fixes a
+generating parameter
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>
+and repeats data collection. These are different conditioning
+statements, even when some models produce numerically identical
+intervals.</p>
+<p>For the binomial example, construct equal-tail beta intervals
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">[</mo><msub><mo>ℓ</mo><mi>k</mi></msub><mo>,</mo><msub><mi>u</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">C(k)=[\ell_k,u_k]</annotation></semantics></math></span>
+for every possible count. At a fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+their exact repeated-sampling coverage is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi><mi mathvariant="normal">P</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">b</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munderover><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow><mi>n</mi></munderover><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mo>ℓ</mo><mi>k</mi></msub><mo>≤</mo><mi>p</mi><mo>≤</mo><msub><mi>u</mi><mi>k</mi></msub><mo stretchy="false" form="postfix">}</mo><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mi>n</mi><mi>k</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>p</mi><mi>k</mi></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>n</mi><mo>−</mo><mi>k</mi></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathrm{CovProb}(p)=\sum_{k=0}^n\mathbf{1}\{\ell_k\le p\le u_k\}
+ \binom nk p^k(1-p)^{n-k}.
+ \label{i6-fixed-coverage}</annotation></semantics></math><span id="i6-fixed-coverage" class="equation-anchor"></span><span class="equation-number">(8.16)</span></span> At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>,
+the uniform-prior procedure covers with probability 0.950030, whereas
+the
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>10</mn><mo>,</mo><mn>10</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Beta}(10,10)</annotation></semantics></math></span>
+procedure has coverage zero: none of its possible intervals includes
+0.15. At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.5</mn></mrow><annotation encoding="application/x-tex">p=0.5</annotation></semantics></math></span>,
+the latter covers with probability one. Its intervals still each contain
+95% posterior probability. These facts are compatible because the
+posterior and repeated-sampling calculations average over different
+quantities.</p>
+<p>For a proper prior, posterior credibility does imply a prior-averaged
+identity:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>∫</mo><msub><mi>ℙ</mi><mi>θ</mi></msub><mo stretchy="false" form="prefix">{</mo><mi>θ</mi><mo>∈</mo><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mspace width="0.167em"></mspace><mi>Π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>𝔼</mi><msub><mi>D</mi><mi>n</mi></msub></msub><mrow><mo stretchy="true" form="prefix">[</mo><mi>ℙ</mi><mo stretchy="false" form="prefix">{</mo><mi>θ</mi><mo>∈</mo><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>∣</mo><msub><mi>D</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">}</mo><mo stretchy="true" form="postfix">]</mo></mrow><mo>=</mo><mn>0.95</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\int\mathbb{P}_\theta\{\theta\in C(D_n)\}\,\Pi(d\theta)
+ =\mathbb{E}_{D_n}[\mathbb{P}\{\theta\in C(D_n)\mid D_n\}]=0.95.
+ \label{i6-prior-averaged}</annotation></semantics></math><span id="i6-prior-averaged" class="equation-anchor"></span><span class="equation-number">(8.17)</span></span> The outer
+expectation uses the prior predictive distribution. This is a
+calibration statement about the joint model, not a uniform guarantee
+over fixed parameter values. At boundary values
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0</mn><mo>,</mo><mi>p</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">p=0,p=1</annotation></semantics></math></span>,
+continuous beta equal-tail intervals never include the true value; these
+points have zero prior probability. Boundary behavior should be
+considered explicitly when such values are scientifically plausible.</p>
+<p>A continuous beta prior can put substantial probability near zero,
+but it assigns no probability to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">p=0</annotation></semantics></math></span>
+exactly. If a scientific question distinguishes a structurally
+impossible event from a merely rare one, that distinction needs a model
+capable of expressing it, such as a separate point mass at zero.
+Changing the prior’s support is a substantive modeling decision, not a
+numerical adjustment to repair an interval plot.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb4" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>coverage <span class="ot">&lt;-</span> <span class="cf">function</span>(p,a,b,<span class="at">n=</span><span class="dv">10</span>) {</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  lo <span class="ot">&lt;-</span> <span class="fu">qbeta</span>(.<span class="dv">025</span>,a<span class="sc">+</span><span class="dv">0</span><span class="sc">:</span>n,b<span class="sc">+</span>n<span class="dv">-0</span><span class="sc">:</span>n)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  hi <span class="ot">&lt;-</span> <span class="fu">qbeta</span>(.<span class="dv">975</span>,a<span class="sc">+</span><span class="dv">0</span><span class="sc">:</span>n,b<span class="sc">+</span>n<span class="dv">-0</span><span class="sc">:</span>n)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">vapply</span>(p,<span class="cf">function</span>(z) <span class="fu">sum</span>(<span class="fu">dbinom</span>(<span class="dv">0</span><span class="sc">:</span>n,n,z)<span class="sc">*</span>(lo<span class="sc">&lt;=</span>z <span class="sc">&amp;</span> z<span class="sc">&lt;=</span>hi)),<span class="fl">0.0</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="fu">coverage</span>(<span class="fu">c</span>(.<span class="dv">15</span>,.<span class="dv">5</span>),<span class="dv">1</span>,<span class="dv">1</span>)       <span class="co"># 0.950030201, 0.978515625</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="fu">coverage</span>(<span class="fu">c</span>(.<span class="dv">15</span>,.<span class="dv">5</span>),<span class="dv">10</span>,<span class="dv">10</span>)     <span class="co"># 0, 1</span></span></code></pre></div>
+<figure id="i6-coverage-figure">
+<a href="../assets/inference/ch06-coverage.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch06-coverage.png" alt="Figure 8.4. Exact binomial enumeration of fixed-parameter coverage.
+Curves are displayed on a fine parameter grid; jumps occur when a
+parameter crosses an interval endpoint. Nominal posterior probability is
+95% throughout.">
+</a><figcaption>Figure 8.4. Exact binomial enumeration of fixed-parameter coverage.
+Curves are displayed on a fine parameter grid; jumps occur when a
+parameter crosses an interval endpoint. Nominal posterior probability is
+95% throughout.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch06-coverage.png">Open full-size figure</a></p></figure>
+<h2 id="improper-priors-and-numerical-approximation">8.7 Improper priors and
+numerical approximation</h2>
+<p>A nonnegative function with infinite integral is an improper prior;
+it is not a probability distribution. It can sometimes produce a proper
+posterior, but propriety must be checked. For the known-variance normal
+model,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>∝</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\pi(\mu)\propto1</annotation></semantics></math></span>
+on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ℝ</mi><annotation encoding="application/x-tex">\mathbb R</annotation></semantics></math></span>
+yields the integrable kernel
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><mi>n</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>−</mo><mover><mi>x</mi><mo accent="true">¯</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\exp\{-n(\mu-\overline x)^2/(2\sigma^2)\}</annotation></semantics></math></span>
+when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>≥</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">n\ge1</annotation></semantics></math></span>,
+hence
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>x</mi><mo accent="true">¯</mo></mover><mo>,</mo><msup><mi>σ</mi><mn>2</mn></msup><mi>/</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">N(\overline x,\sigma^2/n)</annotation></semantics></math></span>.</p>
+<p>In contrast,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>∝</mo><msup><mi>p</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo>−</mo><mn>1</mn></mrow></msup></mrow><annotation encoding="application/x-tex">\pi(p)\propto p^{-1}(1-p)^{-1}</annotation></semantics></math></span>
+yields a kernel
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>p</mi><mrow><mi>k</mi><mo>−</mo><mn>1</mn></mrow></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>n</mi><mo>−</mo><mi>k</mi><mo>−</mo><mn>1</mn></mrow></msup></mrow><annotation encoding="application/x-tex">p^{k-1}(1-p)^{n-k-1}</annotation></semantics></math></span>
+that is integrable only when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>k</mi><mo>&lt;</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">0&lt;k&lt;n</annotation></semantics></math></span>.
+All failures or all successes produce an improper posterior. A computer
+evaluating a finite grid away from zero and one can conceal the
+divergent integral. Further, an improper prior has an arbitrary
+multiplicative constant, so it does not provide an ordinary normalized
+prior predictive distribution or an unambiguous marginal likelihood for
+model comparison.</p>
+<p>For the proper conjugate examples, exact integration and simulation
+offer complementary ways to compute a posterior expectation. Draw a
+parameter from its posterior, then draw a future outcome conditionally
+on that parameter. Repeating these two steps independently samples the
+predictive distribution. For an expectation of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>g</mi><annotation encoding="application/x-tex">g</annotation></semantics></math></span>,
+the Monte Carlo estimate is the average of the simulated
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>g</mi><annotation encoding="application/x-tex">g</annotation></semantics></math></span>
+values; its estimated standard error is their sample standard deviation
+divided by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msqrt><mi>R</mi></msqrt><annotation encoding="application/x-tex">\sqrt R</annotation></semantics></math></span>,
+where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>R</mi><annotation encoding="application/x-tex">R</annotation></semantics></math></span>
+is the number of repetitions. The table uses 200,000 repetitions for
+several quantities already calculated analytically.</p>
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Monte Carlo approximations with 200,000 independent replicates
+and seed 20261006. MCSE measures simulation noise, not posterior
+uncertainty.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Quantity</th>
+<th style="text-align: right;">Exact</th>
+<th style="text-align: right;">Monte Carlo</th>
+<th style="text-align: right;">MCSE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Posterior mean of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span></td>
+<td style="text-align: right;">0.250000</td>
+<td style="text-align: right;">0.250181</td>
+<td style="text-align: right;">0.000269</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Predictive
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>J</mi><mo>≥</mo><mn>3</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}(J\ge3)</annotation></semantics></math></span></td>
+<td style="text-align: right;">0.450243</td>
+<td style="text-align: right;">0.451930</td>
+<td style="text-align: right;">0.001113</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Poisson predictive mean</td>
+<td style="text-align: right;">3.000000</td>
+<td style="text-align: right;">3.003785</td>
+<td style="text-align: right;">0.004481</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Poisson predictive
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>J</mi><mo>=</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}(J=0)</annotation></semantics></math></span></td>
+<td style="text-align: right;">0.075085</td>
+<td style="text-align: right;">0.074900</td>
+<td style="text-align: right;">0.000589</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Normal predictive mean</td>
+<td style="text-align: right;">2.560000</td>
+<td style="text-align: right;">2.554499</td>
+<td style="text-align: right;">0.009161</td>
+</tr>
+</tbody>
+</table>
+</div><p>For the probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>J</mi><mo>≥</mo><mn>3</mn><mo>∣</mo><mi>K</mi><mo>=</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}(J\ge3\mid K=2)</annotation></semantics></math></span>,
+one implementation averages the indicators
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msup><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow></msup><mo>≥</mo><mn>3</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\mathbf{1}\{J^{(r)}\ge3\}</annotation></semantics></math></span>.
+Another averages their conditional expectations
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>J</mi><mo>≥</mo><mn>3</mn><mo>∣</mo><msup><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}(J\ge3\mid p^{(r)})</annotation></semantics></math></span>.
+Both target the same quantity by iterated expectation. The second avoids
+the extra binomial draw and has no greater variance per independent
+posterior draw, by the conditional-variance decomposition. This is the conditional-expectation variance reduction used in <a href="02-likelihood.html#conditioning-can-construct-a-better-estimator">the likelihood chapter</a>. Increasing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>R</mi><annotation encoding="application/x-tex">R</annotation></semantics></math></span>
+reduces numerical noise while leaving the posterior uncertainty from the
+observed study unchanged. Dependent MCMC draws require a different
+standard-error calculation because the variance of an average then
+includes serial covariances.</p>
+<h2 id="exercises">8.8 Exercises</h2>
+<ol class="exercises" style='--chapter:"8."'><li id="exercise-8-1"><p><strong>Parameter uncertainty and new outcomes.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>∣</mo><mi>p</mi><mo>∼</mo><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>10</mn><mo>,</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">K\mid p\sim\operatorname{Binomial}(10,p)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∼</mo><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p\sim\operatorname{Beta}(1,1)</annotation></semantics></math></span>.
+We observe
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">K=2</annotation></semantics></math></span>.
+Given
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>Y</mi><mn>10</mn></msub></mrow><annotation encoding="application/x-tex">Y_1,\ldots,Y_{10}</annotation></semantics></math></span>
+be new independent
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Bernoulli</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Bernoulli}(p)</annotation></semantics></math></span>
+observations, conditionally independent of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math></span>,
+and set
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mo>=</mo><msubsup><mo>∑</mo><mrow><mi>r</mi><mo>=</mo><mn>1</mn></mrow><mn>10</mn></msubsup><msub><mi>Y</mi><mi>r</mi></msub></mrow><annotation encoding="application/x-tex">J=\sum_{r=1}^{10}Y_r</annotation></semantics></math></span>.</p>
+<ol>
+<li><p>Derive the normalized posterior density of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+and its mean and variance.</p></li>
+<li><p>Derive the predictive mass function of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>J</mi><annotation encoding="application/x-tex">J</annotation></semantics></math></span>,
+then obtain its mean and variance by total expectation and total
+variance.</p></li>
+<li><p>Find
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Cov</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>Y</mi><mn>1</mn></msub><mo>,</mo><msub><mi>Y</mi><mn>2</mn></msub><mo>∣</mo><mi>K</mi><mo>=</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Cov}(Y_1,Y_2\mid K=2)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Corr</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>Y</mi><mn>1</mn></msub><mo>,</mo><msub><mi>Y</mi><mn>2</mn></msub><mo>∣</mo><mi>K</mi><mo>=</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Corr}(Y_1,Y_2\mid K=2)</annotation></semantics></math></span>.
+Explain why they can be positive although the new observations are
+independent given
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.</p></li>
+<li><p>Compare
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Var</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>J</mi><mo>∣</mo><mi>K</mi><mo>=</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Var}(J\mid K=2)</annotation></semantics></math></span>
+with the variance from a
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>10</mn><mo>,</mo><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">[</mo><mi>p</mi><mo>∣</mo><mi>K</mi><mo>=</mo><mn>2</mn><mo stretchy="true" form="postfix">]</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Binomial}(10,\mathbb E[p\mid K=2])</annotation></semantics></math></span>
+plug-in model. Identify exactly which uncertainty the plug-in
+calculation omits.</p></li>
+</ol>
+</li><li id="exercise-8-2"><p><strong>Rates, exposure and units.</strong> Suppose
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>i</mi></msub><mo>∣</mo><mi>λ</mi><mo>∼</mo><mo>Poisson</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>e</mi><mi>i</mi></msub><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">X_i\mid\lambda\sim\operatorname{Poisson}(e_i\lambda)</annotation></semantics></math></span>
+independently, where the known positive exposures are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>e</mi><mn>1</mn></msub><mo>,</mo><msub><mi>e</mi><mn>2</mn></msub><mo>,</mo><msub><mi>e</mi><mn>3</mn></msub><mo>,</mo><msub><mi>e</mi><mn>4</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>0.5</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>1.5</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">(e_1,e_2,e_3,e_4)=(1,0.5,2,1.5)</annotation></semantics></math></span>
+and the observed counts are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(2,0,4,1)</annotation></semantics></math></span>.
+Use a gamma prior with shape
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">a=2</annotation></semantics></math></span>
+and rate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">b=1</annotation></semantics></math></span>:
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>b</mi><mi>a</mi></msup><msup><mi>λ</mi><mrow><mi>a</mi><mo>−</mo><mn>1</mn></mrow></msup><msup><mi>e</mi><mrow><mo>−</mo><mi>b</mi><mi>λ</mi></mrow></msup><mi>/</mi><mi>Γ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\pi(\lambda)=b^a\lambda^{a-1}e^{-b\lambda}/\Gamma(a)</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\lambda&gt;0</annotation></semantics></math></span>.</p>
+<ol>
+<li><p>Derive and normalize the posterior of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math></span>.</p></li>
+<li><p>A new count
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mo>∣</mo><mi>λ</mi><mo>∼</mo><mo>Poisson</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">J\mid\lambda\sim\operatorname{Poisson}(u\lambda)</annotation></semantics></math></span>
+is conditionally independent of the observed counts, with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>u</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">u=2</annotation></semantics></math></span>.
+Integrate out
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math></span>
+to derive its predictive mass function, mean, variance and probability
+of zero.</p></li>
+<li><p>Express every exposure in units whose numerical values are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1000</mn><annotation encoding="application/x-tex">1000</annotation></semantics></math></span>
+times larger, so
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mi>i</mi></msub><mi>′</mi><mo>=</mo><mn>1000</mn><msub><mi>e</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">e_i'=1000e_i</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>u</mi><mi>′</mi><mo>=</mo><mn>1000</mn><mi>u</mi></mrow><annotation encoding="application/x-tex">u'=1000u</annotation></semantics></math></span>.
+Derive the corresponding transformation of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math></span>
+and the gamma rate parameter. Show that the predictive count
+distribution is unchanged.</p></li>
+</ol>
+</li><li id="exercise-8-3"><p><strong>An uncertain mean and a future average.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>X</mi><mi>n</mi></msub><mo>∣</mo><mi>μ</mi></mrow><annotation encoding="application/x-tex">X_1,\ldots,X_n\mid\mu</annotation></semantics></math></span>
+be independent
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>,</mo><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">N(\mu,\sigma^2)</annotation></semantics></math></span>
+observations, with known
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>σ</mi><mn>2</mn></msup><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\sigma^2&gt;0</annotation></semantics></math></span>,
+and let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>μ</mi><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>m</mi><mn>0</mn></msub><mo>,</mo><msup><mi>τ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mu\sim N(m_0,\tau^2)</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>τ</mi><mn>2</mn></msup><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau^2&gt;0</annotation></semantics></math></span>.</p>
+<ol>
+<li><p>Complete the square in the posterior kernel. State the posterior
+mean
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>m</mi><mi>n</mi></msub><annotation encoding="application/x-tex">m_n</annotation></semantics></math></span>,
+variance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>v</mi><mi>n</mi></msub><annotation encoding="application/x-tex">v_n</annotation></semantics></math></span>,
+and the term independent of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>
+in the completed-square identity.</p></li>
+<li><p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>X</mi><mo accent="true">¯</mo></mover><mrow><mrow><mi mathvariant="normal">n</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">w</mi></mrow><mo>,</mo><mi>r</mi></mrow></msub><annotation encoding="application/x-tex">\overline X_{\mathrm{new},r}</annotation></semantics></math></span>
+be the average of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>≥</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">r\ge1</annotation></semantics></math></span>
+new observations, conditionally independent of the original data given
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>.
+Derive its posterior predictive distribution.</p></li>
+<li><p>For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>16</mn></mrow><annotation encoding="application/x-tex">n=16</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>x</mi><mo accent="true">¯</mo></mover><mo>=</mo><mn>3.2</mn></mrow><annotation encoding="application/x-tex">\overline x=3.2</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>σ</mi><mn>2</mn></msup><mo>=</mo><mn>16</mn></mrow><annotation encoding="application/x-tex">\sigma^2=16</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>m</mi><mn>0</mn></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">m_0=0</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>τ</mi><mn>2</mn></msup><mo>=</mo><mn>4</mn></mrow><annotation encoding="application/x-tex">\tau^2=4</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>4</mn></mrow><annotation encoding="application/x-tex">r=4</annotation></semantics></math></span>,
+calculate the posterior variance of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>
+and predictive variance of the new average. Explain why they
+differ.</p></li>
+<li><p>At fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>≥</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">n\ge1</annotation></semantics></math></span>,
+derive the posterior limit as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>τ</mi><mn>2</mn></msup><mo>→</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">\tau^2\to\infty</annotation></semantics></math></span>.
+With the proper prior fixed and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>→</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">n\to\infty</annotation></semantics></math></span>
+under the stated sampling model, derive the limit of the predictive
+variance for fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math></span>.
+Does accurate estimation of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>
+make future observation variation disappear?</p></li>
+</ol>
+</li><li id="exercise-8-4"><p><strong>Credibility and repeated-sampling coverage.</strong> For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>∣</mo><mi>p</mi><mo>∼</mo><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>10</mn><mo>,</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">K\mid p\sim\operatorname{Binomial}(10,p)</annotation></semantics></math></span>,
+consider each of the proper priors
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Beta}(1,1)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>10</mn><mo>,</mo><mn>10</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Beta}(10,10)</annotation></semantics></math></span>.
+After count
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math></span>,
+define the closed equal-tail
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>95</mn><mi>%</mi></mrow><annotation encoding="application/x-tex">95\%</annotation></semantics></math></span>
+posterior interval
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">[</mo><msub><mo>ℓ</mo><mi>k</mi></msub><mo>,</mo><msub><mi>u</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">C(k)=[\ell_k,u_k]</annotation></semantics></math></span>
+using beta quantiles
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.025</mn><annotation encoding="application/x-tex">0.025</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.975</mn><annotation encoding="application/x-tex">0.975</annotation></semantics></math></span>.</p>
+<ol>
+<li><p>Write the exact finite-sum expression for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>Pr</mo><mi>p</mi></msub><mo stretchy="false" form="prefix">{</mo><mi>p</mi><mo>∈</mo><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\Pr_p\{p\in C(K)\}</annotation></semantics></math></span>
+and evaluate it at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.5</mn></mrow><annotation encoding="application/x-tex">p=0.5</annotation></semantics></math></span>
+for both priors. Use beta quantiles and binomial probabilities;
+simulation is unnecessary.</p></li>
+<li><p>For a general proper prior
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Π</mi><annotation encoding="application/x-tex">\Pi</annotation></semantics></math></span>
+and sampling model, suppose
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>D</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">C(D)</annotation></semantics></math></span>
+has posterior probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.95</mn><annotation encoding="application/x-tex">0.95</annotation></semantics></math></span>
+for marginal-almost every data value. Prove
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>∫</mo><msub><mo>Pr</mo><mi>θ</mi></msub><mo stretchy="false" form="prefix">{</mo><mi>θ</mi><mo>∈</mo><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>D</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mspace width="0.167em"></mspace><mi>Π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.95</mn></mrow><annotation encoding="application/x-tex">\int\Pr_\theta\{\theta\in C(D)\}\,\Pi(d\theta)=0.95</annotation></semantics></math></span>
+by conditioning in two orders.</p></li>
+<li><p>Explain why the identity in the second part does not imply
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>95</mn><mi>%</mi></mrow><annotation encoding="application/x-tex">95\%</annotation></semantics></math></span>
+coverage at every fixed parameter. State separately what is conditioned
+on in a credible-probability statement and in a repeated-sampling
+coverage statement.</p></li>
+</ol>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="09-testing.html">Previous: 7. Hypothesis Testing as a Statistical Procedure</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="12-shrinkage.html">Next: 9. Empirical Bayes and the geometry of shrinkage</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

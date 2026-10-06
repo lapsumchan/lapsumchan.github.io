@@ -1,0 +1,1214 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Statistical Inference — Chapter 11: Multiplicity, simultaneous claims, and false discoveries | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Multiplicity, simultaneous claims, and false discoveries.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/inference/14-multiplicity.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Statistical Inference — Chapter 11: Multiplicity, simultaneous claims, and false discoveries | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Multiplicity, simultaneous claims, and false discoveries.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/inference/14-multiplicity.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Statistical Inference — Chapter 11: Multiplicity, simultaneous claims, and false discoveries", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Statistical Inference", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/inference/14-multiplicity.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Statistical Inference</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Questions, probability models, and likelihood</p><ol class="contents-chapters"><li><a href="01-models.html">1. Probability models and statistical targets</a></li><li><a href="02-likelihood.html">2. Likelihood, data reduction, and constructing estimators</a></li></ol><p class="contents-part">Part II: Conditional targets, regression, and loss</p><ol class="contents-chapters"><li><a href="conditional-regression.html">3. Regression and conditional targets</a></li><li><a href="03-decisions.html">4. Can a better estimate lead to a worse decision?</a></li></ol><p class="contents-part">Part III: Estimation, uncertainty, and testing</p><ol class="contents-chapters"><li><a href="07-limits.html">5. Sampling limits and asymptotic approximations</a></li><li><a href="08-confidence.html">6. Likelihood asymptotics and confidence sets</a></li><li><a href="09-testing.html">7. Hypothesis Testing as a Statistical Procedure</a></li><li><a href="06-bayes.html">8. Bayesian inference and predictive uncertainty</a></li></ol><p class="contents-part">Part IV: Shrinkage and regularized regression</p><ol class="contents-chapters"><li><a href="12-shrinkage.html">9. Empirical Bayes and the geometry of shrinkage</a></li><li><a href="regularization-association.html">10. Regularization, bias correction, and association inference</a></li></ol><p class="contents-part">Part V: Association claims and multiplicity</p><ol class="contents-chapters"><li><a href="14-multiplicity.html" aria-current="page">11. Multiplicity, simultaneous claims, and false discoveries</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#a-family-and-a-target-must-precede-the-adjustment">11.1 A family and a target must precede the adjustment</a></li><li><a href="#familywise-protection-without-independence">11.2 Familywise protection without independence</a></li><li><a href="#a-false-fraction-requires-a-different-expectation">11.3 A false fraction requires a different expectation</a></li><li><a href="#prove-bh-under-an-explicit-independence-assumption">11.4 The BH bound under independence</a></li><li><a href="#execute-one-family-without-hiding-the-ordering">11.5 Holm and BH calculations for one test family</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#dependence-can-break-bh-and-the-harmonic-bound-repairs-it">11.6 Dependence can break BH, and the harmonic bound repairs it</a></li><li><a href="#posterior-null-probabilities-use-a-different-model">11.7 Posterior null probabilities use a different model</a></li><li><a href="#interpret-a-discovery-list">11.8 Interpret a discovery list</a></li><li><a href="#exercises">11.9 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Statistical Inference</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 11</span></p><div class="chapter-content"><h1 id="i14-chapter">Chapter 11. Multiplicity, simultaneous claims, and false
+discoveries</h1>
+<p>The regression example produced an estimate, interval, and p-value
+for each specified coefficient, then applied Holm and BH to the full
+family. We now examine what those adjustments can justify. Even if every
+individual test is valid, inspecting many outcomes or biomarkers creates
+a collection of claims whose error rate is not controlled by any one
+test. We must specify that family and its error criterion before
+selecting favorable results.</p>
+<p>Chapter <a href="09-testing.html#i9-chapter" data-reference-type="ref" data-reference="i9-chapter">7</a> established the null tail
+property of a calibrated p-value. The debiasing argument showed why an
+estimated coefficient and standard error do not supply that property
+without suitable assumptions and a negligible remainder. We take valid
+elementary p-values as the starting point here and ask which
+collection-level error matters: any false claim in the family, or the
+false fraction among a set of discoveries?</p>
+<p>We work through rank algorithms and their guarantees, drawing on the
+original BH development <span class="citation" data-cites="benjamini1995"><a class="collection-citation" href="references.html#ref-benjamini1995" role="doc-biblioref" aria-label="Reference 9">[9]</a></span> and the harmonic dependence
+correction of <span class="citation" data-cites="benjamini2001"><a class="collection-citation" href="references.html#ref-benjamini2001" role="doc-biblioref" aria-label="Reference 10">[10]</a></span>. We use synthetic p-values and
+explicit sampling models to calculate the error rates and see where the
+required assumptions enter.</p>
+<h2 id="a-family-and-a-target-must-precede-the-adjustment">11.1 A family and
+a target must precede the adjustment</h2>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>H</mi><mi>m</mi></msub></mrow><annotation encoding="application/x-tex">H_1,\ldots,H_m</annotation></semantics></math></span>
+be the prespecified hypotheses and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>P</mi><mi>m</mi></msub></mrow><annotation encoding="application/x-tex">P_1,\ldots,P_m</annotation></semantics></math></span>
+their p-values. At a fixed parameter configuration, let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>I</mi><mn>0</mn></msub><annotation encoding="application/x-tex">I_0</annotation></semantics></math></span>
+be the set of true nulls,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>m</mi><mn>0</mn></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">|</mo><msub><mi>I</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">|</mo></mrow></mrow><annotation encoding="application/x-tex">m_0=|I_0|</annotation></semantics></math></span>.
+A valid null p-value satisfies
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>P</mi><mi>i</mi></msub><mo>≤</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><mi>u</mi><mo>,</mo><mspace width="2.0em"></mspace><mi>i</mi><mo>∈</mo><msub><mi>I</mi><mn>0</mn></msub><mo>,</mo><mspace width="1.0em"></mspace><mn>0</mn><mo>≤</mo><mi>u</mi><mo>≤</mo><mn>1</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}(P_i\le u)\le u,\qquad i\in I_0,\quad 0\le u\le1.
+ \label{i14-valid-p}</annotation></semantics></math><span id="i14-valid-p" class="equation-anchor"></span><span class="equation-number">(11.1)</span></span> This super-uniform
+condition permits discrete p-values such as the exact count tails in
+Chapter <a href="09-testing.html#i9-chapter" data-reference-type="ref" data-reference="i9-chapter">7</a>. It must hold under the
+relevant configuration, including any nuisance parameters. A familiar
+p-value formula with misspecified variance or outcome-selected analysis
+need not satisfy it. In the preceding regression example, a material
+bias remainder was another obstacle to the normal-reference p-values.
+Multiplicity adjustment cannot repair invalid input probabilities.</p>
+<p>For a procedure, write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>R</mi><annotation encoding="application/x-tex">R</annotation></semantics></math></span>
+for the number of rejections and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math></span>
+for the number of true nulls rejected. Both are random across repeated
+complete studies;
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>I</mi><mn>0</mn></msub><annotation encoding="application/x-tex">I_0</annotation></semantics></math></span>
+is fixed in the frequentist formulation. The analyst observes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>R</mi><annotation encoding="application/x-tex">R</annotation></semantics></math></span>
+but generally cannot observe
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math></span>.
+This distinction prevents calculating an apparent false-discovery
+fraction by labeling inconvenient discoveries as noise after the
+fact.</p>
+<p>The family is determined by the scientific claims whose simultaneous
+reliability is being assessed. Ten outcomes declared in advance are not
+the same family as the ten smallest p-values among a thousand outcomes.
+Restricting the latter list does not erase its selection. Prespecified
+independent filtering can sometimes be justified, but filtering on the
+same evidence that drives significance requires a separate argument.
+Adding subgroups, alternative outcome definitions, or directions of
+effect can also expand the procedure beyond the list eventually
+printed.</p>
+<p>Individual effect estimates and uncertainty remain important.
+Rejecting several hypotheses says which null statements passed a
+particular rule; it does not establish equal effect sizes, causal
+mechanisms, or usefulness for a clinical decision. As in the earlier
+chapters, a statistical error target must be connected to the scientific
+use without silently changing its meaning.</p>
+<h2 id="familywise-protection-without-independence">11.2 Familywise
+protection without independence</h2>
+<p>The familywise error rate is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>FWER</mo><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>V</mi><mo>≥</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{FWER}=\mathbb{P}(V\ge1)</annotation></semantics></math></span>.
+Strong control at level
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>
+means that this bound holds for every configuration of true and false
+hypotheses, not only when every null is true. With independent exact
+size-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>
+individual tests under a global null, unadjusted testing has FWER
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>α</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>m</mi></msup></mrow><annotation encoding="application/x-tex">1-(1-\alpha)^m</annotation></semantics></math></span>.
+At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mo>=</mo><mn>100</mn><mo>,</mo><mi>α</mi><mo>=</mo><mn>0.05</mn></mrow><annotation encoding="application/x-tex">m=100,\alpha=0.05</annotation></semantics></math></span>,
+it is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.99407947</mn><annotation encoding="application/x-tex">0.99407947</annotation></semantics></math></span>.
+That calculation is a warning about the combined procedure, not a claim
+that independence always holds.</p>
+<p>Bonferroni rejects
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>H</mi><mi>i</mi></msub><annotation encoding="application/x-tex">H_i</annotation></semantics></math></span>
+when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mi>i</mi></msub><mo>≤</mo><mi>α</mi><mi>/</mi><mi>m</mi></mrow><annotation encoding="application/x-tex">P_i\le\alpha/m</annotation></semantics></math></span>.
+The union bound gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>V</mi><mo>≥</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>I</mi><mn>0</mn></msub></mrow></munder><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>P</mi><mi>i</mi></msub><mo>≤</mo><mi>α</mi><mi>/</mi><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><mfrac><mrow><msub><mi>m</mi><mn>0</mn></msub><mi>α</mi></mrow><mi>m</mi></mfrac><mo>≤</mo><mi>α</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}(V\ge1)\le\sum_{i\in I_0}\mathbb{P}(P_i\le\alpha/m)
+ \le\frac{m_0\alpha}{m}\le\alpha.
+ \label{i14-bonferroni}</annotation></semantics></math><span id="i14-bonferroni" class="equation-anchor"></span><span class="equation-number">(11.2)</span></span> No independence
+is used. Prespecified weights
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>w</mi><mi>i</mi></msub><mo>≥</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">w_i\ge0</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>w</mi><mi>i</mi></msub><mo>≤</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\sum_iw_i\le1</annotation></semantics></math></span>
+similarly permit thresholds
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><msub><mi>w</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\alpha w_i</annotation></semantics></math></span>.
+The weight allocation changes which claims receive sensitivity; it
+should not be learned from their p-values while retaining this
+fixed-allocation proof.</p>
+<p>Holm uses the ordered values
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></msub><mo>≤</mo><mi>⋯</mi><mo>≤</mo><msub><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow></msub></mrow><annotation encoding="application/x-tex">P_{(1)}\le\cdots\le P_{(m)}</annotation></semantics></math></span>.
+Starting at the smallest, reject as long as
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>j</mi><mo stretchy="true" form="postfix">)</mo></mrow></msub><mo>≤</mo><mfrac><mi>α</mi><mrow><mi>m</mi><mo>−</mo><mi>j</mi><mo>+</mo><mn>1</mn></mrow></mfrac><mo>,</mo></mrow><annotation encoding="application/x-tex">P_{(j)}\le\frac{\alpha}{m-j+1},
+ \label{i14-holm-rule}</annotation></semantics></math><span id="i14-holm-rule" class="equation-anchor"></span><span class="equation-number">(11.3)</span></span> and stop at the
+first failure. Stopping matters: passing a later, easier threshold does
+not resume the procedure. Every Bonferroni rejection is also a Holm
+rejection, but Holm can reject additional hypotheses.</p>
+<p>To prove strong control, consider the first true null encountered in
+the ordered list, at position
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math></span>.
+At most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mo>−</mo><msub><mi>m</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">m-m_0</annotation></semantics></math></span>
+false nulls precede it, so
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mo>−</mo><mi>j</mi><mo>+</mo><mn>1</mn><mo>≥</mo><msub><mi>m</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">m-j+1\ge m_0</annotation></semantics></math></span>.
+If any true null is rejected, this first one must pass Holm’s threshold.
+Consequently
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">{</mo><mi>V</mi><mo>≥</mo><mn>1</mn><mo stretchy="false" form="postfix">}</mo><mo>⊆</mo><mrow><mo stretchy="true" form="prefix">{</mo><munder><mo>min</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>I</mi><mn>0</mn></msub></mrow></munder><msub><mi>P</mi><mi>i</mi></msub><mo>≤</mo><mfrac><mi>α</mi><msub><mi>m</mi><mn>0</mn></msub></mfrac><mo stretchy="true" form="postfix">}</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">\{V\ge1\}\subseteq
+ \left\{\min_{i\in I_0}P_i\le\frac{\alpha}{m_0}\right\},
+ \label{i14-holm-proof}</annotation></semantics></math><span id="i14-holm-proof" class="equation-anchor"></span><span class="equation-number">(11.4)</span></span> whose
+probability is at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>
+by a union bound. When
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>m</mi><mn>0</mn></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">m_0=0</annotation></semantics></math></span>,
+the error is identically zero. This proof requires only valid null
+marginals, so dependence among outcomes does not invalidate it.</p>
+<p>An adjusted p-value is the smallest target level at which a specified
+nested procedure rejects that hypothesis. Bonferroni gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mi>m</mi><msub><mi>P</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\min(1,mP_i)</annotation></semantics></math></span>.
+In sorted order Holm gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mover><mi>P</mi><mo accent="true">̃</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi mathvariant="normal">H</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">l</mi><mi mathvariant="normal">m</mi></mrow></msubsup><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">{</mo><mn>1</mn><mo>,</mo><munder><mo>max</mo><mrow><mi>j</mi><mo>≤</mo><mi>i</mi></mrow></munder><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo>−</mo><mi>j</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>j</mi><mo stretchy="true" form="postfix">)</mo></mrow></msub><mo stretchy="true" form="postfix">}</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\widetilde P^{\mathrm{Holm}}_{(i)}
+ =\min\left\{1,\max_{j\le i}(m-j+1)P_{(j)}\right\}.
+ \label{i14-holm-adjusted}</annotation></semantics></math><span id="i14-holm-adjusted" class="equation-anchor"></span><span class="equation-number">(11.5)</span></span> The running
+maximum implements the requirement that every earlier test passed. These
+numbers describe a procedure’s rejection thresholds; they are not
+posterior probabilities that particular nulls are true.</p>
+<p>The same union argument gives simultaneous uncertainty. If each
+interval misses its own fixed parameter with probability at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><mi>/</mi><mi>m</mi></mrow><annotation encoding="application/x-tex">\alpha/m</annotation></semantics></math></span>,
+the chance that any of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math></span>
+intervals misses is at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>.
+Ordinary separate 95% intervals do not automatically provide 95% joint
+coverage. Nor does false-discovery-rate adjustment of a selected list
+automatically provide a guarantee for the usual intervals subsequently
+reported for that list.</p>
+<h2 id="a-false-fraction-requires-a-different-expectation">11.3 A false
+fraction requires a different expectation</h2>
+<p>Define the false discovery proportion and rate by
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>FDP</mo><mo>=</mo><mfrac><mi>V</mi><mrow><mi>R</mi><mo>∨</mo><mn>1</mn></mrow></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mo>FDR</mo><mo>=</mo><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">{</mo><mfrac><mi>V</mi><mrow><mi>R</mi><mo>∨</mo><mn>1</mn></mrow></mfrac><mo stretchy="true" form="postfix">}</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">\operatorname{FDP}=\frac{V}{R\vee1},\qquad
+ \operatorname{FDR}=\mathbb{E}\left\{\frac{V}{R\vee1}\right\},
+ \label{i14-fdr}</annotation></semantics></math><span id="i14-fdr" class="equation-anchor"></span><span class="equation-number">(11.6)</span></span> where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>∨</mo><mn>1</mn><mo>=</mo><mo>max</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>R</mi><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">R\vee1=\max(R,1)</annotation></semantics></math></span>.
+Thus FDP is zero when no discoveries are made. Since
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>FDP</mo><mo>≤</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>V</mi><mo>≥</mo><mn>1</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\operatorname{FDP}\le\mathbf{1}\{V\ge1\}</annotation></semantics></math></span>,
+FDR never exceeds FWER for the same procedure. Under the global null
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><mi>R</mi></mrow><annotation encoding="application/x-tex">V=R</annotation></semantics></math></span>,
+so FDR equals FWER. With some false nulls, the two error targets can
+differ substantially.</p>
+<p>FDR control bounds an expected fraction across repeated studies. It
+does not guarantee that the realized fraction is below the target in
+every study, or that each selected hypothesis has that target as its
+posterior null probability. A study may make no discoveries, many
+correct discoveries, or a highly contaminated list. The expectation
+averages those outcomes according to the specified experiment. Whether
+that target is appropriate depends on the cost of false claims and on
+the role of later verification.</p>
+<p>For target
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>q</mi><annotation encoding="application/x-tex">q</annotation></semantics></math></span>,
+the Benjamini–Hochberg rule defines
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>r</mi><mo>*</mo></msup><mo>=</mo><mo>max</mo><mrow><mo stretchy="true" form="prefix">{</mo><mi>r</mi><mo>:</mo><msub><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow></msub><mo>≤</mo><mfrac><mrow><mi>q</mi><mi>r</mi></mrow><mi>m</mi></mfrac><mo stretchy="true" form="postfix">}</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">r^*=\max\left\{r:P_{(r)}\le\frac{qr}{m}\right\},
+ \label{i14-bh-rule}</annotation></semantics></math><span id="i14-bh-rule" class="equation-anchor"></span><span class="equation-number">(11.7)</span></span> with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>r</mi><mo>*</mo></msup><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r^*=0</annotation></semantics></math></span>
+if the set is empty, and rejects the first
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>r</mi><mo>*</mo></msup><annotation encoding="application/x-tex">r^*</annotation></semantics></math></span>
+hypotheses. It is a step-up rule: find the largest qualifying rank, then
+reject all earlier ranks. An earlier rank need not satisfy its own
+smaller BH threshold. This is a different logic from Holm’s
+first-failure stopping rule.</p>
+<p>The corresponding BH-adjusted values are
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mover><mi>P</mi><mo accent="true">̃</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi mathvariant="normal">B</mi><mi mathvariant="normal">H</mi></mrow></msubsup><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">{</mo><mn>1</mn><mo>,</mo><munder><mo>min</mo><mrow><mi>j</mi><mo>≥</mo><mi>i</mi></mrow></munder><mfrac><mrow><mi>m</mi><msub><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>j</mi><mo stretchy="true" form="postfix">)</mo></mrow></msub></mrow><mi>j</mi></mfrac><mo stretchy="true" form="postfix">}</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\widetilde P^{\mathrm{BH}}_{(i)}
+ =\min\left\{1,\min_{j\ge i}\frac{mP_{(j)}}j\right\}.
+ \label{i14-bh-adjusted}</annotation></semantics></math><span id="i14-bh-adjusted" class="equation-anchor"></span><span class="equation-number">(11.8)</span></span> The reverse
+running minimum makes the values nondecreasing with rank and implements
+the largest qualifying rank. Merely multiplying each p-value by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mi>/</mi><mi>i</mi></mrow><annotation encoding="application/x-tex">m/i</annotation></semantics></math></span>
+without this monotonicity step is not the complete adjusted-value
+algorithm.</p>
+<h2 id="prove-bh-under-an-explicit-independence-assumption">11.4 The BH bound under
+independence</h2>
+<p>Assume each true-null p-value is independent of the vector of all
+other p-values and satisfies <a href="#i14-valid-p" data-reference-type="eqref" data-reference="i14-valid-p">(11.1)</a>. Mutual independence of
+all p-values is a simple sufficient condition. Alternatives need not
+have uniform distributions. Under these assumptions,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>FDR</mo><mrow><mi mathvariant="normal">B</mi><mi mathvariant="normal">H</mi></mrow></msub><mo>≤</mo><mi>q</mi><mfrac><msub><mi>m</mi><mn>0</mn></msub><mi>m</mi></mfrac><mo>≤</mo><mi>q</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\operatorname{FDR}_{\mathrm{BH}}\le q\frac{m_0}{m}\le q.
+ \label{i14-bh-bound}</annotation></semantics></math><span id="i14-bh-bound" class="equation-anchor"></span><span class="equation-number">(11.9)</span></span> The following
+argument shows exactly where independence enters.</p>
+<p>For a true null
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math></span>,
+replace
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>P</mi><mi>i</mi></msub><annotation encoding="application/x-tex">P_i</annotation></semantics></math></span>
+by zero and let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></msup><annotation encoding="application/x-tex">R^{(i)}</annotation></semantics></math></span>
+be the resulting number of BH rejections. It is at least one and depends
+only on the other p-values. The deterministic step-up property gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>i</mi><mrow><mspace width="0.333em"></mspace><mtext mathvariant="normal"> rejected</mtext></mrow><mo stretchy="false" form="postfix">}</mo></mrow><mrow><mi>R</mi><mo>∨</mo><mn>1</mn></mrow></mfrac><mo>=</mo><mfrac><mrow><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>P</mi><mi>i</mi></msub><mo>≤</mo><mi>q</mi><msup><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></msup><mi>/</mi><mi>m</mi><mo stretchy="false" form="postfix">}</mo></mrow><msup><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></msup></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{\mathbf{1}\{i\text{ rejected}\}}{R\vee1}
+ =\frac{\mathbf{1}\{P_i\le qR^{(i)}/m\}}{R^{(i)}}.
+ \label{i14-bh-leave-one-out}</annotation></semantics></math><span id="i14-bh-leave-one-out" class="equation-anchor"></span><span class="equation-number">(11.10)</span></span> If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math></span>
+was rejected, lowering its p-value only rearranges already rejected
+ranks; it cannot create a new qualifying rank beyond the original
+rejection count. Conversely, if the restored value is at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><msup><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></msup><mi>/</mi><mi>m</mi></mrow><annotation encoding="application/x-tex">qR^{(i)}/m</annotation></semantics></math></span>,
+those
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></msup><annotation encoding="application/x-tex">R^{(i)}</annotation></semantics></math></span>
+observations still qualify, and increasing one value cannot increase the
+rejection count. Hence the count is unchanged on that event.</p>
+<p>Conditional on the other p-values, independence and super-uniformity
+bound the expectation of the right side by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><msup><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></msup><mi>/</mi><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><msup><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></msup><mo>=</mo><mi>q</mi><mi>/</mi><mi>m</mi></mrow><annotation encoding="application/x-tex">(qR^{(i)}/m)/R^{(i)}=q/m</annotation></semantics></math></span>.
+Sum over all
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>m</mi><mn>0</mn></msub><annotation encoding="application/x-tex">m_0</annotation></semantics></math></span>
+true nulls to obtain <a href="#i14-bh-bound" data-reference-type="eqref" data-reference="i14-bh-bound">(11.9)</a>. If true-null values
+are exactly uniform, equality gives FDR
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><msub><mi>m</mi><mn>0</mn></msub><mi>/</mi><mi>m</mi></mrow><annotation encoding="application/x-tex">qm_0/m</annotation></semantics></math></span>.
+Independence of null values from each other alone should not silently
+replace the stronger condition used in this conditional proof.</p>
+<p>This also establishes Simes’ global-null bound: the event that any
+rank satisfies
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow></msub><mo>≤</mo><mi>α</mi><mi>r</mi><mi>/</mi><mi>m</mi></mrow><annotation encoding="application/x-tex">P_{(r)}\le\alpha r/m</annotation></semantics></math></span>
+has probability at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>
+for independent valid null p-values. Hochberg uses that fact for FWER
+control. It finds the largest
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow></msub><mo>≤</mo><mi>α</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo>−</mo><mi>k</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">P_{(k)}\le\alpha/(m-k+1)</annotation></semantics></math></span>
+and rejects all earlier ranks. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math></span>
+true nulls are among those
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math></span>
+rejections, their
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math></span>th
+ordered value is at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo>−</mo><mi>k</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><mi>α</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>m</mi><mn>0</mn></msub><mo>−</mo><mi>r</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><mi>r</mi><mi>α</mi><mi>/</mi><msub><mi>m</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">\alpha/(m-k+1)\le\alpha/(m_0-r+1)\le r\alpha/m_0</annotation></semantics></math></span>.
+A false rejection therefore implies a Simes rejection among the true
+nulls. Under independence, that event has probability at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>.
+Hochberg is thus distinct from BH, despite their shared step-up
+language; Holm’s proof remains valid under arbitrary dependence.</p>
+<h2 id="execute-one-family-without-hiding-the-ordering">11.5 Holm and BH
+calculations for one test family</h2>
+<p>For ten prespecified tests, Table <a href="#i14-example-table" data-reference-type="ref" data-reference="i14-example-table">11.1</a>
+retains their input identifiers and original order; ranks refer to the
+p-values after sorting. At target
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>,
+Bonferroni rejects two hypotheses, Holm three, BH five, and the
+harmonic-adjusted BH rule introduced below two. The larger BH list is
+assessed under a different error criterion, not described as uniformly
+better scientific evidence.</p>
+<div id="i14-example-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 11.1. One fixed family in input order, with Holm and BH values at
+target 0.05. Direct rank calculations and <code>stats::p.adjust()</code>
+agree. A numerical identifier preserves the hypothesis attached to each
+value; truth is not inferred from the output.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Input ID</th>
+<th style="text-align: right;">Raw</th>
+<th style="text-align: right;">Holm</th>
+<th style="text-align: right;">BH</th>
+<th style="text-align: right;">Holm reject</th>
+<th style="text-align: right;">BH reject</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">H4</td>
+<td style="text-align: right;">0.0180</td>
+<td style="text-align: right;">0.1260</td>
+<td style="text-align: right;">0.0440</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;">Yes</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">H1</td>
+<td style="text-align: right;">0.0003</td>
+<td style="text-align: right;">0.0030</td>
+<td style="text-align: right;">0.0030</td>
+<td style="text-align: right;">Yes</td>
+<td style="text-align: right;">Yes</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">H7</td>
+<td style="text-align: right;">0.1200</td>
+<td style="text-align: right;">0.4800</td>
+<td style="text-align: right;">0.1714</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;">No</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">H3</td>
+<td style="text-align: right;">0.0060</td>
+<td style="text-align: right;">0.0480</td>
+<td style="text-align: right;">0.0200</td>
+<td style="text-align: right;">Yes</td>
+<td style="text-align: right;">Yes</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">H10</td>
+<td style="text-align: right;">0.9000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">0.9000</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;">No</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">H2</td>
+<td style="text-align: right;">0.0020</td>
+<td style="text-align: right;">0.0180</td>
+<td style="text-align: right;">0.0100</td>
+<td style="text-align: right;">Yes</td>
+<td style="text-align: right;">Yes</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">H5</td>
+<td style="text-align: right;">0.0220</td>
+<td style="text-align: right;">0.1320</td>
+<td style="text-align: right;">0.0440</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;">Yes</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">H8</td>
+<td style="text-align: right;">0.2200</td>
+<td style="text-align: right;">0.6600</td>
+<td style="text-align: right;">0.2750</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;">No</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">H6</td>
+<td style="text-align: right;">0.0490</td>
+<td style="text-align: right;">0.2450</td>
+<td style="text-align: right;">0.0817</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;">No</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">H9</td>
+<td style="text-align: right;">0.5100</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">0.5667</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;">No</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>The distinction between step-down and step-up rules is clearest when
+an earlier rank fails its own threshold. At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mo>=</mo><mn>0.044</mn></mrow><annotation encoding="application/x-tex">q=0.044</annotation></semantics></math></span>,
+rank four has
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>4</mn><mo stretchy="true" form="postfix">)</mo></mrow></msub><mo>=</mo><mn>0.018</mn><mo>&gt;</mo><mn>4</mn><mi>q</mi><mi>/</mi><mn>10</mn><mo>=</mo><mn>0.0176</mn></mrow><annotation encoding="application/x-tex">P_{(4)}=0.018&gt;4q/10=0.0176</annotation></semantics></math></span>,
+while rank five has
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow></msub><mo>=</mo><mn>0.022</mn><mo>=</mo><mn>5</mn><mi>q</mi><mi>/</mi><mn>10</mn></mrow><annotation encoding="application/x-tex">P_{(5)}=0.022=5q/10</annotation></semantics></math></span>.
+No later rank qualifies, so BH rejects the first five hypotheses,
+including rank four. It does not stop at rank four’s failure. Its
+adjusted value for that hypothesis is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.044</mn><annotation encoding="application/x-tex">0.044</annotation></semantics></math></span>,
+inherited from the fifth rank through the reverse running minimum.</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# multiple testing, dependence, and two-group interpretations.
+out &lt;- "generated"; out.dir &lt;- out
+dir.create(out,recursive=TRUE,showWarnings=FALSE)
+q &lt;- .05
+# Rank algorithms derived from ordered p-values.
+adjust &lt;- function(p, method) {
+  stopifnot(length(p)&gt;0,all(is.finite(p)),all(p&gt;=0),all(p&lt;=1))
+  m &lt;- length(p);o &lt;- order(p);s &lt;- p[o];r &lt;- seq_len(m)
+  a &lt;- switch(method,
+    none = s,
+    bonferroni = m*s,
+    holm = cummax((m-r+1)*s),
+    hochberg = rev(cummin(rev((m-r+1)*s))),
+    BH = rev(cummin(rev(m*s/r))),
+    BY = sum(1/r)*rev(cummin(rev(m*s/r))),
+    stop("unknown method"))
+  ans &lt;- numeric(m);ans[o] &lt;- pmin(a,1);ans
+}
+bh.rule &lt;- function(p,q) {
+  m &lt;- length(p);o &lt;- order(p);r &lt;- which(p[o] &lt;= q*seq_len(m)/m)
+  reject &lt;- rep(FALSE,m)
+  if(length(r)) reject[o[seq_len(max(r))]] &lt;- TRUE
+  reject
+}
+holm.rule &lt;- function(p,alpha) {
+  m &lt;- length(p);o &lt;- order(p);reject &lt;- rep(FALSE,m)
+  for(j in seq_len(m)) {
+    if(p[o[j]] &gt; alpha/(m-j+1)) break
+    reject[o[j]] &lt;- TRUE
+  }
+  reject
+}
+methods &lt;- c("none","bonferroni","holm","hochberg","BH","BY")
+p &lt;- c(.0003,.002,.006,.018,.022,.049,.12,.22,.51,.90)
+m &lt;- length(p);r &lt;- seq_len(m)
+adjusted &lt;- sapply(methods,function(method)adjust(p,method))
+example &lt;- data.frame(rank=r,raw.p=p,adjusted)
+write.csv(example,file.path(out,"ch14-example.csv"),row.names=FALSE)
+stopifnot(sum(adjusted[,"bonferroni"]&lt;=q)==2,
+          sum(adjusted[,"holm"]&lt;=q)==3,
+          sum(adjusted[,"BH"]&lt;=q)==5,
+          sum(adjusted[,"BY"]&lt;=q)==2)
+# Check independent implementation, including ties and endpoint p-values.
+set.seed(8021410)
+for(b in seq_len(200L)) {
+  pp &lt;- if(b %% 2) runif(25) else sample(c(0,.001,.01,.05,.2,1),25,TRUE)
+  for(method in methods)
+    stopifnot(max(abs(adjust(pp,method)-p.adjust(pp,method)))&lt;1e-12)
+  stopifnot(identical(bh.rule(pp,q),adjust(pp,"BH")&lt;=q),
+            identical(holm.rule(pp,q),adjust(pp,"holm")&lt;=q))
+}
+# Reader values: thresholds change for one fixed family, with full decisions.
+threshold.grid &lt;- do.call(rbind,lapply(seq(.01,.10,by=.005),function(qq) {
+  data.frame(q=qq,rank=r,raw.p=p,bonferroni=q*0+qq/m,
+    holm=qq/(m-r+1),BH=qq*r/m,BY=qq*r/(m*sum(1/r)),
+    bonferroni.reject=adjust(p,"bonferroni")&lt;=qq,
+    holm.reject=holm.rule(p,qq),BH.reject=bh.rule(p,qq),
+    BY.reject=adjust(p,"BY")&lt;=qq)
+}))
+write.csv(threshold.grid,file.path(out,"ch14-threshold-grid.csv"),row.names=FALSE)
+# Exact dependence counterexample: both null marginals are super-uniform.
+dependence &lt;- data.frame(state=c("A","B","C","D"),
+  probability=c(q/2,q/2,q/2,1-3*q/2),p1=c(q/2,1,q,1),p2=c(1,q/2,q,1))
+for(method in c("bonferroni","holm","BH","BY"))
+  dependence[[paste0(method,"rejections")]] &lt;- apply(dependence[,c("p1","p2")],1,
+    function(x)sum(adjust(x,method)&lt;=q))
+for(j in 1:2) for(u in sort(unique(c(0,dependence[[paste0("p",j)]],1))))
+  stopifnot(sum(dependence$probability[dependence[[paste0("p",j)]]&lt;=u])&lt;=u+1e-12)
+stopifnot(abs(sum(dependence$probability[dependence$BHrejections&gt;0])-1.5*q)&lt;1e-12,
+          abs(sum(dependence$probability[dependence$holmrejections&gt;0])-q)&lt;1e-12)
+write.csv(dependence,file.path(out,"ch14-dependence.csv"),row.names=FALSE)
+# Simulate complete experiments with fixed true-null sets, not random labels.
+B &lt;- 10000L;M &lt;- 100L;delta &lt;- 3
+experiment &lt;- function(m0) {
+  z &lt;- matrix(rnorm(B*M),nrow=B,ncol=M)
+  if(m0&lt;M) z[,(m0+1):M] &lt;- z[,(m0+1):M]+delta
+  pp &lt;- pnorm(z,lower.tail=FALSE)
+  do.call(rbind,lapply(methods,function(method) {
+    metrics &lt;- t(apply(pp,1,function(x) {
+      reject &lt;- adjust(x,method)&lt;=q
+      R &lt;- sum(reject);V &lt;- sum(reject[seq_len(m0)])
+      true &lt;- if(m0&lt;M) sum(reject[(m0+1):M]) else 0
+      c(FWER=as.numeric(V&gt;0),FDP=V/max(1,R),R=R,true=true)
+    }))
+    data.frame(m=M,m0=m0,alternative.shift=delta,replications=B,method=method,
+      FWER=mean(metrics[,"FWER"]),FWER.MCSE=sd(metrics[,"FWER"])/sqrt(B),
+      FDR=mean(metrics[,"FDP"]),FDR.MCSE=sd(metrics[,"FDP"])/sqrt(B),
+      mean.rejections=mean(metrics[,"R"]),mean.true.discoveries=mean(metrics[,"true"]),
+      true.discovery.fraction=if(m0&lt;M)mean(metrics[,"true"])/(M-m0) else NA_real_)
+  }))
+}
+set.seed(8021414)
+operating &lt;- rbind(experiment(M),experiment(80L))
+write.csv(operating,file.path(out,"ch14-operating.csv"),row.names=FALSE)
+# Exact global-null calibrations and the exact BH mixed-null expectation.
+null.bonf &lt;- 1-(1-q/M)^M
+null.unadjusted &lt;- 1-(1-q)^M
+mixed &lt;- operating[operating$m0==80 &amp; operating$method=="BH",]
+stopifnot(abs(mixed$FDR-q*.8) &lt;= 6*mixed$FDR.MCSE)
+for(method in c("bonferroni","holm","hochberg")) {
+  d &lt;- operating[operating$method==method,]
+  stopifnot(all(d$FWER&lt;=q+6*d$FWER.MCSE))
+}
+# A known iid two-group mixture uses a different averaging model.
+pi0 &lt;- .9;shift &lt;- 3;MM &lt;- 20L
+c.grid &lt;- seq(0,5,by=.025)
+a &lt;- pi0*pnorm(c.grid,lower.tail=FALSE)
+b &lt;- (1-pi0)*pnorm(c.grid-shift,lower.tail=FALSE)
+s &lt;- a+b
+local &lt;- pi0*dnorm(c.grid)/(pi0*dnorm(c.grid)+(1-pi0)*dnorm(c.grid-shift))
+tail &lt;- a/s
+mixture &lt;- data.frame(threshold=c.grid,pi0=pi0,shift=shift,m=MM,
+  local.null.probability=local,tail.null.probability=tail,
+  selection.probability=s,positive.selection.probability=1-(1-s)^MM,
+  frequentist.FDR=tail*(1-(1-s)^MM),p.value=pnorm(c.grid,lower.tail=FALSE))
+stopifnot(all(is.finite(as.matrix(mixture))),all(diff(local)&lt;=1e-12),
+  all(diff(tail)&lt;=1e-12),all(tail&lt;=local+1e-12))
+# Conditional Binomial(V | R) gives the fixed-m identity by enumeration.
+c0 &lt;- 3;a0 &lt;- pi0*pnorm(c0,lower.tail=FALSE)
+b0 &lt;- (1-pi0)*pnorm(c0-shift,lower.tail=FALSE);s0 &lt;- a0+b0;tau &lt;- a0/s0
+exact.fdr &lt;- sum(dbinom(1:MM,MM,s0)*tau)
+stopifnot(abs(exact.fdr-tau*(1-(1-s0)^MM))&lt;1e-12)
+set.seed(8021424)
+counts &lt;- rmultinom(50000L,MM,c(a0,b0,1-s0))
+RR &lt;- counts[1,]+counts[2,];FDP &lt;- counts[1,]/pmax(1,RR)
+mixture.mc &lt;- data.frame(m=MM,threshold=c0,pi0=pi0,shift=shift,
+  local.null.probability=pi0*dnorm(c0)/(pi0*dnorm(c0)+(1-pi0)*dnorm(c0-shift)),
+  positive.FDR=tau,FDR=exact.fdr,simulated.FDR=mean(FDP),
+  MCSE=sd(FDP)/sqrt(length(FDP)),replications=length(FDP))
+stopifnot(abs(mean(FDP)-exact.fdr)&lt;=6*mixture.mc$MCSE)
+write.csv(mixture,file.path(out,"ch14-mixture.csv"),row.names=FALSE)
+write.csv(mixture.mc,file.path(out,"ch14-mixture-check.csv"),row.names=FALSE)
+# Tables record realized calculations without pretending unknown truth is observable.
+con &lt;- file(file.path(out,"ch14-example.tex"),"w")
+writeLines(c("\\begin{tabular}{rrrrrr}\\toprule",
+ "Rank &amp; Raw &amp; Bonferroni &amp; Holm &amp; BH &amp; BY \\\\","\\midrule"),con)
+for(i in seq_len(m))writeLines(sprintf("%d &amp; %.4f &amp; %.4f &amp; %.4f &amp; %.4f &amp; %.4f \\\\",
+ r[i],p[i],adjusted[i,"bonferroni"],adjusted[i,"holm"],adjusted[i,"BH"],adjusted[i,"BY"]),con)
+writeLines(c("\\bottomrule","\\end{tabular}"),con);close(con)
+con &lt;- file(file.path(out,"ch14-operating.tex"),"w")
+writeLines(c("\\begin{tabular}{lrrrr}\\toprule",
+ "Procedure &amp; FWER &amp; FDR &amp; FDR MCSE &amp; True discoveries \\\\","\\midrule"),con)
+for(i in which(operating$m0==80)) writeLines(sprintf("%s &amp; %.4f &amp; %.4f &amp; %.4f &amp; %.2f \\\\",
+ operating$method[i],operating$FWER[i],operating$FDR[i],operating$FDR.MCSE[i],operating$mean.true.discoveries[i]),con)
+writeLines(c("\\bottomrule","\\end{tabular}"),con);close(con)
+figure &lt;- function(name,ext) {
+  path &lt;- file.path(out,paste0(name,".",ext))
+  if(ext=="pdf")cairo_pdf(path,width=7,height=3.8) else png(path,width=1400,height=760,res=200)
+  if(name=="ch14-thresholds") {
+    par(mar=c(4,4,1,1))
+    plot(r,p,log="y",pch=16,col="#002D72",xlab="Ordered rank",ylab="P-value or threshold",ylim=c(.0002,1))
+    lines(r,rep(q/m,m),col="gray40",lty=3,lwd=2)
+    lines(r,q/(m-r+1),col="#0072CE",lty=2,lwd=2)
+    lines(r,q*r/m,col="#002D72",lwd=2)
+    legend("topleft",c("Observed p","Bonferroni","Holm","BH"),pch=c(16,NA,NA,NA),
+      lty=c(NA,3,2,1),col=c("#002D72","gray40","#0072CE","#002D72"),bty="n",cex=.8)
+  } else {
+    par(mar=c(4,4,1,1))
+    plot(mixture$threshold,mixture$local.null.probability,type="l",col="#002D72",lwd=2,
+      ylim=c(0,1),xlab="Normal-statistic threshold",ylab="Null probability or error rate")
+    lines(mixture$threshold,mixture$tail.null.probability,col="#0072CE",lwd=2,lty=2)
+    lines(mixture$threshold,mixture$frequentist.FDR,col="gray40",lwd=2,lty=3)
+    legend("topright",c("Local posterior null","pFDR / tail posterior null","FDR, m=20"),
+      lty=1:3,lwd=2,col=c("#002D72","#0072CE","gray40"),bty="n",cex=.8)
+  }
+  dev.off()
+}
+for(ext in c("pdf","png")) {
+  figure("ch14-thresholds",ext);figure("ch14-mixture",ext)
+}
+
+writeLines(c("ch14-example.csv: ordered raw p-values and six adjustments; truth not assumed known.",
+ "ch14-threshold-grid.csv: 19 q values by10 ranks; fixed-family critical thresholds and complete rejection decisions.",
+ "ch14-dependence.csv: four states, exact probabilities,valid null p-values, rejection counts.",
+ "ch14-operating.csv: two fixed-truth independent-normal scenarios,10000 complete replications each; empirical FWER,FDR,MCSE,discoveries.",
+ "ch14-mixture.csv: known iid random-label normal mixture,local/tail posterior probabilities,pFDR,FDR,selection probability.",
+ "ch14-mixture-check.csv: exact fixed-m FDR and executed Monte Carlo check,50000 replications.",
+ "FDR and FWER have different meanings; BH/BY adjusted values are not individual posterior null probabilities."),file.path(out,"ch14-schema.txt"))
+
+writeLines(capture.output(sessionInfo()),file.path(out,"ch14-sessionInfo.txt"))
+
+
+# One family in its original input order, not an implicitly sorted output list.
+# From first principles: reuse the running-maximum/minimum rank algorithms.
+p.input &lt;- c(H4=.018,H1=.0003,H7=.12,H3=.006,H10=.90,
+             H2=.002,H5=.022,H8=.22,H6=.049,H9=.51)
+rank.pair &lt;- function(p) {
+  stopifnot(length(p)&gt;0,all(is.finite(p)),all(p&gt;=0 &amp; p&lt;=1))
+  m &lt;- length(p); o &lt;- order(p); r &lt;- seq_len(m)
+  s &lt;- p[o]
+  sorted &lt;- cbind(Holm=pmin(1,cummax((m-r+1)*s)),
+                 BH=pmin(1,rev(cummin(rev(m*s/r)))))
+  result &lt;- sorted[order(o),,drop=FALSE]
+  rownames(result) &lt;- names(p)
+  result
+}
+manual &lt;- rank.pair(p.input)
+
+# Standard R workflow: keep the family size, methods and input labels explicit.
+family.size &lt;- length(p.input)
+standard &lt;- cbind(Holm=stats::p.adjust(p.input,method="holm",n=family.size),
+                 BH=stats::p.adjust(p.input,method="BH",n=family.size))
+stopifnot(max(abs(manual-standard))&lt;1e-12,
+          identical(rownames(standard),names(p.input)))
+workflow.table &lt;- data.frame(hypothesis=names(p.input),
+  raw.p=as.numeric(p.input),Holm=standard[,"Holm"],BH=standard[,"BH"],
+  Holm.reject=standard[,"Holm"]&lt;=q,BH.reject=standard[,"BH"]&lt;=q,
+  row.names=NULL)
+print(workflow.table,digits=6,row.names=FALSE)
+
+# Missing output does not itself define a smaller scientific family.
+p.missing &lt;- c(H1=.01,H2=NA_real_,H3=.04)
+missing.example &lt;- data.frame(hypothesis=names(p.missing),p=p.missing,
+  Holm.default=stats::p.adjust(p.missing,"holm"),
+  Holm.family3=stats::p.adjust(p.missing,"holm",n=3L),
+  BH.default=stats::p.adjust(p.missing,"BH"),
+  BH.family3=stats::p.adjust(p.missing,"BH",n=3L),row.names=NULL)
+stopifnot(identical(names(stats::p.adjust(p.missing,"holm",n=3L)),names(p.missing)),
+  is.na(missing.example$Holm.family3[2]),is.na(missing.example$BH.family3[2]),
+  max(abs(missing.example$Holm.family3[c(1,3)]-c(.03,.08)))&lt;1e-12,
+  max(abs(missing.example$BH.family3[c(1,3)]-c(.03,.06)))&lt;1e-12)
+# Explicit n=length(p.input) is unchanged for this fully observed ten-test family.
+# Ties, zeros and ones have defined rank behavior; original ordering is restored.
+tied.input &lt;- c(Ha=.02,Hb=.02,Hc=0,Hd=1,He=.05)
+for(method in c("holm","BH"))
+  stopifnot(max(abs(adjust(tied.input,method)-
+                   stats::p.adjust(tied.input,method=method,n=length(tied.input))))&lt;1e-12)
+set.seed(8021466)
+for(j in seq_len(100L)) {
+  pp &lt;- if(j %% 2L) runif(25) else sample(c(0,.01,.02,.02,.05,1),25,TRUE)
+  derivation &lt;- rank.pair(pp)
+  for(method in c("holm","BH"))
+    stopifnot(max(abs(derivation[,if(method=="holm")"Holm" else "BH"]-
+      stats::p.adjust(pp,method=method,n=length(pp))))&lt;1e-12)
+}
+write.csv(workflow.table,file.path(out,"ch14-r-workflow.csv"),row.names=FALSE)
+write.csv(missing.example,file.path(out,"ch14-missing-workflow.csv"),row.names=FALSE)
+capture.output(print(workflow.table,digits=6,row.names=FALSE),
+  print(missing.example,digits=6,row.names=FALSE),
+  file=file.path(out,"ch14-r-workflow-output.txt"))
+lines &lt;- c("\\begin{tabular}{lrrrrr}\\toprule",
+  "Input ID &amp; Raw &amp; Holm &amp; BH &amp; Holm reject &amp; BH reject \\\\ \\midrule")
+for(j in seq_len(nrow(workflow.table))) lines &lt;- c(lines,sprintf(
+  "%s &amp; %.4f &amp; %.4f &amp; %.4f &amp; %s &amp; %s \\\\",
+  workflow.table$hypothesis[j],workflow.table$raw.p[j],workflow.table$Holm[j],
+  workflow.table$BH[j],if(workflow.table$Holm.reject[j])"Yes" else "No",
+  if(workflow.table$BH.reject[j])"Yes" else "No"))
+writeLines(c(lines,"\\bottomrule\\end{tabular}"),
+  file.path(out,"ch14-r-workflow.tex"))
+writeLines(capture.output(sessionInfo()),file.path(out,"ch14-session-info.txt"))
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fu">c</span>(.<span class="dv">0003</span>,.<span class="dv">002</span>,.<span class="dv">006</span>,.<span class="dv">018</span>,.<span class="dv">022</span>,.<span class="dv">049</span>,.<span class="dv">12</span>,.<span class="dv">22</span>,.<span class="dv">51</span>,.<span class="dv">90</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>q <span class="ot">&lt;-</span> .<span class="dv">044</span>; rank <span class="ot">&lt;-</span> <span class="fu">seq_along</span>(p)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>passing <span class="ot">&lt;-</span> <span class="fu">which</span>(p <span class="sc">&lt;=</span> q<span class="sc">*</span>rank<span class="sc">/</span><span class="fu">length</span>(p))</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>r.star <span class="ot">&lt;-</span> <span class="cf">if</span>(<span class="fu">length</span>(passing)) <span class="fu">max</span>(passing) <span class="cf">else</span> <span class="dv">0</span><span class="dt">L</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>rank <span class="sc">&lt;=</span> r.star   <span class="co"># TRUE for the first five ranks</span></span></code></pre></div>
+<h3 class="unnumbered" id="from-first-principles">From first
+principles</h3>
+<p>The direct rank implementation sorts the family, takes Holm’s running
+maximum or BH’s reverse running minimum, caps at one, and restores input
+order. These steps are the computational counterparts of equations <a href="#i14-holm-adjusted" data-reference-type="eqref" data-reference="i14-holm-adjusted">(11.5)</a> and <a href="#i14-bh-adjusted" data-reference-type="eqref" data-reference="i14-bh-adjusted">(11.8)</a>:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>H2<span class="ot">=</span>.<span class="dv">002</span>,H5<span class="ot">=</span>.<span class="dv">022</span>,H8<span class="ot">=</span>.<span class="dv">22</span>,H6<span class="ot">=</span>.<span class="dv">049</span>,H9<span class="ot">=</span>.<span class="dv">51</span><span class="er">)</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>rank.pair <span class="ot">&lt;-</span> <span class="cf">function</span>(p) {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">length</span>(p)<span class="sc">&gt;</span><span class="dv">0</span>,<span class="fu">all</span>(<span class="fu">is.finite</span>(p)),<span class="fu">all</span>(p<span class="sc">&gt;=</span><span class="dv">0</span> <span class="sc">&amp;</span> p<span class="sc">&lt;=</span><span class="dv">1</span>))</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  m <span class="ot">&lt;-</span> <span class="fu">length</span>(p); o <span class="ot">&lt;-</span> <span class="fu">order</span>(p); r <span class="ot">&lt;-</span> <span class="fu">seq_len</span>(m)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  s <span class="ot">&lt;-</span> p[o]</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  sorted <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="at">Holm=</span><span class="fu">pmin</span>(<span class="dv">1</span>,<span class="fu">cummax</span>((m<span class="sc">-</span>r<span class="sc">+</span><span class="dv">1</span>)<span class="sc">*</span>s)),</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>                 <span class="at">BH=</span><span class="fu">pmin</span>(<span class="dv">1</span>,<span class="fu">rev</span>(<span class="fu">cummin</span>(<span class="fu">rev</span>(m<span class="sc">*</span>s<span class="sc">/</span>r)))))</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  result <span class="ot">&lt;-</span> sorted[<span class="fu">order</span>(o),,drop<span class="ot">=</span><span class="cn">FALSE</span>]</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rownames</span>(result) <span class="ot">&lt;-</span> <span class="fu">names</span>(p)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  result</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>manual <span class="ot">&lt;-</span> <span class="fu">rank.pair</span>(p.input)</span></code></pre></div>
+<p>A separate implementation of the largest-qualifying-rank rule checks
+the BH decisions:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb3" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>bh.rule <span class="ot">&lt;-</span> <span class="cf">function</span>(p,q) {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  m <span class="ot">&lt;-</span> <span class="fu">length</span>(p);o <span class="ot">&lt;-</span> <span class="fu">order</span>(p);r <span class="ot">&lt;-</span> <span class="fu">which</span>(p[o] <span class="sc">&lt;=</span> q<span class="sc">*</span><span class="fu">seq_len</span>(m)<span class="sc">/</span>m)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  reject <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="cn">FALSE</span>,m)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span>(<span class="fu">length</span>(r)) reject[o[<span class="fu">seq_len</span>(<span class="fu">max</span>(r))]] <span class="ot">&lt;-</span> <span class="cn">TRUE</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  reject</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>For the table, the complete R example puts the same ten values into a
+deliberately unsorted named vector. H4 has raw value
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.018</mn><annotation encoding="application/x-tex">0.018</annotation></semantics></math></span>
+and H5 has
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.022</mn><annotation encoding="application/x-tex">0.022</annotation></semantics></math></span>;
+their common BH value
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.044</mn><annotation encoding="application/x-tex">0.044</annotation></semantics></math></span>
+follows from the fifth sorted rank, irrespective of where those
+hypotheses appear in the input.</p>
+<h3 class="unnumbered" id="standard-r-workflow">Standard R workflow</h3>
+<p>Apply <code>stats::p.adjust()</code> to that same named vector,
+explicitly selecting the procedure and family size <span class="citation" data-cites="R-stats-p-adjust"><a class="collection-citation" href="references.html#ref-R-stats-p-adjust" role="doc-biblioref" aria-label="Reference 11">[11]</a></span>:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb4" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>standard <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="at">Holm=</span>stats<span class="sc">::</span><span class="fu">p.adjust</span>(p.input,<span class="at">method=</span><span class="st">"holm"</span>,<span class="at">n=</span>family.size),</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>                 <span class="at">BH=</span>stats<span class="sc">::</span><span class="fu">p.adjust</span>(p.input,<span class="at">method=</span><span class="st">"BH"</span>,<span class="at">n=</span>family.size))</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">max</span>(<span class="fu">abs</span>(manual<span class="sc">-</span>standard))<span class="sc">&lt;</span><span class="fl">1e-12</span>,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>          <span class="fu">identical</span>(<span class="fu">rownames</span>(standard),<span class="fu">names</span>(p.input)))</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>workflow.table <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">hypothesis=</span><span class="fu">names</span>(p.input),</span></code></pre></div>
+<p>The output remains in input order with its labels intact. At target
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>,
+Holm rejects H1, H2, and H3; BH rejects H1 through H5. The package
+checks include tied values, zero and one. A tie can share an adjusted
+threshold; it does not justify discarding one hypothesis or changing the
+family.</p>
+<p>Missing test output needs a separate decision about the scientific
+family. With input <code>c(H1=.01,H2=NA,H3=.04)</code> and the
+prespecified family size <code>n=3</code>, the tested workflow returns
+Holm values
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.03</mn><mo>,</mo><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mo>,</mo><mn>0.08</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.03,\mathrm{NA},0.08)</annotation></semantics></math></span>
+and BH values
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.03</mn><mo>,</mo><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mo>,</mo><mn>0.06</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.03,\mathrm{NA},0.06)</annotation></semantics></math></span>.
+In the tested R 4.3.3 implementation, leaving <code>n</code> at its
+default instead gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.02</mn><mo>,</mo><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mo>,</mo><mn>0.04</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.02,\mathrm{NA},0.04)</annotation></semantics></math></span>
+for both methods because the default is evaluated after missing entries
+are removed. Explicit <code>n</code> avoids relying on that
+implementation detail <span class="citation" data-cites="R-stats-p-adjust-source"><a class="collection-citation" href="references.html#ref-R-stats-p-adjust-source" role="doc-biblioref" aria-label="Reference 12">[12]</a></span>. The unavailable value
+remains unavailable; these computations do not establish why it is
+missing or validate outcome-dependent filtering. A larger specified
+<code>n</code> treats unobserved values as larger than observed ones for
+Holm, and as one for BH. It is a way to retain a stated family
+convention, not to erase an original search or manufacture a valid
+elementary p-value.</p>
+<figure id="i14-threshold-figure">
+<a href="../assets/inference/ch14-thresholds.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch14-thresholds.png" alt="Figure 11.1. Ordered values and critical thresholds for the ten-test
+family. The vertical scale is logarithmic. Holm stops at its first
+failure; BH searches for its largest passing rank. Changing the target
+changes the complete procedure.">
+</a><figcaption>Figure 11.1. Ordered values and critical thresholds for the ten-test
+family. The vertical scale is logarithmic. Holm stops at its first
+failure; BH searches for its largest passing rank. Changing the target
+changes the complete procedure.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch14-thresholds.png">Open full-size figure</a></p></figure>
+<p>We also execute 10,000 full independent-normal experiments with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mo>=</mo><mn>100</mn></mrow><annotation encoding="application/x-tex">m=100</annotation></semantics></math></span>
+tests. In the mixed configuration, eighty statistics are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">N(0,1)</annotation></semantics></math></span>
+and twenty are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>3</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">N(3,1)</annotation></semantics></math></span>;
+one-sided p-values are their standard-normal upper tails. True-null
+status is fixed and known to the simulator. The normal upper-tail
+transformation supplies uniform true-null p-values here because the
+complete null distribution is specified exactly; an approximately normal
+statistic would require a separate calibration assessment. Table <a href="#i14-operating-table" data-reference-type="ref" data-reference="i14-operating-table">11.2</a> reports empirical error
+rates, Monte Carlo error, and mean true discoveries. The
+independent-uniform BH theorem supplies the exact FDR target
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0.05</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>80</mn><mi>/</mi><mn>100</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.04</mn></mrow><annotation encoding="application/x-tex">0.05(80/100)=0.04</annotation></semantics></math></span>
+for comparison. A single simulated FDP is neither that expectation nor
+an observable truth estimate in a real study.</p>
+<div id="i14-operating-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 11.2. Executed mixed-null simulation, 10,000 complete replications.
+True discoveries are out of twenty alternatives. MCSE describes
+simulation error in estimated FDR; it is not uncertainty about which
+particular findings are true.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Procedure</th>
+<th style="text-align: right;">FWER</th>
+<th style="text-align: right;">FDR</th>
+<th style="text-align: right;">FDR MCSE</th>
+<th style="text-align: right;">True discoveries</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">none</td>
+<td style="text-align: right;">0.9831</td>
+<td style="text-align: right;">0.1735</td>
+<td style="text-align: right;">0.0007</td>
+<td style="text-align: right;">18.25</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">bonferroni</td>
+<td style="text-align: right;">0.0378</td>
+<td style="text-align: right;">0.0047</td>
+<td style="text-align: right;">0.0002</td>
+<td style="text-align: right;">7.71</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">holm</td>
+<td style="text-align: right;">0.0402</td>
+<td style="text-align: right;">0.0049</td>
+<td style="text-align: right;">0.0003</td>
+<td style="text-align: right;">7.88</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">hochberg</td>
+<td style="text-align: right;">0.0402</td>
+<td style="text-align: right;">0.0049</td>
+<td style="text-align: right;">0.0003</td>
+<td style="text-align: right;">7.88</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">BH</td>
+<td style="text-align: right;">0.4511</td>
+<td style="text-align: right;">0.0392</td>
+<td style="text-align: right;">0.0005</td>
+<td style="text-align: right;">14.29</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">BY</td>
+<td style="text-align: right;">0.0731</td>
+<td style="text-align: right;">0.0074</td>
+<td style="text-align: right;">0.0003</td>
+<td style="text-align: right;">9.05</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>In this executed experiment, BH’s estimated FDR is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.03924254</mn><annotation encoding="application/x-tex">0.03924254</annotation></semantics></math></span>,
+with MCSE
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.00050038</mn><annotation encoding="application/x-tex">0.00050038</annotation></semantics></math></span>,
+approximately
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1.5</mn><annotation encoding="application/x-tex">1.5</annotation></semantics></math></span>
+MCSE below its exact value
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.04</mn><annotation encoding="application/x-tex">0.04</annotation></semantics></math></span>.
+Its FWER is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.4511</mn><annotation encoding="application/x-tex">0.4511</annotation></semantics></math></span>:
+false discoveries occur in many studies, but usually make up a small
+fraction of a larger discovery list. Mean true discoveries are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>14.29</mn><annotation encoding="application/x-tex">14.29</annotation></semantics></math></span>
+out of twenty. Holm’s estimated FWER is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.0402</mn><annotation encoding="application/x-tex">0.0402</annotation></semantics></math></span>
+and mean true discoveries
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>7.88</mn><annotation encoding="application/x-tex">7.88</annotation></semantics></math></span>.
+These numbers demonstrate the effect of choosing different error targets
+in this particular signal configuration. They do not establish that an
+FDR target is preferable for every scientific use or that a selected
+biomarker has a
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.04</mn><annotation encoding="application/x-tex">0.04</annotation></semantics></math></span>
+posterior null probability.</p>
+<p>Across features, dependence is a joint-distribution question.
+Independent study participants do not automatically make tests of
+several correlated measurements independent: the tests can reuse the
+same people and respond to the same random outcomes. On the other hand,
+dependence does not by itself invalidate every individual p-value. Valid
+marginals plus a valid family procedure, and a valid joint assumption
+for a procedure that requires one, are separate obligations. Their
+separation is why Holm can remain justified when the elementary BH
+independence proof does not.</p>
+<h2 id="dependence-can-break-bh-and-the-harmonic-bound-repairs-it">11.6 Dependence
+can break BH, and the harmonic bound repairs it</h2>
+<p>Valid marginals alone do not prove BH control. Consider two true
+nulls and these dependent p-values:</p>
+<div class="center">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">State</th>
+<th style="text-align: right;">Probability</th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>P</mi><mn>1</mn></msub><annotation encoding="application/x-tex">P_1</annotation></semantics></math></span></th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>P</mi><mn>2</mn></msub><annotation encoding="application/x-tex">P_2</annotation></semantics></math></span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">A</td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">q/2</annotation></semantics></math></span></td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">q/2</annotation></semantics></math></span></td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">B</td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">q/2</annotation></semantics></math></span></td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">q/2</annotation></semantics></math></span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">C</td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">q/2</annotation></semantics></math></span></td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>q</mi><annotation encoding="application/x-tex">q</annotation></semantics></math></span></td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>q</mi><annotation encoding="application/x-tex">q</annotation></semantics></math></span></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">D</td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mn>3</mn><mi>q</mi><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">1-3q/2</annotation></semantics></math></span></td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>q</mi><mo>&lt;</mo><mn>2</mn><mi>/</mi><mn>3</mn></mrow><annotation encoding="application/x-tex">0&lt;q&lt;2/3</annotation></semantics></math></span>,
+each marginal is super-uniform: its CDF reaches
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">q/2</annotation></semantics></math></span>
+at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">q/2</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>q</mi><annotation encoding="application/x-tex">q</annotation></semantics></math></span>
+at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>q</mi><annotation encoding="application/x-tex">q</annotation></semantics></math></span>,
+and one at one. BH rejects in A and B at rank one and in C at rank two.
+Therefore its FDR equals its FWER,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mi>q</mi><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">3q/2</annotation></semantics></math></span>.
+At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mo>=</mo><mn>0.05</mn></mrow><annotation encoding="application/x-tex">q=0.05</annotation></semantics></math></span>
+this is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.075</mn><annotation encoding="application/x-tex">0.075</annotation></semantics></math></span>,
+an exact failure rather than a noisy simulation. Bonferroni and Holm
+reject only in A and B and have FWER
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>q</mi><annotation encoding="application/x-tex">q</annotation></semantics></math></span>.</p>
+<p>The Benjamini–Yekutieli rule replaces
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>q</mi><annotation encoding="application/x-tex">q</annotation></semantics></math></span>
+in BH by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mi>/</mi><msub><mi>H</mi><mi>m</mi></msub></mrow><annotation encoding="application/x-tex">q/H_m</annotation></semantics></math></span>,
+where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mi>m</mi></msub><mo>=</mo><msubsup><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>1</mn></mrow><mi>m</mi></msubsup><mn>1</mn><mi>/</mi><mi>k</mi></mrow><annotation encoding="application/x-tex">H_m=\sum_{k=1}^m1/k</annotation></semantics></math></span>.
+Here is a proof under arbitrary dependence. For a step-up rule with
+thresholds
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mi>r</mi></mrow><annotation encoding="application/x-tex">a r</annotation></semantics></math></span>,
+every rejected
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>P</mi><mi>i</mi></msub><annotation encoding="application/x-tex">P_i</annotation></semantics></math></span>
+satisfies
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mi>i</mi></msub><mo>≤</mo><mi>a</mi><mi>R</mi></mrow><annotation encoding="application/x-tex">P_i\le aR</annotation></semantics></math></span>.
+Validity gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>P</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mathbb{P}(P_i=0)=0</annotation></semantics></math></span>
+for a true null. Partition its remaining possible rejected values into
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>a</mi><mo>,</mo><mi>k</mi><mi>a</mi><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">((k-1)a,ka]</annotation></semantics></math></span>.
+Rejection in that interval requires
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>≥</mo><mi>k</mi></mrow><annotation encoding="application/x-tex">R\ge k</annotation></semantics></math></span>,
+so for a true null with CDF
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>F</mi><mi>i</mi></msub><annotation encoding="application/x-tex">F_i</annotation></semantics></math></span>,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><mi>𝔼</mi><mfrac><mrow><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>i</mi><mrow><mspace width="0.333em"></mspace><mtext mathvariant="normal"> rejected</mtext></mrow><mo stretchy="false" form="postfix">}</mo></mrow><mrow><mi>R</mi><mo>∨</mo><mn>1</mn></mrow></mfrac></mtd><mtd columnalign="left" style="text-align: left"><mo>≤</mo><munderover><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>1</mn></mrow><mi>m</mi></munderover><mfrac><mrow><msub><mi>F</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msub><mi>F</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mi>k</mi></mfrac></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mfrac><mrow><msub><mi>F</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mi>m</mi></mfrac><mo>+</mo><munderover><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>m</mi><mo>−</mo><mn>1</mn></mrow></munderover><msub><mi>F</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mn>1</mn><mi>k</mi></mfrac><mo>−</mo><mfrac><mn>1</mn><mrow><mi>k</mi><mo>+</mo><mn>1</mn></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><mi>a</mi><msub><mi>H</mi><mi>m</mi></msub><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+ \mathbb{E}\frac{\mathbf{1}\{i\text{ rejected}\}}{R\vee1}
+ &amp;\le\sum_{k=1}^m\frac{F_i(ka)-F_i((k-1)a)}k\\
+ &amp;=\frac{F_i(ma)}m+
+   \sum_{k=1}^{m-1}F_i(ka)\left(\frac1k-\frac1{k+1}\right)
+ \le aH_m.
+ \label{i14-harmonic-proof}
+\end{aligned}</annotation></semantics></math><span id="i14-harmonic-proof" class="equation-anchor"></span><span class="equation-number">(11.11)</span></span> Super-uniformity gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>F</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><mi>k</mi><mi>a</mi></mrow><annotation encoding="application/x-tex">F_i(ka)\le ka</annotation></semantics></math></span>;
+its nonnegative CDF coefficients justify the last bound. It does not
+bound every short interval’s probability by its length. Taking
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>=</mo><mi>q</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><msub><mi>H</mi><mi>m</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">a=q/(mH_m)</annotation></semantics></math></span>
+and summing over true nulls gives FDR at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><msub><mi>m</mi><mn>0</mn></msub><mi>/</mi><mi>m</mi><mo>≤</mo><mi>q</mi></mrow><annotation encoding="application/x-tex">qm_0/m\le q</annotation></semantics></math></span>,
+without independence. The stronger protection can reduce discoveries;
+exploiting a justified dependence structure can sometimes improve it,
+but generic correlation language is not that justification.</p>
+<h2 id="posterior-null-probabilities-use-a-different-model">11.7 Posterior
+null probabilities use a different model</h2>
+<p>A two-group model describes the mixture of null and alternative
+features. Let a random feature label
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>A</mi><mi>i</mi></msub><annotation encoding="application/x-tex">A_i</annotation></semantics></math></span>
+be null with probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>π</mi><mn>0</mn></msub><annotation encoding="application/x-tex">\pi_0</annotation></semantics></math></span>,
+and let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>Z</mi><mi>i</mi></msub><annotation encoding="application/x-tex">Z_i</annotation></semantics></math></span>
+have density
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>f</mi><mn>0</mn></msub><annotation encoding="application/x-tex">f_0</annotation></semantics></math></span>
+under a null and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>f</mi><mn>1</mn></msub><annotation encoding="application/x-tex">f_1</annotation></semantics></math></span>
+otherwise. Its mixture density is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo>=</mo><msub><mi>π</mi><mn>0</mn></msub><msub><mi>f</mi><mn>0</mn></msub><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>π</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>f</mi><mn>1</mn></msub></mrow><annotation encoding="application/x-tex">f=\pi_0f_0+(1-\pi_0)f_1</annotation></semantics></math></span>.
+Under this explicitly specified model,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>ℓ</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>A</mi><mi>i</mi></msub><mrow><mspace width="0.333em"></mspace><mtext mathvariant="normal"> null</mtext></mrow><mo>∣</mo><msub><mi>Z</mi><mi>i</mi></msub><mo>=</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><msub><mi>π</mi><mn>0</mn></msub><msub><mi>f</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\ell(z)=\mathbb{P}(A_i\text{ null}\mid Z_i=z)=\frac{\pi_0f_0(z)}{f(z)}.
+ \label{i14-local-fdr}</annotation></semantics></math><span id="i14-local-fdr" class="equation-anchor"></span><span class="equation-number">(11.12)</span></span> This local
+posterior null probability is different from a p-value or a BH-adjusted
+value. For a fixed region
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Z</mi><mi>i</mi></msub><mo>≥</mo><mi>c</mi></mrow><annotation encoding="application/x-tex">Z_i\ge c</annotation></semantics></math></span>,
+the posterior null fraction among selected features is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><msub><mi>π</mi><mn>0</mn></msub><msub><mi>ℙ</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>Z</mi><mo>≥</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>Z</mi><mo>≥</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>=</mo><mi>𝔼</mi><mo stretchy="false" form="prefix">{</mo><mo>ℓ</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>Z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>∣</mo><mi>Z</mi><mo>≥</mo><mi>c</mi><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\tau(c)=\frac{\pi_0\mathbb{P}_0(Z\ge c)}{\mathbb{P}(Z\ge c)}
+        =\mathbb{E}\{\ell(Z)\mid Z\ge c\}.
+ \label{i14-tail-fdr}</annotation></semantics></math><span id="i14-tail-fdr" class="equation-anchor"></span><span class="equation-number">(11.13)</span></span> It averages local
+posterior probabilities across the selected region, rather than
+assigning the same probability to every selected observation.</p>
+<p>If feature pairs
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>A</mi><mi>i</mi></msub><mo>,</mo><msub><mi>Z</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(A_i,Z_i)</annotation></semantics></math></span>
+are independent and identically distributed and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>Z</mi><mo>≥</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">s(c)=\mathbb{P}(Z\ge c)</annotation></semantics></math></span>,
+then
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>∼</mo><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo>,</mo><mi>s</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">R\sim\operatorname{Binomial}(m,s)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>∣</mo><mi>R</mi><mo>=</mo><mi>r</mi><mo>∼</mo><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>r</mi><mo>,</mo><mi>τ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">V\mid R=r\sim\operatorname{Binomial}(r,\tau)</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r&gt;0</annotation></semantics></math></span>.
+Consequently
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>pFDR</mo><mo>=</mo><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>V</mi><mi>/</mi><mi>R</mi><mo>∣</mo><mi>R</mi><mo>&gt;</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>τ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mo>FDR</mo><mo>=</mo><mi>τ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>−</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>s</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow><mi>m</mi></msup><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\operatorname{pFDR}=\mathbb{E}(V/R\mid R&gt;0)=\tau(c),\qquad
+ \operatorname{FDR}=\tau(c)\{1-(1-s(c))^m\}.
+ \label{i14-mixture-fdr}</annotation></semantics></math><span id="i14-mixture-fdr" class="equation-anchor"></span><span class="equation-number">(11.14)</span></span> This is a
+random-label averaging model. It must not silently replace the
+fixed-null-configuration target used in the BH theorem. The selected
+region is fixed here; a threshold fitted from the same observations
+changes the conditioning argument.</p>
+<p>For a separate worked model, use known
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>π</mi><mn>0</mn></msub><mo>=</mo><mn>0.9</mn></mrow><annotation encoding="application/x-tex">\pi_0=0.9</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mn>0</mn></msub><mo>=</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f_0=N(0,1)</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mn>1</mn></msub><mo>=</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>3</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f_1=N(3,1)</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mo>=</mo><mn>20</mn></mrow><annotation encoding="application/x-tex">m=20</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi><mo>=</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">c=3</annotation></semantics></math></span>.
+These twenty random-label features differ from both the fixed ten-test
+family and the fixed-null simulation above. The local posterior null
+probability at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>=</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">Z=3</annotation></semantics></math></span>
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.09089336</mn><annotation encoding="application/x-tex">0.09089336</annotation></semantics></math></span>,
+while the tail pFDR among
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>≥</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">Z\ge3</annotation></semantics></math></span>
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.02372177</mn><annotation encoding="application/x-tex">0.02372177</annotation></semantics></math></span>.
+The unconditional FDR is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.01543273</mn><annotation encoding="application/x-tex">0.01543273</annotation></semantics></math></span>:
+with only twenty features, there is an appreciable chance of making no
+discoveries. The simulated FDR is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.01570933</mn><annotation encoding="application/x-tex">0.01570933</annotation></semantics></math></span>,
+with MCSE
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.00048729</mn><annotation encoding="application/x-tex">0.00048729</annotation></semantics></math></span>,
+compatible with that exact value. The script checks <a href="#i14-mixture-fdr" data-reference-type="eqref" data-reference="i14-mixture-fdr">(11.14)</a> by exact count
+enumeration and 50,000 simulations. Figure <a href="#i14-mixture-figure" data-reference-type="ref" data-reference="i14-mixture-figure">11.2</a>
+separates these quantities. Treating
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>π</mi><mn>0</mn></msub><annotation encoding="application/x-tex">\pi_0</annotation></semantics></math></span>
+and the densities as known makes a transparent worked example;
+estimating them is additional modelling, not a free removal of
+multiplicity.</p>
+<figure id="i14-mixture-figure">
+<a href="../assets/inference/ch14-mixture.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch14-mixture.png" alt="Figure 11.2. Known normal mixture with
+π0=0.9\pi_0=0.9
+and shift 3. Local posterior null probability, tail pFDR, and
+unconditional FDR differ. The latter includes the chance of making no
+discoveries in a family of twenty.">
+</a><figcaption>Figure 11.2. Known normal mixture with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>π</mi><mn>0</mn></msub><mo>=</mo><mn>0.9</mn></mrow><annotation encoding="application/x-tex">\pi_0=0.9</annotation></semantics></math></span>
+and shift 3. Local posterior null probability, tail pFDR, and
+unconditional FDR differ. The latter includes the chance of making no
+discoveries in a family of twenty.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch14-mixture.png">Open full-size figure</a></p></figure>
+<p>A model-based q-value minimizes tail pFDR over nested rejection
+regions containing an observed statistic. It concerns a selected region,
+not generally the pointwise local posterior probability. BH-adjusted
+p-values are sometimes also informally called q-values; here we keep
+their names distinct. Neither quantity creates a per-discovery posterior
+interpretation without the associated model and assumptions.</p>
+<h2 id="interpret-a-discovery-list">11.8 Interpret a discovery list</h2>
+<p>The simulation targets a whole discovery procedure. For replication
+FDP values
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>D</mi><mi>b</mi></msub><annotation encoding="application/x-tex">D_b</annotation></semantics></math></span>,
+estimated FDR is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>D</mi><mo accent="true">¯</mo></mover><annotation encoding="application/x-tex">\overline D</annotation></semantics></math></span>
+with MCSE
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>s</mi><mi>D</mi></msub><mi>/</mi><msqrt><mi>B</mi></msqrt></mrow><annotation encoding="application/x-tex">s_D/\sqrt B</annotation></semantics></math></span>.
+A small estimated FDR therefore describes repeated lists under the
+specified experiment; it is not a count of verified truths in the
+observed list. Likewise, the two-group model assigns posterior
+probabilities only through its specified null and alternative
+distributions. These interpretations should accompany the adjustment
+name when discoveries are reported.</p>
+<p>For a regression discovery list, we return to the conditional
+coefficient as the effect target. Its estimate describes magnitude, its
+interval describes uncertainty under a stated procedure, and its p-value
+tests a particular null. Holm and BH add different protections for a
+specified family; they do not alter the coefficient target or supply an
+individual posterior probability. Correlated features require an
+appropriate dependence argument, and ordinary marginal intervals
+reported only for selected discoveries do not become simultaneous
+intervals. We report the family, input tests, error criterion,
+dependence assumption, and interval procedure alongside the effects.</p>
+<h2 id="exercises">11.9 Exercises</h2>
+<ol class="exercises" style='--chapter:"11."'><li id="exercise-11-1"><p><strong>Allocate the error budget before observing the data.</strong> Fix a family
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>H</mi><mi>m</mi></msub></mrow><annotation encoding="application/x-tex">H_1,\ldots,H_m</annotation></semantics></math></span>
+before observing the data. For every true null
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math></span>,
+assume its p-value is super-uniform:
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Pr</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>P</mi><mi>i</mi></msub><mo>≤</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><mi>u</mi></mrow><annotation encoding="application/x-tex">\Pr(P_i\le u)\le u</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>≤</mo><mi>u</mi><mo>≤</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0\le u\le1</annotation></semantics></math></span>.
+Let fixed nonnegative weights satisfy
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>m</mi></msubsup><msub><mi>w</mi><mi>i</mi></msub><mo>≤</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\sum_{i=1}^m w_i\le1</annotation></semantics></math></span>,
+and reject
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>H</mi><mi>i</mi></msub><annotation encoding="application/x-tex">H_i</annotation></semantics></math></span>
+if
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mi>i</mi></msub><mo>≤</mo><mi>α</mi><msub><mi>w</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">P_i\le\alpha w_i</annotation></semantics></math></span>,
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>α</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;\alpha&lt;1</annotation></semantics></math></span>.</p>
+<ol>
+<li><p>Prove strong FWER control at level
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>
+without an independence assumption. Derive the analogous
+simultaneous-coverage bound for intervals whose marginal noncoverage
+probabilities are at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><msub><mi>w</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\alpha w_i</annotation></semantics></math></span>.</p></li>
+<li><p>Under the global null, suppose instead that
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math></span>
+independent individual tests each have exact size
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>
+and no adjustment. Derive their FWER and distinguish the equality from
+the case of tests with size merely at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>.</p></li>
+<li><p>Show why data-selected weights can invalidate the first part:
+take two independent uniform null p-values and allocate all weight to
+their minimum, breaking a tie by the smaller index. Calculate the FWER.
+Explain why selecting the smallest p-values and then declaring only that
+list to be the original family requires a separate selection
+argument.</p></li>
+</ol>
+</li><li id="exercise-11-2"><p><strong>Holm and Hochberg use different stopping rules.</strong> For a fixed family of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mo>≥</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">m\ge1</annotation></semantics></math></span>
+hypotheses, assume valid super-uniform true-null p-values. Order all
+values as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></msub><mo>≤</mo><mi>⋯</mi><mo>≤</mo><msub><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow></msub></mrow><annotation encoding="application/x-tex">P_{(1)}\le\cdots\le P_{(m)}</annotation></semantics></math></span>,
+breaking ties by a fixed index order. Holm rejects consecutive ranks
+while
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>j</mi><mo stretchy="true" form="postfix">)</mo></mrow></msub><mo>≤</mo><mi>α</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo>−</mo><mi>j</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">P_{(j)}\le\alpha/(m-j+1)</annotation></semantics></math></span>,
+stopping at the first failure.</p>
+<ol>
+<li><p>Prove strong FWER control under arbitrary dependence by
+considering the first true null in the ordered list. Include the case
+with no true nulls.</p></li>
+<li><p>Derive Holm’s adjusted p-values using a running maximum, then
+calculate them and the rejection set at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><mo>=</mo><mn>0.05</mn></mrow><annotation encoding="application/x-tex">\alpha=0.05</annotation></semantics></math></span>
+for the ordered values
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.01</mn><mo>,</mo><mn>0.02</mn><mo>,</mo><mn>0.025</mn><mo>,</mo><mn>0.04</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.01,0.02,0.025,0.04)</annotation></semantics></math></span>.</p></li>
+<li><p>Hochberg rejects through the largest rank
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow></msub><mo>≤</mo><mi>α</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mo>−</mo><mi>k</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">P_{(k)}\le\alpha/(m-k+1)</annotation></semantics></math></span>,
+or makes no rejections if no rank passes. Calculate its rejection set
+for the same values. Under mutual independence of valid p-values,
+explain how a false rejection implies a Simes rejection within the
+true-null family. State why the arbitrary-dependence Holm proof does not
+establish the same guarantee for Hochberg.</p></li>
+</ol>
+</li><li id="exercise-11-3"><p><strong>Where independence enters the BH proof.</strong> Apply BH to a fixed family of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math></span>
+p-values at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>q</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;q&lt;1</annotation></semantics></math></span>:
+let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>=</mo><mo>max</mo><mo stretchy="false" form="prefix">{</mo><mi>r</mi><mo>:</mo><msub><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow></msub><mo>≤</mo><mi>q</mi><mi>r</mi><mi>/</mi><mi>m</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">R=\max\{r:P_{(r)}\le qr/m\}</annotation></semantics></math></span>,
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">R=0</annotation></semantics></math></span>
+if the set is empty, and reject all ranks at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>R</mi><annotation encoding="application/x-tex">R</annotation></semantics></math></span>.
+For each true null
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math></span>,
+assume
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>P</mi><mi>i</mi></msub><annotation encoding="application/x-tex">P_i</annotation></semantics></math></span>
+is super-uniform and independent of the vector of all other p-values.
+Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>m</mi><mn>0</mn></msub><annotation encoding="application/x-tex">m_0</annotation></semantics></math></span>
+be the number of true nulls and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math></span>
+the number rejected. Ties are ordered by a fixed index rule and equality
+passes a threshold.</p>
+<ol>
+<li><p>Replace
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>P</mi><mi>i</mi></msub><annotation encoding="application/x-tex">P_i</annotation></semantics></math></span>
+by zero and let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></msup><mo>≥</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">R^{(i)}\ge1</annotation></semantics></math></span>
+be the resulting BH rejection count. Prove the deterministic identity
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>i</mi><mrow><mspace width="0.333em"></mspace><mtext mathvariant="normal"> rejected</mtext></mrow><mo stretchy="false" form="postfix">}</mo></mrow><mrow><mi>R</mi><mo>∨</mo><mn>1</mn></mrow></mfrac><mo>=</mo><mfrac><mrow><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>P</mi><mi>i</mi></msub><mo>≤</mo><mi>q</mi><msup><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></msup><mi>/</mi><mi>m</mi><mo stretchy="false" form="postfix">}</mo></mrow><msup><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></msup></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{\mathbf 1\{i\text{ rejected}\}}{R\vee1}=\frac{\mathbf 1\{P_i\le qR^{(i)}/m\}}{R^{(i)}}.</annotation></semantics></math></span></p></li>
+<li><p>Condition on the other p-values to prove
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mo stretchy="false" form="prefix">{</mo><mi>V</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>R</mi><mo>∨</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>≤</mo><mi>q</mi><msub><mi>m</mi><mn>0</mn></msub><mi>/</mi><mi>m</mi></mrow><annotation encoding="application/x-tex">\mathbb E\{V/(R\vee1)\}\le qm_0/m</annotation></semantics></math></span>.
+Identify the exact step requiring independence.</p></li>
+<li><p>State the additional condition under which the displayed bound is
+equality. Under a global null with independent uniform p-values,
+describe the possible realized FDP values and explain why an FDR equal
+to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>q</mi><annotation encoding="application/x-tex">q</annotation></semantics></math></span>
+does not mean that each realized list has false fraction
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>q</mi><annotation encoding="application/x-tex">q</annotation></semantics></math></span>.</p></li>
+</ol>
+</li><li id="exercise-11-4"><p><strong>Valid marginals do not determine a joint guarantee.</strong> There are two true nulls. Fix
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mo>=</mo><mn>0.05</mn></mrow><annotation encoding="application/x-tex">q=0.05</annotation></semantics></math></span>
+and generate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>P</mi><mn>1</mn></msub><mo>,</mo><msub><mi>P</mi><mn>2</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(P_1,P_2)</annotation></semantics></math></span>
+from four states:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="center" style="text-align: center"><mtext mathvariant="normal">state</mtext></mtd><mtd columnalign="center" style="text-align: center"><mtext mathvariant="normal">probability</mtext></mtd><mtd columnalign="center" style="text-align: center"><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>P</mi><mn>1</mn></msub><mo>,</mo><msub><mi>P</mi><mn>2</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mtd></mtr><mtr><mtd columnalign="center" style="text-align: center"><mi>A</mi></mtd><mtd columnalign="center" style="text-align: center"><mi>q</mi><mi>/</mi><mn>2</mn></mtd><mtd columnalign="center" style="text-align: center"><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mi>/</mi><mn>2</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mtd></mtr><mtr><mtd columnalign="center" style="text-align: center"><mi>B</mi></mtd><mtd columnalign="center" style="text-align: center"><mi>q</mi><mi>/</mi><mn>2</mn></mtd><mtd columnalign="center" style="text-align: center"><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mi>q</mi><mi>/</mi><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mtd></mtr><mtr><mtd columnalign="center" style="text-align: center"><mi>C</mi></mtd><mtd columnalign="center" style="text-align: center"><mi>q</mi><mi>/</mi><mn>2</mn></mtd><mtd columnalign="center" style="text-align: center"><mrow><mo stretchy="true" form="prefix">(</mo><mi>q</mi><mo>,</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd></mtr><mtr><mtd columnalign="center" style="text-align: center"><mi>D</mi></mtd><mtd columnalign="center" style="text-align: center"><mn>1</mn><mo>−</mo><mn>3</mn><mi>q</mi><mi>/</mi><mn>2</mn></mtd><mtd columnalign="center" style="text-align: center"><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{array}{c|c|c}
+\text{state}&amp;\text{probability}&amp;(P_1,P_2)\\\hline
+A&amp;q/2&amp;(q/2,1)\\
+B&amp;q/2&amp;(1,q/2)\\
+C&amp;q/2&amp;(q,q)\\
+D&amp;1-3q/2&amp;(1,1)
+\end{array}</annotation></semantics></math></span></p>
+<ol>
+<li><p>Derive each marginal CDF and verify super-uniformity on the
+entire interval
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0,1]</annotation></semantics></math></span>.</p></li>
+<li><p>Using equality as passing a threshold, calculate the FDR for
+Bonferroni, Holm, BH and BY at level
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>q</mi><annotation encoding="application/x-tex">q</annotation></semantics></math></span>.
+BY is BH with target
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mi>/</mi><msub><mi>H</mi><mn>2</mn></msub></mrow><annotation encoding="application/x-tex">q/H_2</annotation></semantics></math></span>,
+where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mn>2</mn></msub><mo>=</mo><mn>1</mn><mo>+</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">H_2=1+1/2</annotation></semantics></math></span>.
+Explain why FDR equals FWER in this model.</p></li>
+<li><p>More generally, for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math></span>
+valid null marginals with arbitrary dependence, suppose a step-up rule
+satisfies
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mi>i</mi></msub><mo>≤</mo><mi>a</mi><mi>R</mi></mrow><annotation encoding="application/x-tex">P_i\le aR</annotation></semantics></math></span>
+for every rejected hypothesis. Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>F</mi><mi>i</mi></msub><annotation encoding="application/x-tex">F_i</annotation></semantics></math></span>
+be a true-null CDF, and assume
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>a</mi><mo>≤</mo><mn>1</mn><mi>/</mi><mi>m</mi></mrow><annotation encoding="application/x-tex">0&lt;a\le1/m</annotation></semantics></math></span>.
+Prove
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">[</mo><mfrac><mrow><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>i</mi><mrow><mspace width="0.333em"></mspace><mtext mathvariant="normal"> rejected</mtext></mrow><mo stretchy="false" form="postfix">}</mo></mrow><mrow><mi>R</mi><mo>∨</mo><mn>1</mn></mrow></mfrac><mo stretchy="true" form="postfix">]</mo></mrow><mo>≤</mo><munderover><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>1</mn></mrow><mi>m</mi></munderover><mfrac><mrow><msub><mi>F</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msub><mi>F</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mi>k</mi></mfrac><mo>≤</mo><mi>a</mi><msub><mi>H</mi><mi>m</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb E\!\left[\frac{\mathbf1\{i\text{ rejected}\}}{R\vee1}\right]\le\sum_{k=1}^m\frac{F_i(ka)-F_i((k-1)a)}{k}\le aH_m.</annotation></semantics></math></span>
+Use
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>=</mo><mi>q</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><msub><mi>H</mi><mi>m</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">a=q/(mH_m)</annotation></semantics></math></span>
+to obtain the BY FDR bound. Explain why super-uniformity alone does not
+justify bounding each CDF increment by the interval length.</p></li>
+</ol>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="regularization-association.html">Previous: 10. Regularization, bias correction, and association inference</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="references.html">Next: References</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

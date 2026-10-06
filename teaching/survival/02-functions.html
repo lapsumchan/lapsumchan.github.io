@@ -1,0 +1,785 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Survival Analysis — Chapter 2: Survival, risk, hazard, and lifetime summaries | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Survival, risk, hazard, and lifetime summaries.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/survival/02-functions.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Survival Analysis — Chapter 2: Survival, risk, hazard, and lifetime summaries | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Survival, risk, hazard, and lifetime summaries.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/survival/02-functions.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Survival Analysis — Chapter 2: Survival, risk, hazard, and lifetime summaries", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Survival Analysis", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/survival/02-functions.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Survival Analysis</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Events, observation, and population functions</p><ol class="contents-chapters"><li><a href="01-observation.html">1. Events, clocks, and incomplete observation</a></li><li><a href="02-functions.html" aria-current="page">2. Survival, risk, hazard, and lifetime summaries</a></li></ol><p class="contents-part">Part II: Risk sets and nonparametric estimation</p><ol class="contents-chapters"><li><a href="03-km.html">3. Estimating survival from incomplete follow-up</a></li><li><a href="04-nelson-aalen.html">4. Nelson--Aalen estimation and counting processes</a></li></ol><p class="contents-part">Part III: Likelihood and survival regression</p><ol class="contents-chapters"><li><a href="07-likelihood.html">5. Likelihood under incomplete observation</a></li><li><a href="08-parametric.html">6. Parametric survival regression</a></li><li><a href="09-cox.html">7. The Cox model: estimation and absolute risk</a></li><li><a href="10-strata-ties.html">8. Stratification and tied event times</a></li><li><a href="11-diagnostics.html">9. Diagnostics that answer model questions</a></li></ol><p class="contents-part">Part IV: Competing events</p><ol class="contents-chapters"><li><a href="15-competing-risks.html">10. Competing risks and first-event probabilities</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#begin-with-the-scientific-question">2.1 Begin with the scientific question</a></li><li><a href="#s2-survival">2.2 Survival and cumulative incidence of a single event</a></li><li><a href="#s2-continuous-hazard">2.3 From a local conditional rate to an entire distribution</a></li><li><a href="#s2-discrete-product">2.4 Discrete event times require a product</a></li><li><a href="#s2-conditional">2.5 Updating a prognosis after survival</a></li><li><a href="#s2-models">2.6 Models that make the connections visible</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#s2-summaries">2.7 Quantiles and expected time</a></li><li><a href="#s2-computation">2.8 Reproducible computation with complete event times</a></li><li><a href="#s2-exercises">2.9 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Survival Analysis</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 2</span></p><div class="chapter-content"><h1 id="s2-functions">Chapter 2. Survival, risk, hazard, and lifetime
+summaries</h1>
+<h2 id="begin-with-the-scientific-question">2.1 Begin with the scientific
+question</h2>
+<p>A time-to-event study can ask several different questions about the
+same population. What fraction will remain free of relapse for two
+years? Among those still relapse-free at two years, how often will
+relapse occur during the next month? How much relapse-free time can a
+patient expect during a five-year follow-up period? These illustrative
+questions call for different summaries; they do not add observations to
+the twelve-person recurrence cohort. Treating every summary as a “risk”
+conceals the distinctions between an unconditional probability, a
+conditional rate, and an expected duration.</p>
+<p>Chapter <a href="01-observation.html#s1-observation" data-reference-type="ref" data-reference="s1-observation">1</a> separated the event
+time from its observation mechanism. Here we study the distribution of
+the event time itself. For the moment, imagine complete observation of
+every lifetime. Definitions such as survival and hazard describe a
+population even when its event times are partly hidden by censoring; an
+estimator must additionally address how those times were observed.
+Keeping these tasks separate will make the risk-set construction in
+Chapter <a href="03-km.html#s3-km" data-reference-type="ref" data-reference="s3-km">3</a> easier to understand.</p>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math></span>
+be a nonnegative event time measured from a specified origin. We
+initially assume
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>=</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mathbb{P}(T=0)=0</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>&lt;</mo><mi>∞</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\mathbb{P}(T&lt;\infty)=1</annotation></semantics></math></span>.
+The first assumption excludes an event mass at the origin. The second
+says that everyone eventually experiences the defined event, although
+the mean waiting time need not be finite. We will identify where these
+assumptions matter.</p>
+<h2 id="s2-survival">2.2 Survival and cumulative incidence of a single
+event</h2>
+<p>The distribution function and survival function are
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>≤</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>&gt;</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mo>−</mo><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">F(t)=\mathbb{P}(T\leq t),\qquad S(t)=\mathbb{P}(T&gt;t)=1-F(t).
+ \label{s2-eq-survival}</annotation></semantics></math><span id="s2-eq-survival" class="equation-anchor"></span><span class="equation-number">(2.1)</span></span> Thus
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">F(t)</annotation></semantics></math></span>
+is the risk of the event by time
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>,
+while
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(t)</annotation></semantics></math></span>
+is the probability of remaining event-free beyond
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>.
+Here there is one event type; with competing events, the probability of
+a particular event type requires a separate cumulative incidence
+function.</p>
+<p>Survival is nonincreasing, right-continuous, and bounded between zero
+and one. Under our initial assumptions,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">S(0)=1</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>→</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">S(t)\to0</annotation></semantics></math></span>
+as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>→</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">t\to\infty</annotation></semantics></math></span>.
+Right-continuity matters when events have point masses. Our convention
+places an event occurring exactly at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>
+in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">F(t)</annotation></semantics></math></span>,
+not in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(t)</annotation></semantics></math></span>.
+If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math></span>
+is discrete,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>≥</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>−</mo><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}(T\geq t)=S(t-)</annotation></semantics></math></span>
+may therefore exceed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(t)</annotation></semantics></math></span>,
+where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>−</mo><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(t-)</annotation></semantics></math></span>
+denotes the left limit. Strict and weak inequalities cannot then be
+interchanged.</p>
+<p>For an absolutely continuous distribution with density
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>f</mi><annotation encoding="application/x-tex">f</annotation></semantics></math></span>,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi><mo>,</mo><mspace width="2.0em"></mspace><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msubsup><mo>∫</mo><mi>t</mi><mi>∞</mi></msubsup><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi><mo>,</mo><mspace width="2.0em"></mspace><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>F</mi><mi>′</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>−</mo><mi>S</mi><mi>′</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">F(t)=\int_0^t f(u)\,du,\qquad
+ S(t)=\int_t^\infty f(u)\,du,\qquad
+ f(t)=F'(t)=-S'(t)
+ \label{s2-eq-density}</annotation></semantics></math><span id="s2-eq-density" class="equation-anchor"></span><span class="equation-number">(2.2)</span></span> at points where
+the derivatives exist. A density is not the probability of an event at
+one instant:
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>=</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mathbb{P}(T=t)=0</annotation></semantics></math></span>
+in this setting. Instead,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>&lt;</mo><mi>T</mi><mo>≤</mo><mi>t</mi><mo>+</mo><mi>h</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≈</mo><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>h</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}(t&lt;T\leq t+h)\approx f(t)h</annotation></semantics></math></span>
+for small positive
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math></span>
+at a regular point. If time is in months, density has units of inverse
+months. It can exceed one without violating any probability rule.</p>
+<h2 id="s2-continuous-hazard">2.3 From a local conditional rate to an entire
+distribution</h2>
+<p>To describe the event rate among those who have reached time
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>
+event-free, we condition on survival to that time. When
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">S(t)&gt;0</annotation></semantics></math></span>,
+define
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>lim</mo><mrow><mi>h</mi><mo>↓</mo><mn>0</mn></mrow></munder><mfrac><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>&lt;</mo><mi>T</mi><mo>≤</mo><mi>t</mi><mo>+</mo><mi>h</mi><mo>∣</mo><mi>T</mi><mo>&gt;</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mi>h</mi></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\lambda(t)=\lim_{h\downarrow0}
+ \frac{\mathbb{P}(t&lt;T\leq t+h\mid T&gt;t)}{h}.
+ \label{s2-eq-hazard-definition}</annotation></semantics></math><span id="s2-eq-hazard-definition" class="equation-anchor"></span><span class="equation-number">(2.3)</span></span> Because
+the interval event implies
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>t</mi></mrow><annotation encoding="application/x-tex">T&gt;t</annotation></semantics></math></span>,
+its conditional probability is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">{</mo><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>+</mo><mi>h</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mi>/</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\{F(t+h)-F(t)\}/S(t)</annotation></semantics></math></span>.
+Taking the limit gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>=</mo><mo>−</mo><mfrac><mrow><mi>S</mi><mi>′</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>=</mo><mo>−</mo><mfrac><mi>d</mi><mrow><mi>d</mi><mi>t</mi></mrow></mfrac><mo>log</mo><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\lambda(t)=\frac{f(t)}{S(t)}
+ =-\frac{S'(t)}{S(t)}=-\frac{d}{dt}\log S(t).
+ \label{s2-eq-hazard}</annotation></semantics></math><span id="s2-eq-hazard" class="equation-anchor"></span><span class="equation-number">(2.4)</span></span> These equalities
+are statements about an absolutely continuous law, on the part of its
+support where survival is positive.</p>
+<p>The hazard has units of inverse time, is nonnegative, and need not be
+bounded by one. A hazard of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.08</mn><annotation encoding="application/x-tex">0.08</annotation></semantics></math></span>
+per month suggests a conditional probability close to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0.08</mn><mi>h</mi></mrow><annotation encoding="application/x-tex">0.08h</annotation></semantics></math></span>
+over a sufficiently short interval of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math></span>
+months. It does not imply an eight-percent event probability over every
+one-month interval: the approximation requires a short interval and
+little variation in the rate. The exact interval probability is derived
+below. A hazard comparison is also conditional on different populations
+having survived to the comparison time. By itself it is neither a causal
+effect nor an unconditional comparison of event probabilities.</p>
+<p>Define the cumulative hazard
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">H(t)=\int_0^t\lambda(u)\,du.
+ \label{s2-eq-cumulative-hazard-definition}</annotation></semantics></math><span id="s2-eq-cumulative-hazard-definition" class="equation-anchor"></span><span class="equation-number">(2.5)</span></span>
+Integrating <a href="#s2-eq-hazard" data-reference-type="eqref" data-reference="s2-eq-hazard">(2.4)</a>, and using
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">S(0)=1</annotation></semantics></math></span>,
+yields
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>−</mo><mo>log</mo><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="2.0em"></mspace><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">H(t)=-\log S(t),\qquad S(t)=\exp\{-H(t)\},\qquad
+ f(t)=\lambda(t)\exp\{-H(t)\}.
+ \label{s2-eq-hazard-survival}</annotation></semantics></math><span id="s2-eq-hazard-survival" class="equation-anchor"></span><span class="equation-number">(2.6)</span></span> The
+integral
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">H(t)</annotation></semantics></math></span>
+is dimensionless. It can exceed one and should not be read as a
+cumulative event probability; that probability is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">1-\exp\{-H(t)\}</annotation></semantics></math></span>.
+Nonnegativity of a proposed hazard is necessary, but does not alone
+ensure a proper finite lifetime. For an unbounded support, we also need
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>→</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">H(t)\to\infty</annotation></semantics></math></span>
+to make
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>→</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">S(t)\to0</annotation></semantics></math></span>.
+At a finite upper endpoint, the corresponding limit is taken as that
+endpoint is approached.</p>
+<p>Changing time units changes a rate’s numerical value. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math></span>
+is in months and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Y</mi><mo>=</mo><mi>T</mi><mi>/</mi><mn>12</mn></mrow><annotation encoding="application/x-tex">Y=T/12</annotation></semantics></math></span>
+is the same lifetime in years, then
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mi>Y</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>S</mi><mi>T</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>12</mn><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>H</mi><mi>Y</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>H</mi><mi>T</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>12</mn><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>λ</mi><mi>Y</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>12</mn><msub><mi>λ</mi><mi>T</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>12</mn><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">S_Y(y)=S_T(12y),\qquad H_Y(y)=H_T(12y),\qquad
+ \lambda_Y(y)=12\lambda_T(12y).
+ \label{s2-eq-time-units}</annotation></semantics></math><span id="s2-eq-time-units" class="equation-anchor"></span><span class="equation-number">(2.7)</span></span> The chain rule
+supplies the factor of 12. A constant rate of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.08</mn><annotation encoding="application/x-tex">0.08</annotation></semantics></math></span>
+per month is therefore
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.96</mn><annotation encoding="application/x-tex">0.96</annotation></semantics></math></span>
+per year, while the probability of surviving the same physical interval
+is unchanged. In particular, the one-year risk is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>0.96</mn></mrow></msup><mo>=</mo><mn>0.6171</mn></mrow><annotation encoding="application/x-tex">1-e^{-0.96}=0.6171</annotation></semantics></math></span>,
+not
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.96</mn><annotation encoding="application/x-tex">0.96</annotation></semantics></math></span>.
+We changed the number used to express the rate, not the event or the
+elapsed time being described. Reporting a rate without its time units
+prevents a meaningful interpretation. The dimensionless cumulative
+hazard is unchanged when evaluated at corresponding endpoints.</p>
+<p>One useful extension allows
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>=</mo><mi>∞</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>π</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mathbb{P}(T=\infty)=\pi&gt;0</annotation></semantics></math></span>,
+a “cure mass” with respect to the specified event. Then
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>→</mo><mi>π</mi></mrow><annotation encoding="application/x-tex">S(t)\to\pi</annotation></semantics></math></span>,
+and for an otherwise absolutely continuous lifetime distribution
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>→</mo><mo>−</mo><mo>log</mo><mi>π</mi><mo>&lt;</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">H(t)\to-\log\pi&lt;\infty</annotation></semantics></math></span>.
+The identity
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo>=</mo><mo>−</mo><mi>S</mi><mi>′</mi></mrow><annotation encoding="application/x-tex">f=-S'</annotation></semantics></math></span>
+still describes finite-time density, whose integral is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mi>π</mi></mrow><annotation encoding="application/x-tex">1-\pi</annotation></semantics></math></span>;
+the tail-density formula must become
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>π</mi><mo>+</mo><msubsup><mo>∫</mo><mi>t</mi><mi>∞</mi></msubsup><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi></mrow><annotation encoding="application/x-tex">S(t)=\pi+\int_t^\infty f(u)\,du</annotation></semantics></math></span>.
+Cure is a property of a model and event definition, not something
+established merely by a flat observed tail.</p>
+<h2 id="s2-discrete-product">2.4 Discrete event times require a product</h2>
+<p>Suppose events can occur only at ordered times
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><msub><mi>t</mi><mn>1</mn></msub><mo>&lt;</mo><msub><mi>t</mi><mn>2</mn></msub><mo>&lt;</mo><mi>⋯</mi></mrow><annotation encoding="application/x-tex">0&lt;t_1&lt;t_2&lt;\cdots</annotation></semantics></math></span>.
+Write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mi>j</mi></msub><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>=</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p_j=\mathbb{P}(T=t_j)</annotation></semantics></math></span>
+and define the discrete hazard
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>j</mi></msub><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>=</mo><msub><mi>t</mi><mi>j</mi></msub><mo>∣</mo><mi>T</mi><mo>≥</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><msub><mi>p</mi><mi>j</mi></msub><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo>−</mo><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo>−</mo><mo stretchy="true" form="postfix">)</mo></mrow><mo>&gt;</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">q_j=\mathbb{P}(T=t_j\mid T\geq t_j)
+     =\frac{p_j}{S(t_j-)},\qquad S(t_j-)&gt;0.
+ \label{s2-eq-discrete-hazard}</annotation></semantics></math><span id="s2-eq-discrete-hazard" class="equation-anchor"></span><span class="equation-number">(2.8)</span></span> Now
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>j</mi></msub><annotation encoding="application/x-tex">q_j</annotation></semantics></math></span>
+really is a probability: it has no time units and lies in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0,1]</annotation></semantics></math></span>.
+Since surviving past
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mi>j</mi></msub><annotation encoding="application/x-tex">t_j</annotation></semantics></math></span>
+means surviving to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mi>j</mi></msub><annotation encoding="application/x-tex">t_j</annotation></semantics></math></span>
+and avoiding the event there,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo>−</mo><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∏</mo><mrow><mi>j</mi><mo>:</mo><msub><mi>t</mi><mi>j</mi></msub><mo>≤</mo><mi>t</mi></mrow></munder><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>p</mi><mi>j</mi></msub><mo>=</mo><msub><mi>q</mi><mi>j</mi></msub><munder><mo>∏</mo><mrow><mi>k</mi><mo>&lt;</mo><mi>j</mi></mrow></munder><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">S(t_j)=S(t_j-)(1-q_j),\qquad
+ S(t)=\prod_{j:t_j\leq t}(1-q_j),\qquad
+ p_j=q_j\prod_{k&lt;j}(1-q_k).
+ \label{s2-eq-discrete-product}</annotation></semantics></math><span id="s2-eq-discrete-product" class="equation-anchor"></span><span class="equation-number">(2.9)</span></span> The
+product starts from survival one before the first possible event. If a
+factor is zero, survival is zero thereafter and later conditional
+hazards are undefined.</p>
+<p>For example, conditional event probabilities
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.10</mn><annotation encoding="application/x-tex">0.10</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.20</mn><annotation encoding="application/x-tex">0.20</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.30</mn><annotation encoding="application/x-tex">0.30</annotation></semantics></math></span>
+at the first three times yield the following values.</p>
+<div class="center">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<thead>
+<tr class="header">
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math></span></th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>j</mi></msub><annotation encoding="application/x-tex">q_j</annotation></semantics></math></span></th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo>−</mo><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(t_j-)</annotation></semantics></math></span></th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mi>j</mi></msub><annotation encoding="application/x-tex">p_j</annotation></semantics></math></span></th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(t_j)</annotation></semantics></math></span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.10</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">0.100</td>
+<td style="text-align: right;">0.900</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.20</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">0.180</td>
+<td style="text-align: right;">0.720</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0.30</td>
+<td style="text-align: right;">0.72</td>
+<td style="text-align: right;">0.216</td>
+<td style="text-align: right;">0.504</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>The remaining probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.504</mn><annotation encoding="application/x-tex">0.504</annotation></semantics></math></span>
+belongs to times after
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mn>3</mn></msub><annotation encoding="application/x-tex">t_3</annotation></semantics></math></span>;
+these three hazards do not specify its later distribution.</p>
+<p>A notation warning is essential. If cumulative hazard is defined by
+summing discrete hazard increments, write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mo>∑</mo><mrow><msub><mi>t</mi><mi>j</mi></msub><mo>≤</mo><mi>t</mi></mrow></msub><msub><mi>q</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">A(t)=\sum_{t_j\leq t}q_j</annotation></semantics></math></span>.
+Then the exact relation is the product in <a href="#s2-eq-discrete-product" data-reference-type="eqref" data-reference="s2-eq-discrete-product">(2.9)</a>,
+not
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>A</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow><annotation encoding="application/x-tex">S(t)=e^{-A(t)}</annotation></semantics></math></span>.
+Instead,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mo>log</mo><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mrow><msub><mi>t</mi><mi>j</mi></msub><mo>≤</mo><mi>t</mi></mrow></munder><mo>−</mo><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">-\log S(t)=\sum_{t_j\leq t}-\log(1-q_j),
+ \label{s2-eq-discrete-log}</annotation></semantics></math><span id="s2-eq-discrete-log" class="equation-anchor"></span><span class="equation-number">(2.10)</span></span> provided the
+factors are positive. Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mn>3</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.600</mn></mrow><annotation encoding="application/x-tex">A(t_3)=0.600</annotation></semantics></math></span>,
+whereas
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mo>log</mo><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mn>3</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.685179</mn></mrow><annotation encoding="application/x-tex">-\log S(t_3)=0.685179</annotation></semantics></math></span>.
+One may define a different cumulative quantity as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mo>log</mo><mi>S</mi></mrow><annotation encoding="application/x-tex">-\log S</annotation></semantics></math></span>;
+it then has increments
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">-\log(1-q_j)</annotation></semantics></math></span>
+rather than
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>j</mi></msub><annotation encoding="application/x-tex">q_j</annotation></semantics></math></span>.
+For small
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>q</mi><annotation encoding="application/x-tex">q</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>q</mi><mo>+</mo><msup><mi>q</mi><mn>2</mn></msup><mi>/</mi><mn>2</mn><mo>+</mo><mi>⋯</mi></mrow><annotation encoding="application/x-tex">-\log(1-q)=q+q^2/2+\cdots</annotation></semantics></math></span>,
+explaining why exponentiating a negative sum of small hazards is an
+approximation. This distinction anticipates the product-limit estimator
+and cumulative-hazard estimators.</p>
+<h2 id="s2-conditional">2.5 Updating a prognosis after survival</h2>
+<p>For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>u</mi><mo>≥</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">u\geq0</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">S(t)&gt;0</annotation></semantics></math></span>,
+the survival function of remaining lifetime is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>−</mo><mi>t</mi><mo>&gt;</mo><mi>u</mi><mo>∣</mo><mi>T</mi><mo>&gt;</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>+</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}(T-t&gt;u\mid T&gt;t)=\frac{S(t+u)}{S(t)}.
+ \label{s2-eq-conditional}</annotation></semantics></math><span id="s2-eq-conditional" class="equation-anchor"></span><span class="equation-number">(2.11)</span></span> The numerator
+describes an event contained in the conditioning event; the ratio
+therefore follows directly from conditional probability. Under a
+continuous hazard model this becomes
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>&lt;</mo><mi>T</mi><mo>≤</mo><mi>t</mi><mo>+</mo><mi>u</mi><mo>∣</mo><mi>T</mi><mo>&gt;</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mo>−</mo><mo>exp</mo><mrow><mo stretchy="true" form="prefix">{</mo><mo>−</mo><msubsup><mo>∫</mo><mi>t</mi><mrow><mi>t</mi><mo>+</mo><mi>u</mi></mrow></msubsup><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>v</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>v</mi><mo stretchy="true" form="postfix">}</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}(t&lt;T\leq t+u\mid T&gt;t)
+ =1-\exp\left\{-\int_t^{t+u}\lambda(v)\,dv\right\}.
+ \label{s2-eq-interval-risk}</annotation></semantics></math><span id="s2-eq-interval-risk" class="equation-anchor"></span><span class="equation-number">(2.12)</span></span> Survival to
+a landmark changes the population being described. It does not reset
+biological age or time since treatment. Substituting
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(u)</annotation></semantics></math></span>
+for the ratio generally asserts an additional model property rather than
+merely changing the time origin.</p>
+<h2 id="s2-models">2.6 Models that make the connections visible</h2>
+<p>For an exponential lifetime with rate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r&gt;0</annotation></semantics></math></span>,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>r</mi><mo>,</mo><mspace width="1.0em"></mspace><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>r</mi><mi>t</mi><mo>,</mo><mspace width="1.0em"></mspace><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>r</mi><mi>t</mi></mrow></msup><mo>,</mo><mspace width="1.0em"></mspace><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>r</mi><msup><mi>e</mi><mrow><mo>−</mo><mi>r</mi><mi>t</mi></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\lambda(t)=r,\quad H(t)=rt,\quad S(t)=e^{-rt},\quad f(t)=re^{-rt}.
+ \label{s2-eq-exponential-model}</annotation></semantics></math><span id="s2-eq-exponential-model" class="equation-anchor"></span><span class="equation-number">(2.13)</span></span> The
+rate has units of inverse time; the mean is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mi>r</mi></mrow><annotation encoding="application/x-tex">1/r</annotation></semantics></math></span>.
+Equation <a href="#s2-eq-conditional" data-reference-type="eqref" data-reference="s2-eq-conditional">(2.11)</a> gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>+</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>r</mi><mi>u</mi></mrow></msup><mo>=</mo><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(t+u)/S(t)=e^{-ru}=S(u)</annotation></semantics></math></span>,
+the memoryless property. A constant hazard is consequently a strong
+substantive assumption. At rate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.08</mn><annotation encoding="application/x-tex">0.08</annotation></semantics></math></span>
+per month, the one-month conditional risk is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>0.08</mn></mrow></msup><mo>=</mo><mn>0.0769</mn></mrow><annotation encoding="application/x-tex">1-e^{-0.08}=0.0769</annotation></semantics></math></span>,
+at every landmark time.</p>
+<p>We use the same Weibull parameterization as base R: shape
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">a&gt;0</annotation></semantics></math></span>
+and scale
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">b&gt;0</annotation></semantics></math></span>,
+with
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mi>/</mi><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>a</mi></msup></mrow></msup><mo>,</mo><mspace width="2.0em"></mspace><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mi>/</mi><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>a</mi></msup><mo>,</mo><mspace width="2.0em"></mspace><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mi>a</mi><mi>b</mi></mfrac><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mi>/</mi><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>a</mi><mo>−</mo><mn>1</mn></mrow></msup><mo>,</mo><mspace width="1.0em"></mspace><mi>t</mi><mo>&gt;</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">S(t)=e^{-(t/b)^a},\qquad H(t)=(t/b)^a,\qquad
+ \lambda(t)=\frac{a}{b}(t/b)^{a-1},\quad t&gt;0.
+ \label{s2-eq-weibull}</annotation></semantics></math><span id="s2-eq-weibull" class="equation-anchor"></span><span class="equation-number">(2.14)</span></span> The scale
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math></span>
+is measured in time units, and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup></mrow><annotation encoding="application/x-tex">S(b)=e^{-1}</annotation></semantics></math></span>.
+For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">a=1</annotation></semantics></math></span>
+this is exponential with rate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mi>b</mi></mrow><annotation encoding="application/x-tex">1/b</annotation></semantics></math></span>.
+For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>&gt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">a&gt;1</annotation></semantics></math></span>
+the hazard increases; for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>a</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;a&lt;1</annotation></semantics></math></span>
+it decreases and diverges as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>↓</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">t\downarrow0</annotation></semantics></math></span>,
+while its integral near zero remains finite. A decreasing population
+hazard need not mean each individual becomes healthier: changing
+composition among survivors is one possible explanation. Weibull hazards
+cannot model an increase followed by a decrease.</p>
+<figure id="s2-fig-weibull">
+<a href="../assets/survival/ch02-weibull-functions.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch02-weibull-functions.png" alt="Figure 2.1. Weibull survival and hazard for scale
+b=12b=12
+months and three shapes. A common scale fixes survival at month 12, not
+the median or the full shape. The hazard panel starts at a positive time
+because the shape-0.65 hazard diverges at zero.">
+</a><figcaption>Figure 2.1. Weibull survival and hazard for scale
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>=</mo><mn>12</mn></mrow><annotation encoding="application/x-tex">b=12</annotation></semantics></math></span>
+months and three shapes. A common scale fixes survival at month 12, not
+the median or the full shape. The hazard panel starts at a positive time
+because the shape-0.65 hazard diverges at zero.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch02-weibull-functions.png">Open full-size figure</a></p></figure>
+<p>Parameterizations must be translated before comparing software or
+formulas. An expression
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>c</mi><msup><mi>t</mi><mi>a</mi></msup></mrow></msup></mrow><annotation encoding="application/x-tex">S(t)=e^{-ct^a}</annotation></semantics></math></span>
+uses
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi><mo>=</mo><msup><mi>b</mi><mrow><mo>−</mo><mi>a</mi></mrow></msup></mrow><annotation encoding="application/x-tex">c=b^{-a}</annotation></semantics></math></span>,
+not
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math></span>.
+Calling both parameters “scale” does not make their numerical values
+interchangeable. Writing the survival function alongside the parameter
+values is a reliable way to make a model specification unambiguous.</p>
+<h3 id="a-rate-that-changes-between-intervals">2.6.1 A rate that changes
+between intervals</h3>
+<p>A piecewise exponential model allows separate constant hazards over
+prespecified intervals. Suppose the rate is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>
+per month through month 6 and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.15</mn><annotation encoding="application/x-tex">0.15</annotation></semantics></math></span>
+per month thereafter. The cumulative hazard is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.05</mn><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>,</mo><mn>6</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mn>0.15</mn><mo>max</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>−</mo><mn>6</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">H(t)=0.05\min(t,6)+0.15\max(t-6,0),\qquad S(t)=e^{-H(t)}.
+ \label{s2-eq-piecewise-model}</annotation></semantics></math><span id="s2-eq-piecewise-model" class="equation-anchor"></span><span class="equation-number">(2.15)</span></span> Thus
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>6</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>0.3</mn></mrow></msup><mo>=</mo><mn>0.7408</mn></mrow><annotation encoding="application/x-tex">S(6)=e^{-0.3}=0.7408</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>12</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>1.2</mn></mrow></msup><mo>=</mo><mn>0.3012</mn></mrow><annotation encoding="application/x-tex">S(12)=e^{-1.2}=0.3012</annotation></semantics></math></span>.
+The hazard jumps at month 6, but survival remains continuous: a change
+in rate does not put positive event probability at that single time. The
+conditional event probability between months 4 and 8 is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.05</mn><mo>⋅</mo><mn>2</mn><mo>+</mo><mn>0.15</mn><mo>⋅</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><mo>=</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>0.4</mn></mrow></msup><mo>=</mo><mn>0.3297</mn></mrow><annotation encoding="application/x-tex">1-e^{-(0.05\cdot2+0.15\cdot2)}=1-e^{-0.4}=0.3297</annotation></semantics></math></span>.
+Using only the hazard at month 4 across this interval would miss the
+later rate change. The calculation translates directly into R:</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# survival functions and complete event times.
+dir.create("figures", showWarnings = FALSE)
+dir.create("results", showWarnings = FALSE)
+set.seed(67502)
+
+# Weibull convention: shape a, scale b; S(t) = exp(-(t/b)^a).
+a &lt;- 1.6
+b &lt;- 12
+tau &lt;- 18
+S &lt;- function(t) pweibull(t, shape = a, scale = b, lower.tail = FALSE)
+f &lt;- function(t) dweibull(t, shape = a, scale = b)
+H &lt;- function(t) (t / b)^a
+hazard &lt;- function(t) (a / b) * (t / b)^(a - 1)
+median.theory &lt;- b * log(2)^(1 / a)
+mean.theory &lt;- b * gamma(1 + 1 / a)
+rmst.theory &lt;- integrate(S, lower = 0, upper = tau)$value
+conditional.18.given.6 &lt;- S(18) / S(6)
+
+# Check analytic identities away from the endpoint t = 0.
+t.check &lt;- seq(0.2, 30, length.out = 200)
+eps &lt;- 1e-4
+minus.S.prime &lt;- -(S(t.check + eps) - S(t.check - eps)) / (2 * eps)
+identity.errors &lt;- c(
+  density.from.survival = max(abs(f(t.check) - minus.S.prime)),
+  density.from.hazard = max(abs(f(t.check) - S(t.check) * hazard(t.check))),
+  survival.from.H = max(abs(S(t.check) - exp(-H(t.check)))),
+  H.from.integral = abs(H(tau) - integrate(hazard, 0, tau)$value)
+)
+stopifnot(all(identity.errors &lt; 1e-6))
+write.csv(data.frame(identity = names(identity.errors),
+                     max.abs.error = unname(identity.errors)),
+          "results/ch02-identity-checks.csv", row.names = FALSE)
+
+# Complete event times: no censoring or entry mechanism is simulated.
+n &lt;- 50000L
+event.time &lt;- rweibull(n, shape = a, scale = b)
+restricted.time &lt;- pmin(event.time, tau)
+surv.tau &lt;- as.numeric(event.time &gt; tau)
+estimate &lt;- c(mean(event.time), mean(restricted.time), mean(surv.tau))
+truth &lt;- c(mean.theory, rmst.theory, S(tau))
+mcse &lt;- c(sd(event.time), sd(restricted.time), sd(surv.tau)) / sqrt(n)
+simulation.summary &lt;- data.frame(
+  quantity = c("mean time", "RMST", "survival at horizon"),
+  truth = truth, estimate = estimate, Monte.Carlo.SE = mcse,
+  error.in.SE.units = (estimate - truth) / mcse
+)
+write.csv(simulation.summary, "results/ch02-simulation.csv", row.names = FALSE)
+stopifnot(all(abs(simulation.summary$error.in.SE.units) &lt; 5))
+
+# A discrete distribution has conditional probabilities, not density rates.
+q &lt;- c(0.10, 0.20, 0.30)
+survival.after &lt;- cumprod(1 - q)
+survival.before &lt;- c(1, head(survival.after, -1))
+discrete &lt;- data.frame(time = 1:3, q = q, mass = survival.before * q,
+                       survival = survival.after, A = cumsum(q),
+                       minus.log.S = -log(survival.after))
+stopifnot(abs(sum(discrete$mass) + tail(survival.after, 1) - 1) &lt; 1e-12)
+write.csv(discrete, "results/ch02-discrete.csv", row.names = FALSE)
+
+summaries &lt;- data.frame(
+  quantity = c("shape", "scale", "horizon", "median", "mean", "RMST",
+               "Pr(T &gt; 18 | T &gt; 6)"),
+  value = c(a, b, tau, median.theory, mean.theory, rmst.theory,
+            conditional.18.given.6)
+)
+write.csv(summaries, "results/ch02-summaries.csv", row.names = FALSE)
+
+palette &lt;- c("#A14930", "#496A81", "#43745D")
+draw.functions &lt;- function() {
+  old &lt;- par(mfrow = c(1, 2), mar = c(4.4, 4.4, 2.1, 0.6),
+             mgp = c(2.6, 0.8, 0), las = 1, cex = 0.95)
+  on.exit(par(old))
+  tt &lt;- seq(0.05, 30, length.out = 500)
+  shapes &lt;- c(0.65, 1, 2)
+  ss &lt;- sapply(shapes, function(k) exp(-(tt / b)^k))
+  hh &lt;- sapply(shapes, function(k) (k / b) * (tt / b)^(k - 1))
+  matplot(tt, ss, type = "l", lty = 1:3, lwd = 2.5, col = palette,
+          xlab = "Time (months)", ylab = "Survival probability", ylim = c(0, 1),
+          main = "Survival")
+  abline(h = 0.5, lty = 3, col = "grey70")
+  legend("topright", legend = paste("shape =", shapes), col = palette,
+         lty = 1:3, lwd = 2.5, bty = "n", cex = 0.86)
+  matplot(tt, hh, type = "l", lty = 1:3, lwd = 2.5, col = palette,
+          xlab = "Time (months)", ylab = "Hazard (per month)",
+          main = "Hazard", ylim = c(0, 0.43))
+}
+cairo_pdf("figures/ch02-weibull-functions.pdf", width = 7.2, height = 3.3,
+          family = "sans")
+draw.functions()
+invisible(dev.off())
+png("figures/ch02-weibull-functions.png", width = 1800, height = 825, res = 250)
+draw.functions()
+invisible(dev.off())
+
+draw.rmst &lt;- function() {
+  old &lt;- par(mar = c(4.4, 4.5, 1.2, 0.8), mgp = c(2.6, 0.8, 0), las = 1)
+  on.exit(par(old))
+  tt &lt;- seq(0, 30, length.out = 600)
+  rr &lt;- seq(0, tau, length.out = 400)
+  plot(tt, S(tt), type = "n", ylim = c(0, 1), xlab = "Time (months)",
+       ylab = "Survival probability")
+  polygon(c(0, rr, tau), c(0, S(rr), 0), col = "#DCE7EF", border = NA)
+  lines(tt, S(tt), lwd = 2.5, col = "#234B68")
+  abline(v = tau, lty = 2, col = "#A14930")
+  text(0.48 * tau, 0.15, sprintf("Area to %g months = %.3f months", tau, rmst.theory),
+       cex = 0.92, col = "#234B68")
+  text(tau + 0.5, 0.90, paste("tau =", tau), pos = 4, col = "#A14930", cex = 0.9)
+}
+cairo_pdf("figures/ch02-rmst.pdf", width = 6.2, height = 3.3, family = "sans")
+draw.rmst()
+invisible(dev.off())
+png("figures/ch02-rmst.png", width = 1550, height = 825, res = 250)
+draw.rmst()
+invisible(dev.off())
+
+writeLines(capture.output(sessionInfo()), "results/ch02-sessionInfo.txt")
+print(summaries, row.names = FALSE)
+print(simulation.summary, row.names = FALSE)
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>H.piecewise <span class="ot">&lt;-</span> <span class="cf">function</span>(t) .<span class="dv">05</span><span class="sc">*</span><span class="fu">pmin</span>(t, <span class="dv">6</span>) <span class="sc">+</span> .<span class="dv">15</span><span class="sc">*</span><span class="fu">pmax</span>(t<span class="dv">-6</span>, <span class="dv">0</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">survival6 =</span> <span class="fu">exp</span>(<span class="sc">-</span><span class="fu">H.piecewise</span>(<span class="dv">6</span>)),</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">survival12 =</span> <span class="fu">exp</span>(<span class="sc">-</span><span class="fu">H.piecewise</span>(<span class="dv">12</span>)),</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">risk4to8 =</span> <span class="sc">-</span><span class="fu">expm1</span>(<span class="sc">-</span>(<span class="fu">H.piecewise</span>(<span class="dv">8</span>)<span class="sc">-</span><span class="fu">H.piecewise</span>(<span class="dv">4</span>))))</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 0.7408182  0.3011942  0.3296800</span></span></code></pre></div>
+<p>Here <code>expm1(x)</code> computes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>e</mi><mi>x</mi></msup><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">e^x-1</annotation></semantics></math></span>
+accurately when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+is near zero. The code evaluates an integrated hazard over the actual
+interval; it does not substitute a rate for a probability.</p>
+<p>This example also connects continuous rates with grouped
+observations. Over an interval of length
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mi>j</mi></msub><annotation encoding="application/x-tex">d_j</annotation></semantics></math></span>
+with constant rate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>r</mi><mi>j</mi></msub><annotation encoding="application/x-tex">r_j</annotation></semantics></math></span>,
+the conditional event probability is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>j</mi></msub><mo>=</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>r</mi><mi>j</mi></msub><msub><mi>d</mi><mi>j</mi></msub></mrow></msup></mrow><annotation encoding="application/x-tex">q_j=1-e^{-r_jd_j}</annotation></semantics></math></span>.
+Therefore
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>j</mi></msub><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>r</mi><mi>j</mi></msub><msub><mi>d</mi><mi>j</mi></msub></mrow></msup></mrow><annotation encoding="application/x-tex">1-q_j=e^{-r_jd_j}</annotation></semantics></math></span>,
+and multiplying these interval survivals gives exactly
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>r</mi><mi>j</mi></msub><msub><mi>d</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\exp(-\sum_jr_jd_j)</annotation></semantics></math></span>.
+The continuous integrated hazard increment is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mi>j</mi></msub><msub><mi>d</mi><mi>j</mi></msub><mo>=</mo><mo>−</mo><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">r_jd_j=-\log(1-q_j)</annotation></semantics></math></span>,
+not
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>j</mi></msub><annotation encoding="application/x-tex">q_j</annotation></semantics></math></span>.
+Grouping a continuous time into intervals produces conditional
+probabilities even when the underlying model is expressed through rates.
+Interval widths must be included when converting between the two.</p>
+<h2 id="s2-summaries">2.7 Quantiles and expected time</h2>
+<p>For a probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p\in(0,1)</annotation></semantics></math></span>,
+the lifetime quantile
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mi>p</mi></msub><annotation encoding="application/x-tex">t_p</annotation></semantics></math></span>
+is the generalized inverse
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>t</mi><mi>p</mi></msub><mo>=</mo><mo>inf</mo><mo stretchy="false" form="prefix">{</mo><mi>t</mi><mo>:</mo><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≥</mo><mi>p</mi><mo stretchy="false" form="postfix">}</mo><mo>=</mo><mo>inf</mo><mo stretchy="false" form="prefix">{</mo><mi>t</mi><mo>:</mo><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">t_p=\inf\{t:F(t)\geq p\}=\inf\{t:S(t)\leq1-p\}.
+ \label{s2-eq-quantile}</annotation></semantics></math><span id="s2-eq-quantile" class="equation-anchor"></span><span class="equation-number">(2.16)</span></span> For a continuous
+strictly decreasing survival curve it solves
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>p</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mo>−</mo><mi>p</mi></mrow><annotation encoding="application/x-tex">S(t_p)=1-p</annotation></semantics></math></span>.
+The generalized inverse also handles jumps, where exact equality may be
+impossible. The median has
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">p=1/2</annotation></semantics></math></span>;
+an empty defining set gives an infinite population quantile. Failure of
+an estimated curve to reach one half instead means the median is not
+estimable from that curve, which is not proof of an infinite population
+median.</p>
+<p>For an exponential lifetime, the median is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>r</mi></mrow><annotation encoding="application/x-tex">\log(2)/r</annotation></semantics></math></span>;
+for a Weibull lifetime it is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo stretchy="false" form="prefix">{</mo><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><msup><mo stretchy="false" form="postfix">}</mo><mrow><mn>1</mn><mi>/</mi><mi>a</mi></mrow></msup></mrow><annotation encoding="application/x-tex">b\{\log(2)\}^{1/a}</annotation></semantics></math></span>.
+Neither generally equals the mean. To calculate expected time from a
+survival curve, we first write each lifetime as the area under its own
+indicator:
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>∞</mi></msubsup><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>T</mi><mo>&gt;</mo><mi>u</mi><mo stretchy="false" form="postfix">}</mo><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi></mrow><annotation encoding="application/x-tex">T=\int_0^\infty\mathbf{1}\{T&gt;u\}\,du</annotation></semantics></math></span>.
+Interchanging expectation and this nonnegative integral gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">[</mo><mi>T</mi><mo stretchy="true" form="postfix">]</mo></mrow><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>∞</mi></msubsup><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}[T]=\int_0^\infty S(u)\,du.
+ \label{s2-eq-mean}</annotation></semantics></math><span id="s2-eq-mean" class="equation-anchor"></span><span class="equation-number">(2.17)</span></span> The equality permits
+both sides to be infinite. A proper distribution can have an infinite
+mean, and a positive cure mass necessarily does. For the Weibull model,
+put
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>v</mi><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mi>/</mi><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>a</mi></msup></mrow><annotation encoding="application/x-tex">v=(u/b)^a</annotation></semantics></math></span>
+in the survival integral:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">[</mo><mi>T</mi><mo stretchy="true" form="postfix">]</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mfrac><mi>b</mi><mi>a</mi></mfrac><msubsup><mo>∫</mo><mn>0</mn><mi>∞</mi></msubsup><msup><mi>v</mi><mrow><mn>1</mn><mi>/</mi><mi>a</mi><mo>−</mo><mn>1</mn></mrow></msup><msup><mi>e</mi><mrow><mo>−</mo><mi>v</mi></mrow></msup><mspace width="0.167em"></mspace><mi>d</mi><mi>v</mi><mo>=</mo><mfrac><mi>b</mi><mi>a</mi></mfrac><mi>Γ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mi>/</mi><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>b</mi><mi>Γ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mn>1</mn><mi>/</mi><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+ \mathbb{E}[T]&amp;=\frac ba\int_0^\infty v^{1/a-1}e^{-v}\,dv
+       =\frac ba\Gamma(1/a)
+       =b\Gamma(1+1/a).
+ \label{s2-weibull-mean}
+\end{aligned}</annotation></semantics></math><span id="s2-weibull-mean" class="equation-anchor"></span><span class="equation-number">(2.18)</span></span> The last equality uses
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Γ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>x</mi><mi>Γ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\Gamma(x+1)=x\Gamma(x)</annotation></semantics></math></span>.
+Thus changing the shape changes the mean even when the scale remains
+fixed. The integration here uses survival, not a density missing its
+Jacobian; this is a useful way to check a software parameterization.</p>
+<h3 id="s2-rmst">2.7.1 Restricted mean survival time</h3>
+<p>For a prespecified horizon
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau&gt;0</annotation></semantics></math></span>,
+define restricted mean survival time (RMST) as
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>μ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">[</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>,</mo><mi>τ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>τ</mi></msubsup><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\mu(\tau)=\mathbb{E}[\min(T,\tau)]=\int_0^\tau S(u)\,du.
+ \label{s2-eq-rmst}</annotation></semantics></math><span id="s2-eq-rmst" class="equation-anchor"></span><span class="equation-number">(2.19)</span></span> This is the expected
+event-free time accumulated within the first
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>τ</mi><annotation encoding="application/x-tex">\tau</annotation></semantics></math></span>
+units after origin. A lifetime exceeding
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>τ</mi><annotation encoding="application/x-tex">\tau</annotation></semantics></math></span>
+contributes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>τ</mi><annotation encoding="application/x-tex">\tau</annotation></semantics></math></span>,
+not its unknown eventual value. RMST is bounded by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>τ</mi><annotation encoding="application/x-tex">\tau</annotation></semantics></math></span>
+even when the unrestricted mean is infinite. Its units are time, and its
+interpretation depends on reporting the horizon. It is not
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">[</mo><mi>T</mi><mo>∣</mo><mi>T</mi><mo>≤</mo><mi>τ</mi><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{E}[T\mid T\leq\tau]</annotation></semantics></math></span>,
+which discards the subjects who survive longer.</p>
+<figure id="s2-fig-rmst">
+<a href="../assets/survival/ch02-rmst.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch02-rmst.png" style="width:84.0%" alt="Figure 2.2. RMST is the shaded area under the survival curve through the
+chosen horizon. For Weibull shape 1.6 and scale 12 months, the area
+through month 18 is about 10.000 months. Survival beyond month 18 does
+not enter this summary.">
+</a><figcaption>Figure 2.2. RMST is the shaded area under the survival curve through the
+chosen horizon. For Weibull shape 1.6 and scale 12 months, the area
+through month 18 is about 10.000 months. Survival beyond month 18 does
+not enter this summary.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch02-rmst.png">Open full-size figure</a></p></figure>
+<p>With censored observations, a finite horizon can make the target more
+closely match the supported follow-up period. Independent censoring
+alone does not reveal survival at arbitrarily late times: there must
+also be a positive chance of observation throughout the relevant
+interval. An RMST horizon should be scientifically meaningful and
+supported by follow-up. Extending a fitted parametric curve beyond the
+observed period is an extrapolation assumption, even if software returns
+a precise numerical area.</p>
+<p>For survivors at time
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>,
+mean residual lifetime is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">[</mo><mi>T</mi><mo>−</mo><mi>t</mi><mo>∣</mo><mi>T</mi><mo>&gt;</mo><mi>t</mi><mo stretchy="true" form="postfix">]</mo></mrow><mo>=</mo><mfrac><mrow><msubsup><mo>∫</mo><mi>t</mi><mi>∞</mi></msubsup><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi></mrow><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">m(t)=\mathbb{E}[T-t\mid T&gt;t]=\frac{\int_t^\infty S(u)\,du}{S(t)}.
+ \label{s2-eq-mrl}</annotation></semantics></math><span id="s2-eq-mrl" class="equation-anchor"></span><span class="equation-number">(2.20)</span></span> Integrating <a href="#s2-eq-conditional" data-reference-type="eqref" data-reference="s2-eq-conditional">(2.11)</a> over
+remaining time proves this formula. Restricting remaining time to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>v</mi><annotation encoding="application/x-tex">v</annotation></semantics></math></span>
+replaces the upper integration limit by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>+</mo><mi>v</mi></mrow><annotation encoding="application/x-tex">t+v</annotation></semantics></math></span>.
+The exponential model has
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mi>/</mi><mi>r</mi></mrow><annotation encoding="application/x-tex">m(t)=1/r</annotation></semantics></math></span>
+at every landmark; other models generally update this expectation after
+survival.</p>
+<h2 id="s2-computation">2.8 Reproducible computation with complete event
+times</h2>
+<p>The complete R example in this section uses base R and generates its
+own complete event times. We define the model first, then compare its
+formulas with simulation summaries. A fixed seed makes the numerical
+example reproducible.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Weibull convention: shape a, scale b; S(t) = exp(-(t/b)^a).</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>a <span class="ot">&lt;-</span> <span class="fl">1.6</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>b <span class="ot">&lt;-</span> <span class="dv">12</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>tau <span class="ot">&lt;-</span> <span class="dv">18</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>S <span class="ot">&lt;-</span> <span class="cf">function</span>(t) <span class="fu">pweibull</span>(t, <span class="at">shape =</span> a, <span class="at">scale =</span> b, <span class="at">lower.tail =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>f <span class="ot">&lt;-</span> <span class="cf">function</span>(t) <span class="fu">dweibull</span>(t, <span class="at">shape =</span> a, <span class="at">scale =</span> b)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>H <span class="ot">&lt;-</span> <span class="cf">function</span>(t) (t <span class="sc">/</span> b)<span class="sc">^</span>a</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>hazard <span class="ot">&lt;-</span> <span class="cf">function</span>(t) (a <span class="sc">/</span> b) <span class="sc">*</span> (t <span class="sc">/</span> b)<span class="sc">^</span>(a <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>median.theory <span class="ot">&lt;-</span> b <span class="sc">*</span> <span class="fu">log</span>(<span class="dv">2</span>)<span class="sc">^</span>(<span class="dv">1</span> <span class="sc">/</span> a)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>mean.theory <span class="ot">&lt;-</span> b <span class="sc">*</span> <span class="fu">gamma</span>(<span class="dv">1</span> <span class="sc">+</span> <span class="dv">1</span> <span class="sc">/</span> a)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>rmst.theory <span class="ot">&lt;-</span> <span class="fu">integrate</span>(S, <span class="at">lower =</span> <span class="dv">0</span>, <span class="at">upper =</span> tau)<span class="sc">$</span>value</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>conditional.<span class="fl">18.</span>given<span class="fl">.6</span> <span class="ot">&lt;-</span> <span class="fu">S</span>(<span class="dv">18</span>) <span class="sc">/</span> <span class="fu">S</span>(<span class="dv">6</span>)</span></code></pre></div>
+<p>The median is approximately
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>9.54</mn><annotation encoding="application/x-tex">9.54</annotation></semantics></math></span>
+months. Numerical integration obtains the RMST without requiring an
+incomplete-gamma implementation. The complete calculation also compares
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>f</mi><annotation encoding="application/x-tex">f</annotation></semantics></math></span>
+with a finite-difference derivative of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mi>S</mi></mrow><annotation encoding="application/x-tex">-S</annotation></semantics></math></span>,
+checks
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo>=</mo><mi>λ</mi><mi>S</mi></mrow><annotation encoding="application/x-tex">f=\lambda S</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>H</mi></mrow></msup></mrow><annotation encoding="application/x-tex">S=e^{-H}</annotation></semantics></math></span>,
+and integrates the hazard. These checks catch implementation and
+parameterization mistakes; agreement on a grid is not a substitute for
+the derivations.</p>
+<p>We next generate a new sample of 50,000 complete event times from the
+specified Weibull model. These are not the twelve participants whose
+censored records we introduced earlier. For this simulation, empirical
+survival at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>
+is simply the fraction exceeding
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>,
+and empirical RMST is the average of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>T</mi><mi>i</mi></msub><mo>,</mo><mi>τ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\min(T_i,\tau)</annotation></semantics></math></span>.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb3" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Complete event times: no censoring or entry mechanism is simulated.</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">50000</span><span class="dt">L</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>event.time <span class="ot">&lt;-</span> <span class="fu">rweibull</span>(n, <span class="at">shape =</span> a, <span class="at">scale =</span> b)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>restricted.time <span class="ot">&lt;-</span> <span class="fu">pmin</span>(event.time, tau)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>surv.tau <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(event.time <span class="sc">&gt;</span> tau)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>estimate <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">mean</span>(event.time), <span class="fu">mean</span>(restricted.time), <span class="fu">mean</span>(surv.tau))</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>truth <span class="ot">&lt;-</span> <span class="fu">c</span>(mean.theory, rmst.theory, <span class="fu">S</span>(tau))</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>mcse <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">sd</span>(event.time), <span class="fu">sd</span>(restricted.time), <span class="fu">sd</span>(surv.tau)) <span class="sc">/</span> <span class="fu">sqrt</span>(n)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>simulation.summary <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">quantity =</span> <span class="fu">c</span>(<span class="st">"mean time"</span>, <span class="st">"RMST"</span>, <span class="st">"survival at horizon"</span>),</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">truth =</span> truth, <span class="at">estimate =</span> estimate, <span class="at">Monte.Carlo.SE =</span> mcse,</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">error.in.SE.units =</span> (estimate <span class="sc">-</span> truth) <span class="sc">/</span> mcse</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<p>The recorded Monte Carlo standard errors quantify simulation noise.
+For the fixed seed, the simulated RMST is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>9.9934</mn><annotation encoding="application/x-tex">9.9934</annotation></semantics></math></span>
+months, compared with its target
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>10.0000</mn><annotation encoding="application/x-tex">10.0000</annotation></semantics></math></span>
+and Monte Carlo standard error
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.02395</mn><annotation encoding="application/x-tex">0.02395</annotation></semantics></math></span>.
+The discrepancy is only
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.28</mn><annotation encoding="application/x-tex">0.28</annotation></semantics></math></span>
+standard errors. The simulated survival probability at month 18 is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.14726</mn><annotation encoding="application/x-tex">0.14726</annotation></semantics></math></span>,
+compared with the model value
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.14762</mn><annotation encoding="application/x-tex">0.14762</annotation></semantics></math></span>.
+These two summaries have different units and answer different questions,
+despite arising from exactly the same generated lifetimes. An estimate
+need not equal its theoretical target exactly, even when the code is
+correct. These calculations rely on observing complete event times.
+Replacing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>T</mi><mi>i</mi></msub><annotation encoding="application/x-tex">T_i</annotation></semantics></math></span>
+by a censored follow-up time would generally underestimate survival
+time; Chapter <a href="03-km.html#s3-km" data-reference-type="ref" data-reference="s3-km">3</a> develops the necessary
+adjustment.</p>
+<span id="exercises"></span><h2 id="s2-exercises">2.9 Exercises</h2>
+<ol class="exercises" style='--chapter:"2."'><li id="exercise-2-1"><p><strong>Recover the event distribution.</strong> For an absolutely continuous event time on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">[</mo><mn>0</mn><mo>,</mo><mi>∞</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">[0,\infty)</annotation></semantics></math></span>
+with no mass at zero, let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>2</mn><mi>t</mi><mi>/</mi><mn>25</mn></mrow><annotation encoding="application/x-tex">\lambda(t)=2t/25</annotation></semantics></math></span>.
+Derive
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">H(t)</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(t)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f(t)</annotation></semantics></math></span>,
+prove that the density integrates to one, and obtain the median. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>
+is in years, state the units of the hazard and of its coefficient
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mi>/</mi><mn>25</mn></mrow><annotation encoding="application/x-tex">2/25</annotation></semantics></math></span>.</p>
+</li><li id="exercise-2-2"><p><strong>Discrete conditional probabilities.</strong> A discrete event time has conditional event probabilities
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mn>1</mn></msub><mo>=</mo><mn>0.2</mn></mrow><annotation encoding="application/x-tex">q_1=0.2</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mn>2</mn></msub><mo>=</mo><mn>0.25</mn></mrow><annotation encoding="application/x-tex">q_2=0.25</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mn>3</mn></msub><mo>=</mo><mn>0.5</mn></mrow><annotation encoding="application/x-tex">q_3=0.5</annotation></semantics></math></span>
+at times 1, 2 and 3, conditional on not failing earlier. Calculate the
+three event masses, survival just after each time and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Pr</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>&gt;</mo><mn>3</mn><mo>∣</mo><mi>T</mi><mo>&gt;</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\Pr(T&gt;3\mid T&gt;1)</annotation></semantics></math></span>.
+No condition is imposed on the remaining tail beyond time 3. Compare the
+exact
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>3</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(3)</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><msubsup><mo>∑</mo><mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow><mn>3</mn></msubsup><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\exp(-\sum_{j=1}^{3}q_j)</annotation></semantics></math></span>
+and explain why the continuous-hazard identity cannot be applied to this
+sum.</p>
+</li><li id="exercise-2-3"><p><strong>Conditioning on survival.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>exp</mo><mrow><mo stretchy="true" form="prefix">[</mo><mo>−</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mi>/</mi><mn>10</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">S(t)=\exp[-(t/10)^2]</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>≥</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">t\geq0</annotation></semantics></math></span>,
+with time in years. Compute
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Pr</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>&gt;</mo><mn>8</mn><mo>∣</mo><mi>T</mi><mo>&gt;</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\Pr(T&gt;8\mid T&gt;5)</annotation></semantics></math></span>
+and compare it with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>3</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(3)</annotation></semantics></math></span>.
+Explain the difference using the integrated hazard over the two
+three-year intervals.</p>
+</li><li id="exercise-2-4"><p><strong>Restricted mean and conditional mean.</strong> For any nonnegative lifetime
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math></span>
+and finite horizon
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau&gt;0</annotation></semantics></math></span>,
+prove
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">[</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>,</mo><mi>τ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>τ</mi></msubsup><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi></mrow><annotation encoding="application/x-tex">\mathbb E[\min(T,\tau)]=\int_0^\tau S(u)\,du</annotation></semantics></math></span>
+from an indicator integral. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>∼</mo><mo>Exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">T\sim\operatorname{Exp}(r)</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r&gt;0</annotation></semantics></math></span>,
+derive this restricted mean and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">[</mo><mi>T</mi><mo>∣</mo><mi>T</mi><mo>≤</mo><mi>τ</mi><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb E[T\mid T\leq\tau]</annotation></semantics></math></span>.
+Compare them at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>0.1</mn></mrow><annotation encoding="application/x-tex">r=0.1</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">\tau=10</annotation></semantics></math></span>,
+and take the restricted-mean limit as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mo>→</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">\tau\to\infty</annotation></semantics></math></span>.</p>
+</li><li id="exercise-2-5"><p><strong>Mass beyond finite event times.</strong> On the extended nonnegative lifetime space, suppose
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.3</mn><mo>+</mo><mn>0.7</mn><msup><mi>e</mi><mrow><mo>−</mo><mn>0.2</mn><mi>t</mi></mrow></msup></mrow><annotation encoding="application/x-tex">S(t)=0.3+0.7e^{-0.2t}</annotation></semantics></math></span>
+for finite
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>≥</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">t\geq0</annotation></semantics></math></span>.
+Find its finite-time density, hazard and limiting cumulative hazard.
+Find the median and restricted mean through time 10. Explain why the
+unrestricted mean is infinite even though these two summaries are
+finite.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="01-observation.html">Previous: 1. Events, clocks, and incomplete observation</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="03-km.html">Next: 3. Estimating survival from incomplete follow-up</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

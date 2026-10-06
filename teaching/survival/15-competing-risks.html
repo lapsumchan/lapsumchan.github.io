@@ -1,0 +1,699 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Survival Analysis — Chapter 10: Competing risks and first-event probabilities | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Competing risks and first-event probabilities.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/survival/15-competing-risks.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Survival Analysis — Chapter 10: Competing risks and first-event probabilities | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Competing risks and first-event probabilities.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/survival/15-competing-risks.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Survival Analysis — Chapter 10: Competing risks and first-event probabilities", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Survival Analysis", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/survival/15-competing-risks.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Survival Analysis</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Events, observation, and population functions</p><ol class="contents-chapters"><li><a href="01-observation.html">1. Events, clocks, and incomplete observation</a></li><li><a href="02-functions.html">2. Survival, risk, hazard, and lifetime summaries</a></li></ol><p class="contents-part">Part II: Risk sets and nonparametric estimation</p><ol class="contents-chapters"><li><a href="03-km.html">3. Estimating survival from incomplete follow-up</a></li><li><a href="04-nelson-aalen.html">4. Nelson--Aalen estimation and counting processes</a></li></ol><p class="contents-part">Part III: Likelihood and survival regression</p><ol class="contents-chapters"><li><a href="07-likelihood.html">5. Likelihood under incomplete observation</a></li><li><a href="08-parametric.html">6. Parametric survival regression</a></li><li><a href="09-cox.html">7. The Cox model: estimation and absolute risk</a></li><li><a href="10-strata-ties.html">8. Stratification and tied event times</a></li><li><a href="11-diagnostics.html">9. Diagnostics that answer model questions</a></li></ol><p class="contents-part">Part IV: Competing events</p><ol class="contents-chapters"><li><a href="15-competing-risks.html" aria-current="page">10. Competing risks and first-event probabilities</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#s15-target">10.1 First-event types and their probabilities</a></li><li><a href="#s15-hazards">10.2 Cause-specific hazards determine all the first-event probabilities</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#s15-net">10.3 Why one minus cause-specific Kaplan–Meier answers another question</a></li><li><a href="#s15-prediction">10.4 Convert fitted rates to a horizon prediction</a></li><li><a href="#s15-aj">10.5 Aalen–Johansen estimation from risk-set increments</a></li><li><a href="#s15-computation">10.6 Simulation and an interactive comparison</a></li><li><a href="#competing-title">Explore: one hazard, different observed risks</a></li><li><a href="#exercises">10.7 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Survival Analysis</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 10</span></p><div class="chapter-content"><h1 id="s15-chapter">Chapter 10. Competing risks and first-event probabilities</h1>
+<h2 id="s15-target">10.1 First-event types and their probabilities</h2>
+<p>Until now, an event definition selected one endpoint and censoring
+determined whether its time was observed. A clinical study may contain
+another endpoint that makes the selected event impossible. Death before
+a first nonfatal cardiovascular event is an example. Death is an
+observed change in a person’s clinical state; it is not simply a lost
+opportunity to obtain their eventual cardiovascular-event time. This
+difference changes the statistical target before it changes the
+estimator.</p>
+<p>Suppose every participant begins in an event-free state. Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math></span>
+be the time of the first event of any relevant type, and let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mi>K</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">J\in\{1,\ldots,K\}</annotation></semantics></math></span>
+identify its type. Define
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>&gt;</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>F</mi><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>≤</mo><mi>t</mi><mo>,</mo><mi>J</mi><mo>=</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><munderover><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>1</mn></mrow><mi>K</mi></munderover><msub><mi>F</mi><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">S(t)=\mathbb{P}(T&gt;t),\qquad F_k(t)=\mathbb{P}(T\leq t,J=k),\qquad
+ S(t)+\sum_{k=1}^KF_k(t)=1.
+ \label{s15-probabilities}</annotation></semantics></math><span id="s15-probabilities" class="equation-anchor"></span><span class="equation-number">(10.1)</span></span> The
+cumulative incidence function, or CIF,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>F</mi><mi>k</mi></msub><annotation encoding="application/x-tex">F_k</annotation></semantics></math></span>
+is the actual probability of a
+type-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math></span>
+first event by the horizon in this population. One minus
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(t)</annotation></semantics></math></span>
+is instead the probability of any of the specified first-event types; it
+sums the cause-specific CIFs. The same time origin, eligibility
+criteria, and competing-event definitions must accompany every
+comparison. A recurrence after an earlier event is not a first event and
+requires a different state structure.</p>
+<p>For right-censored observations, we retain
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>i</mi></msub><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>T</mi><mi>i</mi></msub><mo>,</mo><msub><mi>C</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">X_i=\min(T_i,C_i)</annotation></semantics></math></span>
+but replace the binary indicator by a cause code
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>D</mi><mi>i</mi></msub><mo>=</mo><msub><mi>J</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">D_i=J_i</annotation></semantics></math></span>
+if
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>i</mi></msub><mo>≤</mo><msub><mi>C</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">T_i\leq C_i</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>D</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">D_i=0</annotation></semantics></math></span>
+otherwise. The convention processes events before censoring at tied
+recorded times. Estimation below assumes independent subjects,
+accurately classified event types, and independent censoring of the
+joint event history, with observable follow-up support at the reported
+horizons. Conditional censoring assumptions require corresponding
+conditioning or adjustment; an unadjusted marginal estimator does not
+automatically handle covariate-dependent selection.</p>
+<p>Competing risks extend the single-endpoint framework. We connect the
+absolute-risk calculation in Section <a href="09-cox.html#s9-risk" data-reference-type="ref" data-reference="s9-risk">7.8</a> to a
+setting in which different events remove people from the same risk set.
+We begin with two absorbing first-event
+types because their probability accounting can be checked by hand.</p><h2 id="s15-hazards">10.2 Cause-specific hazards determine all the
+first-event probabilities</h2>
+<p>For continuous event times and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">S(t)&gt;0</annotation></semantics></math></span>,
+define
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>lim</mo><mrow><mi>h</mi><mo>↓</mo><mn>0</mn></mrow></munder><mfrac><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>&lt;</mo><mi>T</mi><mo>≤</mo><mi>t</mi><mo>+</mo><mi>h</mi><mo>,</mo><mi>J</mi><mo>=</mo><mi>k</mi><mo>∣</mo><mi>T</mi><mo>&gt;</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mi>h</mi></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\lambda_k(t)=\lim_{h\downarrow0}
+ \frac{\mathbb{P}(t&lt;T\leq t+h,J=k\mid T&gt;t)}{h}.
+ \label{s15-cause-hazard}</annotation></semantics></math><span id="s15-cause-hazard" class="equation-anchor"></span><span class="equation-number">(10.2)</span></span> These are
+rates among people who are still free of <em>every</em> first-event
+type. Their sum is the all-cause event hazard because mutually exclusive
+event types partition the possible exits over a small interval. Thus,
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><msub><mi>λ</mi><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi></mrow><annotation encoding="application/x-tex">H_k(t)=\int_0^t\lambda_k(u)\,du</annotation></semantics></math></span>,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>exp</mo><mrow><mo stretchy="true" form="prefix">{</mo><mo>−</mo><munder><mo>∑</mo><mi>k</mi></munder><msub><mi>H</mi><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">}</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>F</mi><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>λ</mi><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><msub><mi>H</mi><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">S(t)=\exp\left\{-\sum_kH_k(t)\right\},\qquad
+ F_k(t)=\int_0^tS(u)\lambda_k(u)\,du
+       =\int_0^tS(u)\,dH_k(u).
+ \label{s15-cif}</annotation></semantics></math><span id="s15-cif" class="equation-anchor"></span><span class="equation-number">(10.3)</span></span> For the first formula,
+we apply the survival–hazard argument in Chapter <a href="02-functions.html#s2-functions" data-reference-type="ref" data-reference="s2-functions">2</a> to the sum of exit
+rates. For the second, we multiply the chance of reaching time
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>u</mi><annotation encoding="application/x-tex">u</annotation></semantics></math></span>
+event-free by the local
+type-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math></span>
+exit rate, then accumulate these event probabilities over time.
+Differentiation gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>F</mi><mi>k</mi></msub><mi>′</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>λ</mi><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">F_k'(t)=S(t)\lambda_k(t)</annotation></semantics></math></span>;
+summing these derivatives gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mi>S</mi><mi>′</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">-S'(t)</annotation></semantics></math></span>
+and verifies probability conservation. Neither formula assumes
+independent latent times for the different causes.</p>
+<p>The factor
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(u)</annotation></semantics></math></span>
+is essential. A type-1 cause-specific hazard can stay unchanged while
+its cumulative incidence changes because another cause removes people
+before they can experience type 1. Rates conditional on survival and
+unconditional event probabilities describe different populations. This
+distinction is especially relevant when comparing clinical groups whose
+mortality rates differ.</p>
+<p>For constant rates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mn>1</mn></msub><mo>=</mo><mi>a</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\lambda_1=a&gt;0</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mn>2</mn></msub><mo>=</mo><mi>b</mi><mo>≥</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\lambda_2=b\geq0</annotation></semantics></math></span>,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>F</mi><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mi>a</mi><mrow><mi>a</mi><mo>+</mo><mi>b</mi></mrow></mfrac><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>+</mo><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>t</mi></mrow></msup><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>F</mi><mn>2</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mi>b</mi><mrow><mi>a</mi><mo>+</mo><mi>b</mi></mrow></mfrac><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>+</mo><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>t</mi></mrow></msup><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">F_1(t)=\frac{a}{a+b}\{1-e^{-(a+b)t}\},\qquad
+ F_2(t)=\frac{b}{a+b}\{1-e^{-(a+b)t}\}.
+ \label{s15-exponential-cif}</annotation></semantics></math><span id="s15-exponential-cif" class="equation-anchor"></span><span class="equation-number">(10.4)</span></span> At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>=</mo><mn>0.10</mn></mrow><annotation encoding="application/x-tex">a=0.10</annotation></semantics></math></span>
+per month, five-month type-1 risk is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.3442</mn><annotation encoding="application/x-tex">0.3442</annotation></semantics></math></span>
+when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>=</mo><mn>0.06</mn></mrow><annotation encoding="application/x-tex">b=0.06</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.2691</mn><annotation encoding="application/x-tex">0.2691</annotation></semantics></math></span>
+when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>=</mo><mn>0.18</mn></mrow><annotation encoding="application/x-tex">b=0.18</annotation></semantics></math></span>.
+The type-1 rate among event-free people is identical in both models. Its
+lower probability in the second model is caused mathematically by fewer
+people remaining available to experience that event, not by a lower
+type-1 hazard.</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R, survival. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. This block prints its calculations and does not write files.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># First-event competing risks: direct probability calculations and standard R fits.
+# Author: Lap Sum Chan.
+# Dependencies: base R and survival. Run with Rscript from any directory.
+# All data and results remain in memory; the script prints its main calculations.
+# Assumptions: independent people, two absorbing first-event types, independent
+# censoring, and adequate observation support. Everyone enters at time zero.
+options(width = 105, digits = 10)
+library(survival)
+
+# Exact twelve-person teaching records; cause labels are hypothetical additions.
+cohort &lt;- data.frame(
+  id = LETTERS[1:12],
+  time = c(1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 8, 8),
+  status = c(1L, 1L, 0L, 0L, 1L, 1L, 0L, 1L, 0L, 0L, 1L, 0L),
+  known.at.5 = c(TRUE, TRUE, FALSE, FALSE, TRUE, TRUE,
+                 TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),
+  event.by.5 = c(1L, 1L, NA_integer_, NA_integer_, 1L, 1L,
+                 0L, 0L, 0L, 0L, 0L, 0L)
+)
+cohort$cause &lt;- c(1L, 2L, 0L, 0L, 1L, 2L, 0L, 1L, 0L, 0L, 2L, 0L)
+stopifnot(nrow(cohort) == 12L, sum(cohort$status) == 6L,
+          sum(cohort$time) == 56,
+          all((cohort$cause &gt; 0) == (cohort$status == 1)))
+
+# Aalen--Johansen recursion: add each cause's incidence using pre-event survival.
+# Censoring at the same recorded time remains in the event denominator.
+aj &lt;- function(time, cause) {
+  stopifnot(length(time) == length(cause), length(time) &gt; 0L,
+            all(is.finite(time)), all(time &gt;= 0), all(cause %in% 0:2))
+  tt &lt;- sort(unique(time[cause &gt; 0]))
+  S &lt;- 1
+  F &lt;- c(0, 0)
+  out &lt;- data.frame(time = 0, Y = length(time), d1 = 0, d2 = 0,
+                    S = 1, F1 = 0, F2 = 0)
+  for (t in tt) {
+    Y &lt;- sum(time &gt;= t)
+    d &lt;- c(sum(time == t &amp; cause == 1), sum(time == t &amp; cause == 2))
+    F &lt;- F + S * d / Y
+    S &lt;- S * (1 - sum(d) / Y)
+    out &lt;- rbind(out, data.frame(time = t, Y = Y, d1 = d[1], d2 = d[2],
+                                S = S, F1 = F[1], F2 = F[2]))
+  }
+  stopifnot(max(abs(out$S + out$F1 + out$F2 - 1)) &lt; 1e-12,
+            all(diff(out$S) &lt;= 1e-12),
+            all(diff(out$F1) &gt;= -1e-12), all(diff(out$F2) &gt;= -1e-12))
+  out
+}
+hand &lt;- aj(cohort$time, cohort$cause)
+
+# Standard workflow: a factor event indicator requests first-event probabilities.
+fstatus &lt;- factor(cohort$cause, levels = 0:2,
+                  labels = c("censor", "cause1", "cause2"))
+fit &lt;- survfit(Surv(cohort$time, fstatus) ~ 1)
+idx &lt;- match(hand$time[-1], fit$time)
+stopifnot(!anyNA(idx))
+survfit.error &lt;- max(abs(fit$pstate[idx, ] - as.matrix(hand[-1, c("S", "F1", "F2")])))
+stopifnot(survfit.error &lt; 1e-12)
+p5 &lt;- hand[findInterval(5, hand$time), c("S", "F1", "F2")]
+p8 &lt;- hand[findInterval(8, hand$time), c("S", "F1", "F2")]
+stopifnot(max(abs(unlist(p5) - c(.625, .1875, .1875))) &lt; 1e-12,
+          max(abs(unlist(p8) - c(.25, .3125, .4375))) &lt; 1e-12)
+
+# Treating cause 2 as censoring produces a cause-1 net-risk functional, not its CIF.
+net &lt;- survfit(Surv(time, cause == 1) ~ 1, data = cohort)
+net5 &lt;- 1 - summary(net, times = 5)$surv
+net8 &lt;- 1 - summary(net, times = 8)$surv
+
+# Constant cause-specific hazards and the complete interaction grid.
+cif &lt;- function(t, a, b) a / (a + b) * (1 - exp(-(a + b) * t))
+a &lt;- .10
+times &lt;- seq(0, 10, by = .05)
+competing &lt;- seq(0, .30, by = .01)
+grid &lt;- do.call(rbind, lapply(competing, function(b) data.frame(
+  competing.hazard = b, time = times, cause1.hazard = a,
+  survival = exp(-(a + b) * times), F1 = cif(times, a, b), F2 = cif(times, b, a),
+  net.cause1 = 1 - exp(-a * times)
+)))
+grid.schema &lt;- data.frame(
+  column = names(grid),
+  meaning = c("Cause-2 hazard per month", "Months since baseline",
+              "Fixed cause-1 hazard per month", "Alive and event-free probability",
+              "Cause-1 cumulative incidence", "Cause-2 cumulative incidence",
+              "Cause-1 net-risk functional")
+)
+grid.mass.error &lt;- max(abs(grid$survival + grid$F1 + grid$F2 - 1))
+stopifnot(nrow(grid) == 6231L, grid.mass.error &lt; 1e-12,
+          all(grid$F1 &lt;= grid$net.cause1 + 1e-12))
+
+# A cause-1 hazard ratio below one can coexist with greater cause-1 incidence.
+contrast &lt;- data.frame(group = c("reference", "comparison"),
+                       a = c(.10, .08), b = c(.30, .01))
+contrast$F1.5 &lt;- mapply(function(a, b) cif(5, a, b), contrast$a, contrast$b)
+stopifnot(contrast$a[2] / contrast$a[1] &lt; 1,
+          contrast$F1.5[2] &gt; contrast$F1.5[1])
+
+# Exact probability propagation under piecewise-constant cause-specific hazards.
+step.risk &lt;- function(width, rates) {
+  S &lt;- 1
+  F &lt;- rep(0, ncol(rates))
+  trace &lt;- matrix(c(0, S, F), 1)
+  for (j in seq_along(width)) {
+    L &lt;- sum(rates[j, ])
+    oldS &lt;- S
+    if (L &gt; 0) F &lt;- F + oldS * rates[j, ] / L * (-expm1(-L * width[j]))
+    S &lt;- oldS * exp(-L * width[j])
+    trace &lt;- rbind(trace, c(sum(width[1:j]), S, F))
+  }
+  colnames(trace) &lt;- c("time", "S", "F1", "F2")
+  stopifnot(max(abs(rowSums(trace[, -1, drop = FALSE]) - 1)) &lt; 1e-12)
+  trace
+}
+width &lt;- c(2, 2, 1)
+rates &lt;- rbind(c(.10, .06), c(.15, .06), c(.15, .10))
+step &lt;- step.risk(width, rates)
+ends &lt;- c(0, cumsum(width))
+Hprev &lt;- c(0, cumsum(rowSums(rates) * width))
+num &lt;- sum(vapply(seq_along(width), function(j) integrate(function(u)
+  exp(-Hprev[j] - sum(rates[j, ]) * (u - ends[j])) * rates[j, 1],
+  ends[j], ends[j + 1], rel.tol = 1e-12)$value, numeric(1)))
+piecewise.error &lt;- abs(num - tail(step[, "F1"], 1))
+stopifnot(piecewise.error &lt; 1e-10)
+
+# Independent latent clocks construct this simulation; their independence is
+# not required by the general first-event CIF definition or AJ estimator.
+set.seed(675415)
+n &lt;- 800L
+T1 &lt;- rexp(n, a)
+T2 &lt;- rexp(n, .06)
+T &lt;- pmin(T1, T2)
+J &lt;- ifelse(T1 &lt; T2, 1L, 2L)
+C &lt;- pmin(rexp(n, .04), 10)
+X &lt;- pmin(T, C)
+cause &lt;- ifelse(T &lt;= C, J, 0L)
+dat &lt;- data.frame(id = seq_len(n), time = X, cause = cause)
+simaj &lt;- aj(X, cause)
+integration.error &lt;- 0
+for (b in c(0, .06, .18, .30)) for (t in c(1, 5, 10)) {
+  val &lt;- integrate(function(u) exp(-(a + b) * u) * a,
+                   0, t, rel.tol = 1e-12)$value
+  integration.error &lt;- max(integration.error, abs(val - cif(t, a, b)))
+  stopifnot(abs(val - cif(t, a, b)) &lt; 1e-10)
+}
+set.seed(6754151)
+B &lt;- 200000L
+x1 &lt;- rexp(B, a)
+x2 &lt;- rexp(B, .06)
+freq &lt;- mean(x1 &lt;= 5 &amp; x1 &lt; x2)
+target &lt;- cif(5, a, .06)
+mcse &lt;- sqrt(target * (1 - target) / B)
+stopifnot(abs(freq - target) &lt; 5 * mcse)
+
+first.event.summary &lt;- data.frame(
+  quantity = c("cohort.F1.5", "cohort.F2.5", "cohort.S.5",
+               "cohort.F1.8", "cohort.F2.8", "cohort.S.8",
+               "cohort.cause1.net.5", "cohort.cause1.net.8",
+               "model.F1.5.b006", "model.F1.5.b018", "model.cause1.net.5",
+               "simulated.events1", "simulated.events2", "simulated.censored",
+               "simulated.AJ.F1.5", "complete.frequency", "complete.mcse"),
+  value = c(p5$F1, p5$F2, p5$S, p8$F1, p8$F2, p8$S, net5, net8,
+            cif(5, a, .06), cif(5, a, .18), 1 - exp(-a * 5),
+            sum(cause == 1), sum(cause == 2), sum(cause == 0),
+            simaj$F1[findInterval(5, simaj$time)], freq, mcse)
+)
+
+cat("First-event competing risks: reproducible teaching calculations\n")
+cat(R.version.string, "\n")
+cat("survival package version: ", as.character(packageVersion("survival")), "\n\n", sep = "")
+cat("Twelve-person cohort: direct Aalen--Johansen recursion\n")
+print(hand, row.names = FALSE)
+cat("\nMain first-event numerical summary\n")
+print(first.event.summary, row.names = FALSE)
+cat("\nLower cause-1 hazard, greater cause-1 cumulative incidence at month 5\n")
+print(contrast, row.names = FALSE)
+cat("Cause-1 hazard ratio: ", contrast$a[2] / contrast$a[1], "\n", sep = "")
+cat("\nPiecewise-constant cause-specific hazards: exact cumulative probabilities\n")
+print(step)
+cat(sprintf("\nChecks passed: survfit agreement error %.3g; grid mass error %.3g.\n",
+            survfit.error, grid.mass.error))
+cat(sprintf("Interaction grid: %d rows, %d competing hazards, %d horizons.\n",
+            nrow(grid), length(competing), length(times)))
+cat(sprintf("Numerical integration error: constant hazards %.3g; piecewise hazards %.3g.\n",
+            integration.error, piecewise.error))
+cat(sprintf("Complete-observation frequency %.6f; generating CIF %.10f; MCSE %.10f.\n",
+            freq, target, mcse))
+cat("\nInterpretation: hypothetical cause labels teach probability accounting.\n")
+cat("Net risk differs from observed-world CIF; this code does not identify a causal intervention.\n")
+cat("The 800-person estimate is one simulated realization; the large clock simulation\n")
+cat("checks its generating probability, not confidence-interval coverage.\n")
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>cif <span class="ot">&lt;-</span> <span class="cf">function</span>(t, a, b) a<span class="sc">/</span>(a<span class="sc">+</span>b) <span class="sc">*</span> (<span class="dv">1</span><span class="sc">-</span><span class="fu">exp</span>(<span class="sc">-</span>(a<span class="sc">+</span>b)<span class="sc">*</span>t))</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="fu">cif</span>(<span class="dv">5</span>, .<span class="dv">10</span>, .<span class="dv">06</span>), <span class="fu">cif</span>(<span class="dv">5</span>, .<span class="dv">10</span>, .<span class="dv">18</span>))</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># 0.3441694  0.2690725</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">integrate</span>(<span class="cf">function</span>(u) <span class="fu">exp</span>(<span class="sc">-</span>(.<span class="dv">10</span><span class="fl">+.06</span>)<span class="sc">*</span>u)<span class="sc">*</span>.<span class="dv">10</span>, <span class="dv">0</span>, <span class="dv">5</span>)<span class="sc">$</span>value</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 0.3441694</span></span></code></pre></div>
+<p>The complete R example compares numerical integration with this
+closed form. Increasing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math></span>
+lowers
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>F</mi><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">F_1(t)</annotation></semantics></math></span>
+because the integrand
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><msup><mi>e</mi><mrow><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>+</mo><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>u</mi></mrow></msup></mrow><annotation encoding="application/x-tex">a e^{-(a+b)u}</annotation></semantics></math></span>
+decreases for every
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>u</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">u&gt;0</annotation></semantics></math></span>.
+This argument is more informative than inferring the direction from a
+plotted example alone.</p>
+<h2 id="s15-net">10.3 Why one minus cause-specific Kaplan–Meier answers
+another question</h2>
+<p>Treating type-2 events as censoring in a type-1 analysis leads to the
+functional
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>F</mi><mn>1</mn><mrow><mi mathvariant="normal">n</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">t</mi></mrow></msubsup><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mo>−</mo><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><msub><mi>H</mi><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">F_1^{\mathrm{net}}(t)=1-\exp\{-H_1(t)\}.
+ \label{s15-net-risk}</annotation></semantics></math><span id="s15-net-risk" class="equation-anchor"></span><span class="equation-number">(10.5)</span></span> This removes the
+type-2 cumulative hazard from the survival factor. We have kept
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>H</mi><mn>1</mn></msub><annotation encoding="application/x-tex">H_1</annotation></semantics></math></span>
+but changed the survival calculation, so the resulting quantity
+generally differs from both the any-event probability and the observed
+type-1 CIF. It is not
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>F</mi><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">F_1(t)</annotation></semantics></math></span>
+unless relevant competing hazards vanish. In the constant-rate example
+it is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>0.10</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><mo>=</mo><mn>0.3935</mn></mrow><annotation encoding="application/x-tex">1-e^{-0.10(5)}=0.3935</annotation></semantics></math></span>,
+which exceeds both actual five-month CIFs. Calling the functional a “net
+risk” does not establish a causal interpretation: eliminating death
+could change the nonfatal-event hazard rather than retain the observed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>H</mi><mn>1</mn></msub><annotation encoding="application/x-tex">H_1</annotation></semantics></math></span>
+unchanged.</p>
+<p>There is a legitimate use of the same cause-specific coding. To
+estimate a type-1 hazard or a cause-specific Cox coefficient, people
+experiencing type 2 cease to be at risk for type 1 at their event times.
+Coding their rows as censored permits ordinary software to form
+precisely those risk sets. The resulting cause-specific rate is defined
+among the remaining event-free people. This construction does not
+require statistical independence of hypothetical latent type-1 and
+type-2 event times. It still requires suitable observation-censoring and
+model assumptions.</p>
+<p>The binary coding forms the intended cause-specific risk sets. The
+interpretation changes when we convert its cumulative hazard to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><msub><mi>H</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">1-\exp(-H_1)</annotation></semantics></math></span>:
+that functional omits competing exits and is not the observed-world
+type-1 probability. For regression-based absolute risks, estimate all
+relevant cause-specific hazards and integrate them together in <a href="#s15-cif" data-reference-type="eqref" data-reference="s15-cif">(10.3)</a>. A type-1 hazard ratio alone does
+not determine a type-1 risk contrast.</p>
+<h2 id="s15-prediction">10.4 Convert fitted rates to a horizon
+prediction</h2>
+<p>The baseline cumulative hazard in Section <a href="09-cox.html#s9-risk" data-reference-type="ref" data-reference="s9-risk">7.8</a> turned
+a Cox coefficient into an absolute survival prediction. With competing
+events, that calculation must include a cause-specific model for every
+exit that matters to the target. For a fixed profile
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>z</mi><annotation encoding="application/x-tex">z</annotation></semantics></math></span>,
+one possible specification is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>λ</mi><mrow><mn>0</mn><mi>k</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>β</mi><mi>k</mi><mi>T</mi></msubsup><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\lambda_k(t\mid z)=\lambda_{0k}(t)\exp(\beta_k^Tz)</annotation></semantics></math></span>.
+Coefficients, baseline hazards, and the common time origin jointly
+determine
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>F</mi><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">F_k(t\mid z)</annotation></semantics></math></span>.
+Different causes need not have equal coefficients, equal baseline
+shapes, or the same model specification.</p>
+<p>A simple counterexample shows why a relative rate does not order
+risks. Suppose a reference group has
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>,</mo><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.10</mn><mo>,</mo><mn>0.30</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">(a,b)=(0.10,0.30)</annotation></semantics></math></span>,
+while a comparison group has
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>,</mo><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.08</mn><mo>,</mo><mn>0.01</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">(a,b)=(0.08,0.01)</annotation></semantics></math></span>.
+The type-1 hazard ratio is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.8</mn><annotation encoding="application/x-tex">0.8</annotation></semantics></math></span>,
+yet five-month type-1 risks are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.2162</mn><annotation encoding="application/x-tex">0.2162</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.3221</mn><annotation encoding="application/x-tex">0.3221</annotation></semantics></math></span>,
+respectively. In the comparison group, many more people survive long
+enough to experience type 1. This is a comparison of two joint
+event-time laws, not evidence that preventing deaths would necessarily
+cause additional type-1 events.</p>
+<p>For piecewise-constant fitted rates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>λ</mi><mrow><mi>k</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">\lambda_{kj}</annotation></semantics></math></span>
+over an interval of width
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mo>ℓ</mo><mi>j</mi></msub><annotation encoding="application/x-tex">\ell_j</annotation></semantics></math></span>,
+let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mi>j</mi></msub><mo>=</mo><msub><mo>∑</mo><mi>k</mi></msub><msub><mi>λ</mi><mrow><mi>k</mi><mi>j</mi></mrow></msub></mrow><annotation encoding="application/x-tex">L_j=\sum_k\lambda_{kj}</annotation></semantics></math></span>
+be the total exit rate in interval
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math></span>.
+This local
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>L</mi><mi>j</mi></msub><annotation encoding="application/x-tex">L_j</annotation></semantics></math></span>
+has units of inverse time; it is not a likelihood or a loss. Exact
+propagation from the interval’s left endpoint is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><msub><mi>S</mi><mrow><mi>j</mi><mo>+</mo><mn>1</mn></mrow></msub></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><msub><mi>S</mi><mi>j</mi></msub><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>L</mi><mi>j</mi></msub><msub><mo>ℓ</mo><mi>j</mi></msub></mrow></msup><mo>,</mo></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"><msub><mi>F</mi><mrow><mi>k</mi><mo>,</mo><mi>j</mi><mo>+</mo><mn>1</mn></mrow></msub></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><msub><mi>F</mi><mrow><mi>k</mi><mi>j</mi></mrow></msub><mo>+</mo><msub><mi>S</mi><mi>j</mi></msub><mfrac><msub><mi>λ</mi><mrow><mi>k</mi><mi>j</mi></mrow></msub><msub><mi>L</mi><mi>j</mi></msub></mfrac><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>L</mi><mi>j</mi></msub><msub><mo>ℓ</mo><mi>j</mi></msub></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="1.0em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>L</mi><mi>j</mi></msub><mo>&gt;</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+ S_{j+1}&amp;=S_j e^{-L_j\ell_j},\label{s15-piecewise-survival}\\
+ F_{k,j+1}&amp;=F_{kj}+S_j\frac{\lambda_{kj}}{L_j}
+              (1-e^{-L_j\ell_j})\quad (L_j&gt;0).
+ \label{s15-piecewise-cif}
+\end{aligned}</annotation></semantics></math><span id="s15-piecewise-survival" class="equation-anchor"></span><span id="s15-piecewise-cif" class="equation-anchor"></span><span class="equation-number">(10.6, 10.7)</span></span> If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mi>j</mi></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">L_j=0</annotation></semantics></math></span>,
+survival and all CIFs stay unchanged. The factor
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>L</mi><mi>j</mi></msub><msub><mo>ℓ</mo><mi>j</mi></msub></mrow></msup></mrow><annotation encoding="application/x-tex">1-e^{-L_j\ell_j}</annotation></semantics></math></span>
+is the probability of an exit during the interval conditional on
+reaching it, and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mrow><mi>k</mi><mi>j</mi></mrow></msub><mi>/</mi><msub><mi>L</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">\lambda_{kj}/L_j</annotation></semantics></math></span>
+allocates exits among causes. These increments preserve total
+probability exactly. They use exponential propagation within a modeled
+interval, whereas the empirical AJ recursion uses estimated jump
+probabilities; the two procedures should not be mixed
+indiscriminately.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>L <span class="ot">&lt;-</span> <span class="fu">sum</span>(rates[j, ])</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>oldS <span class="ot">&lt;-</span> S</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (L <span class="sc">&gt;</span> <span class="dv">0</span>) F <span class="ot">&lt;-</span> F <span class="sc">+</span> oldS<span class="sc">*</span>rates[j, ]<span class="sc">/</span>L <span class="sc">*</span> (<span class="sc">-</span><span class="fu">expm1</span>(<span class="sc">-</span>L<span class="sc">*</span>width[j]))</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>S <span class="ot">&lt;-</span> oldS<span class="sc">*</span><span class="fu">exp</span>(<span class="sc">-</span>L<span class="sc">*</span>width[j])</span></code></pre></div>
+<p>Using rates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.10</mn><mo>,</mo><mn>0.06</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.10,0.06)</annotation></semantics></math></span>
+for two months,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.15</mn><mo>,</mo><mn>0.06</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.15,0.06)</annotation></semantics></math></span>
+for another two, and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.15</mn><mo>,</mo><mn>0.10</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.15,0.10)</annotation></semantics></math></span>
+for a final month gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.3716</mn></mrow><annotation encoding="application/x-tex">S(5)=0.3716</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>F</mi><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.4124</mn></mrow><annotation encoding="application/x-tex">F_1(5)=0.4124</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>F</mi><mn>2</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.2161</mn></mrow><annotation encoding="application/x-tex">F_2(5)=0.2161</annotation></semantics></math></span>.
+This is a specified piecewise-rate model, not a fit to the twelve-person
+records. Numerical integration of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>λ</mi><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(u)\lambda_1(u)</annotation></semantics></math></span>
+over each interval agrees with the recursion. To interpret these as
+fitted population probabilities in an actual study, we would also need
+adequate follow-up, supported covariate profiles, uncertainty
+assessment, and appropriate cause-specific and observation models.
+Probability conservation checks the arithmetic; it cannot correct wrong
+cause labels or a misspecified rate model.</p>
+<h2 id="s15-aj">10.5 Aalen–Johansen estimation from risk-set increments</h2>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mi>j</mi></msub><annotation encoding="application/x-tex">t_j</annotation></semantics></math></span>
+be the distinct observed first-event times,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>Y</mi><mi>j</mi></msub><annotation encoding="application/x-tex">Y_j</annotation></semantics></math></span>
+the count event-free and under observation immediately before
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mi>j</mi></msub><annotation encoding="application/x-tex">t_j</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mrow><mi>k</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">d_{kj}</annotation></semantics></math></span>
+the count of
+type-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math></span>
+events there. Censoring removes people from later risk sets, while
+competing events remove them from every first-event risk set. The
+estimated cause-specific increment is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>d</mi><mrow><mi>k</mi><mi>j</mi></mrow></msub><mi>/</mi><msub><mi>Y</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">d\widehat H_k(t_j)=d_{kj}/Y_j</annotation></semantics></math></span>.
+Define
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo>−</mo><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mfrac><mrow><munder><mo>∑</mo><mi>k</mi></munder><msub><mi>d</mi><mrow><mi>k</mi><mi>j</mi></mrow></msub></mrow><msub><mi>Y</mi><mi>j</mi></msub></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"><msub><mover><mi>F</mi><mo accent="true">̂</mo></mover><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><msub><mover><mi>F</mi><mo accent="true">̂</mo></mover><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo>−</mo><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo>−</mo><mo stretchy="true" form="postfix">)</mo></mrow><mfrac><msub><mi>d</mi><mrow><mi>k</mi><mi>j</mi></mrow></msub><msub><mi>Y</mi><mi>j</mi></msub></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mo>,</mo><mspace width="1.0em"></mspace><msub><mover><mi>F</mi><mo accent="true">̂</mo></mover><mi>k</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0</mn><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+ \widehat S(t_j)&amp;=\widehat S(t_j-)\left(1-\frac{\sum_kd_{kj}}{Y_j}\right),\label{s15-aj-survival}\\
+ \widehat F_k(t_j)&amp;=\widehat F_k(t_j-)+\widehat S(t_j-)\frac{d_{kj}}{Y_j},
+ \qquad \widehat S(0)=1,\quad\widehat F_k(0)=0.
+ \label{s15-aj-incidence}
+\end{aligned}</annotation></semantics></math><span id="s15-aj-survival" class="equation-anchor"></span><span id="s15-aj-incidence" class="equation-anchor"></span><span class="equation-number">(10.8, 10.9)</span></span> This is the first-event
+version of the Aalen–Johansen product-integral estimator <span class="citation" data-cites="aalen-johansen1978 putter2007"><a class="collection-citation" href="references.html#ref-aalen-johansen1978" role="doc-biblioref" aria-label="Reference 11">[11]</a>, <a class="collection-citation" href="references.html#ref-putter2007" role="doc-biblioref" aria-label="Reference 12">[12]</a></span>. The event-free probability available just before a jump is
+distributed among the different exit types. Using post-jump survival in
+the CIF increment would allocate too little probability.</p>
+<p>For each jump, the loss in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>S</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat S</annotation></semantics></math></span>
+equals the sum of gains in the CIFs. Therefore
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>S</mi><mo accent="true">̂</mo></mover><mo>+</mo><msub><mo>∑</mo><mi>k</mi></msub><msub><mover><mi>F</mi><mo accent="true">̂</mo></mover><mi>k</mi></msub><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\widehat S+\sum_k\widehat F_k=1</annotation></semantics></math></span>
+exactly, including tied events. The estimator remains constant between
+event times. With empirical jumps, its survival is a product of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msub><mo>∑</mo><mi>k</mi></msub><msub><mi>d</mi><mrow><mi>k</mi><mi>j</mi></mrow></msub><mi>/</mi><msub><mi>Y</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">1-\sum_kd_{kj}/Y_j</annotation></semantics></math></span>,
+not exactly the exponential of the summed Nelson–Aalen cumulative
+hazards. The continuous population identity and its product-integral
+estimate must not be interchanged when jumps are appreciable.</p>
+<h3 id="return-to-the-twelve-person-cohort">10.5.1 Return to the twelve-person
+cohort</h3>
+<p>Extend the twelve-person teaching cohort by assigning type 1 to
+events A, E, and H, and type 2 to B, F, and K. Keep its observation
+times and censoring indicators unchanged. The cause labels are
+hypothetical: they let us compare targets using the same risk sets. The
+calculations are shown in Table <a href="#s15-cohort-table" data-reference-type="ref" data-reference="s15-cohort-table">10.1</a>.</p>
+<div id="s15-cohort-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 10.1. First-event probability allocation in the recurring cohort. All
+event and censoring exits at a recorded time use the preceding risk
+set.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">Time</th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Y</mi><annotation encoding="application/x-tex">Y</annotation></semantics></math></span></th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mn>1</mn></msub><annotation encoding="application/x-tex">d_1</annotation></semantics></math></span></th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mn>2</mn></msub><annotation encoding="application/x-tex">d_2</annotation></semantics></math></span></th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>S</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat S</annotation></semantics></math></span></th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>F</mi><mo accent="true">̂</mo></mover><mn>1</mn></msub><mo>,</mo><msub><mover><mi>F</mi><mo accent="true">̂</mo></mover><mn>2</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(\widehat F_1,\widehat F_2)</annotation></semantics></math></span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.9167</td>
+<td style="text-align: right;">(0.0833, 0.0000)</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.8333</td>
+<td style="text-align: right;">(0.0833, 0.0833)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.6250</td>
+<td style="text-align: right;">(0.1875, 0.1875)</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.5000</td>
+<td style="text-align: right;">(0.3125, 0.1875)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.2500</td>
+<td style="text-align: right;">(0.3125, 0.4375)</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>At month 4, eight people are at risk and one event of each type
+occurs. Just before that time,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>S</mi><mo accent="true">̂</mo></mover><mo>=</mo><mn>5</mn><mi>/</mi><mn>6</mn></mrow><annotation encoding="application/x-tex">\widehat S=5/6</annotation></semantics></math></span>.
+Each CIF increases by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mi>/</mi><mn>6</mn><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mi>/</mi><mn>8</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>5</mn><mi>/</mi><mn>48</mn></mrow><annotation encoding="application/x-tex">(5/6)(1/8)=5/48</annotation></semantics></math></span>,
+and survival becomes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mi>/</mi><mn>6</mn><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>6</mn><mi>/</mi><mn>8</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>5</mn><mi>/</mi><mn>8</mn></mrow><annotation encoding="application/x-tex">(5/6)(6/8)=5/8</annotation></semantics></math></span>.
+At month 5, which contains only a censoring exit, the three
+probabilities remain
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0.625</mn><mo>,</mo><mn>0.1875</mn><mo>,</mo><mn>0.1875</mn></mrow><annotation encoding="application/x-tex">0.625,0.1875,0.1875</annotation></semantics></math></span>.
+Censoring changes subsequent denominators; it does not itself reallocate
+probability to an event type.</p>
+<p>At month 8 the final allocation is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>S</mi><mo accent="true">̂</mo></mover><mo>=</mo><mn>0.25</mn></mrow><annotation encoding="application/x-tex">\widehat S=0.25</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>F</mi><mo accent="true">̂</mo></mover><mn>1</mn></msub><mo>=</mo><mn>0.3125</mn></mrow><annotation encoding="application/x-tex">\widehat F_1=0.3125</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>F</mi><mo accent="true">̂</mo></mover><mn>2</mn></msub><mo>=</mo><mn>0.4375</mn></mrow><annotation encoding="application/x-tex">\widehat F_2=0.4375</annotation></semantics></math></span>.
+A cause-1 Kaplan–Meier calculation instead produces net-risk estimates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.1979</mn><annotation encoding="application/x-tex">0.1979</annotation></semantics></math></span>
+at month 5 and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.3583</mn><annotation encoding="application/x-tex">0.3583</annotation></semantics></math></span>
+at month 8. Their discrepancy is a target difference, even though both
+use valid risk sets for their respective calculations.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb3" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>S <span class="ot">&lt;-</span> <span class="dv">1</span>; F <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">0</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (t <span class="cf">in</span> <span class="fu">sort</span>(<span class="fu">unique</span>(time[cause <span class="sc">&gt;</span> <span class="dv">0</span>]))) {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  Y <span class="ot">&lt;-</span> <span class="fu">sum</span>(time <span class="sc">&gt;=</span> t)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  d <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">sum</span>(time <span class="sc">==</span> t <span class="sc">&amp;</span> cause <span class="sc">==</span> <span class="dv">1</span>),</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>         <span class="fu">sum</span>(time <span class="sc">==</span> t <span class="sc">&amp;</span> cause <span class="sc">==</span> <span class="dv">2</span>))</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  F <span class="ot">&lt;-</span> F <span class="sc">+</span> S<span class="sc">*</span>d<span class="sc">/</span>Y             <span class="co"># use survival BEFORE the jump</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  S <span class="ot">&lt;-</span> S<span class="sc">*</span>(<span class="dv">1</span><span class="sc">-</span><span class="fu">sum</span>(d)<span class="sc">/</span>Y)</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">abs</span>(S<span class="sc">+</span><span class="fu">sum</span>(F)<span class="sc">-</span><span class="dv">1</span>) <span class="sc">&lt;</span> <span class="fl">1e-12</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>The full script records every intermediate value. It then creates a
+factor whose first level denotes censoring and verifies the entire
+recursion against <code>survival::survfit</code> with a multistate
+<code>Surv</code> response. The factor’s ordering is part of the input
+specification; an integer code interpreted as an ordinary binary event
+indicator would be a different analysis.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb4" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>fstatus <span class="ot">&lt;-</span> <span class="fu">factor</span>(cause, <span class="at">levels=</span><span class="dv">0</span><span class="sc">:</span><span class="dv">2</span>,</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>                  <span class="at">labels=</span><span class="fu">c</span>(<span class="st">"censor"</span>, <span class="st">"cause1"</span>, <span class="st">"cause2"</span>))</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>fit <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">survfit</span>(survival<span class="sc">::</span><span class="fu">Surv</span>(time, fstatus) <span class="sc">~</span> <span class="dv">1</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co"># fit$pstate contains event-free and the two absorbing-state probabilities.</span></span></code></pre></div>
+<h2 id="s15-computation">10.6 Simulation and an interactive comparison</h2>
+<p>We now generate a separate cohort of 800 independent people; these
+are not the twelve participants with hypothetical cause labels.
+Independent exponential clocks have rates 0.10 and 0.06 per month,
+independent censoring has rate 0.04, and observation closes at month 10.
+Taking the minimum of the event clocks is one convenient way to realize
+the stated cause-specific hazards. It is a simulation device, not an
+identifying assumption for the observed-law CIF.</p>
+<p>With seed 675415, the sample contains 363 type-1 events, 186 type-2
+events, and 251 censored observations. Its five-month type-1 AJ estimate
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.3828</mn><annotation encoding="application/x-tex">0.3828</annotation></semantics></math></span>,
+compared with the generating probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.3442</mn><annotation encoding="application/x-tex">0.3442</annotation></semantics></math></span>.
+Sampling variability remains visible in a cohort of 800 people. The
+computation checks risk-set ordering, monotonicity, and probability
+conservation rather than forcing a fitted curve to reproduce its
+generating target.</p>
+<figure id="s15-competing-figure">
+<a href="../assets/survival/ch15-competing-risks.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch15-competing-risks.png" alt="Figure 10.1. Left: changing only the competing hazard changes the type-1
+CIF while its net-risk functional stays fixed. Right: a first-principles
+Aalen–Johansen estimate from one censored simulated cohort, compared
+with the generating CIF.">
+</a><figcaption>Figure 10.1. Left: changing only the competing hazard changes the type-1
+CIF while its net-risk functional stays fixed. Right: a first-principles
+Aalen–Johansen estimate from one censored simulated cohort, compared
+with the generating CIF.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch15-competing-risks.png">Open full-size figure</a></p></figure>
+<p>A separate complete-observation simulation of 200,000 independent
+clock pairs estimates the five-month probability as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.3423</mn><annotation encoding="application/x-tex">0.3423</annotation></semantics></math></span>,
+with model-based Monte Carlo standard error
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.00106</mn><annotation encoding="application/x-tex">0.00106</annotation></semantics></math></span>.
+This supports the implementation of the generating model; it is not
+proof of an estimator’s asymptotic theorem or a confidence interval for
+the smaller cohort. Independent numerical integration checks the CIF
+formula at several rates and horizons.</p>
+<p>The interaction varies
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math></span>
+from 0 to 0.30 while keeping
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>=</mo><mn>0.10</mn></mrow><annotation encoding="application/x-tex">a=0.10</annotation></semantics></math></span>.
+How should
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>S</mi><annotation encoding="application/x-tex">S</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>F</mi><mn>1</mn></msub><annotation encoding="application/x-tex">F_1</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>F</mi><mn>2</mn></msub><annotation encoding="application/x-tex">F_2</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>F</mi><mn>1</mn><mrow><mi mathvariant="normal">n</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">t</mi></mrow></msubsup><annotation encoding="application/x-tex">F_1^{\mathrm{net}}</annotation></semantics></math></span>
+respond? The integral for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>F</mi><mn>1</mn></msub><annotation encoding="application/x-tex">F_1</annotation></semantics></math></span>
+gives us a prediction to compare with the curves. The curves and
+displayed horizon probabilities use the checked R calculation’s <code>grid</code>. Their static counterpart is the
+left panel of Figure <a href="#s15-competing-figure" data-reference-type="ref" data-reference="s15-competing-figure">10.1</a>.
+The lesson is the distinction between a conditional rate and an event
+probability, not a claim that changing competing mortality is a
+well-defined clinical intervention.</p>
+<section class="interaction" id="competing-explorer" aria-labelledby="competing-title">
+<h2 id="competing-title">Explore: one hazard, different observed risks</h2>
+<p>Predict first: keep the cause-1 hazard at 0.10 per unit time and increase the competing hazard. Does the probability of experiencing cause 1 stay fixed? Compare the actual cumulative incidence with a hypothetical net-risk calculation.</p>
+<div class="controls"><label>Competing hazard <output id="competing-hazard-label">0.10</output><br><input id="competing-hazard" type="range" min="0" max="30" value="10" step="1"></label><label>Time <output id="competing-time-label">5.00</output><br><input id="competing-time" type="range" min="0" max="200" value="100" step="1"></label><button type="button" id="competing-reveal">Reveal event probabilities</button></div>
+<div id="competing-output" hidden aria-live="polite"><p id="competing-numbers" class="result-text"></p><svg id="competing-plot" viewbox="0 0 640 300" role="img" aria-label="Cause-specific cumulative incidences and hypothetical net cause-1 risk across time"></svg><p>Cumulative incidence describes events in the presence of competing causes. The net-risk curve removes the competing hazard mathematically; treating competing events as ordinary censoring does not make that curve the observed cause-1 probability, nor establish a causal intervention effect.</p></div>
+<p><small>Static counterpart: the constant-hazard derivation, competing-risk table, and comparison figure in this chapter. The model assumes two mutually exclusive first events with constant cause-specific hazards.</small></p>
+</section>
+<p class="core-transition">A cause-specific rate and a first-event probability are distinct summaries. We calculated any-event survival and allocated its losses among causes, using both modeled rates and observed risk-set increments. At a stated horizon, the CIF gives the probability of a first event of the specified cause, whereas one minus survival gives the probability of any of the specified first events. The net-risk functional removes competing exits from the survival calculation. The interpretation depends on the event definitions and observation assumptions, as well as the hazard model for the model-based calculations.</p><h2 id="exercises">10.7 Exercises</h2>
+<ol class="exercises" style='--chapter:"10."'><li id="exercise-10-1"><p><strong>The competing rate changes absolute incidence.</strong> Let two mutually exclusive first-event types have constant
+cause-specific hazards
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">a&gt;0</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>≥</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">b\geq0</annotation></semantics></math></span>
+in an event-free population, with accurate cause ascertainment. Derive
+event-free survival and both cumulative-incidence functions. Prove that
+type-1 cumulative incidence decreases with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math></span>
+at fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>,</mo><mi>t</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">a,t&gt;0</annotation></semantics></math></span>.
+Calculate five-month type-1 incidence for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>=</mo><mn>0.10</mn></mrow><annotation encoding="application/x-tex">a=0.10</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>=</mo><mn>0.06</mn></mrow><annotation encoding="application/x-tex">b=0.06</annotation></semantics></math></span>
+or
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.18</mn><annotation encoding="application/x-tex">0.18</annotation></semantics></math></span>,
+and compare with the net-risk functional
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>a</mi><mi>t</mi></mrow></msup></mrow><annotation encoding="application/x-tex">1-e^{-at}</annotation></semantics></math></span>.
+State which calculation describes actual first-event risk.</p>
+</li><li id="exercise-10-2"><p><strong>Allocate a jump from the preceding survival.</strong> Use observed follow-up
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>3</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>5</mn><mo>,</mo><mn>6</mn><mo>,</mo><mn>6</mn><mo>,</mo><mn>7</mn><mo>,</mo><mn>8</mn><mo>,</mo><mn>8</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">x=(1,2,2,3,4,4,5,6,6,7,8,8)</annotation></semantics></math></span>
+months and statuses
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(1,2,0,0,1,2,0,1,0,0,2,0)</annotation></semantics></math></span>,
+where 0 denotes right censoring and 1–2 are first-event types. Everyone
+enters at zero; same-time events precede censoring. Derive the
+Aalen–Johansen first-event updates at months 4 and 8 and show
+algebraically that
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>S</mi><mo accent="true">̂</mo></mover><mo>+</mo><msub><mover><mi>F</mi><mo accent="true">̂</mo></mover><mn>1</mn></msub><mo>+</mo><msub><mover><mi>F</mi><mo accent="true">̂</mo></mover><mn>2</mn></msub><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\widehat S+\widehat F_1+\widehat F_2=1</annotation></semantics></math></span>
+after every jump. Calculate the unallocated mass at month 4 if each CIF
+increment incorrectly uses post-jump instead of pre-jump survival.</p>
+</li><li id="exercise-10-3"><p><strong>A net-risk curve answers another question.</strong> For the preceding cohort, treat type-2 exits as censored in a cause-1
+Kaplan–Meier calculation. Compute its net-risk functional at month 8 and
+compare it with the type-1 Aalen–Johansen CIF. Explain why
+competing-event removal can be used in a cause-specific Cox partial
+likelihood, but does not make one minus the resulting cause-specific
+survival equal actual incidence. State what additional assumptions would
+be needed to interpret the net-risk functional under a causal
+elimination of type 2.</p>
+</li><li id="exercise-10-4"><p><strong>Hazard ordering need not order incidence.</strong> Consider two event-free populations with constant type-1/type-2
+hazards
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>,</mo><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.10</mn><mo>,</mo><mn>0.30</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">(a,b)=(0.10,0.30)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.08</mn><mo>,</mo><mn>0.01</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.08,0.01)</annotation></semantics></math></span>
+per month. Under independent observation censoring and accurate cause
+ascertainment, calculate their five-month type-1 CIFs. Determine the
+type-1 cause-specific hazard ratio and CIF ordering. Explain why this is
+a counterexample to the claim that a smaller type-1 hazard necessarily
+gives smaller type-1 incidence when competing hazards differ. No
+independence of hypothetical latent failure times is required for the
+CIF identity.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="11-diagnostics.html">Previous: 9. Diagnostics that answer model questions</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="references.html">Next: References</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

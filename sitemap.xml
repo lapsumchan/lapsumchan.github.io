@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<url><loc>https://lapsumchan.github.io/</loc></url>
+<url><loc>https://lapsumchan.github.io/publications.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/inference/how-to-use.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/inference/notation.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/inference/01-models.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/inference/02-likelihood.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/inference/conditional-regression.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/inference/03-decisions.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/inference/07-limits.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/inference/08-confidence.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/inference/09-testing.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/inference/06-bayes.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/inference/12-shrinkage.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/inference/regularization-association.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/inference/14-multiplicity.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/inference/references.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/survival/how-to-use.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/survival/notation.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/survival/01-observation.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/survival/02-functions.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/survival/03-km.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/survival/04-nelson-aalen.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/survival/07-likelihood.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/survival/08-parametric.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/survival/09-cox.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/survival/10-strata-ties.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/survival/11-diagnostics.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/survival/15-competing-risks.html</loc></url>
+<url><loc>https://lapsumchan.github.io/teaching/survival/references.html</loc></url>
+</urlset>

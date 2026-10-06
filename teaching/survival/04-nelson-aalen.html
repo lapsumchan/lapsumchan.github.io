@@ -1,0 +1,808 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Survival Analysis — Chapter 4: Nelson--Aalen estimation and counting processes | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Nelson--Aalen estimation and counting processes.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/survival/04-nelson-aalen.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Survival Analysis — Chapter 4: Nelson--Aalen estimation and counting processes | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Nelson--Aalen estimation and counting processes.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/survival/04-nelson-aalen.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Survival Analysis — Chapter 4: Nelson--Aalen estimation and counting processes", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Survival Analysis", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/survival/04-nelson-aalen.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Survival Analysis</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Events, observation, and population functions</p><ol class="contents-chapters"><li><a href="01-observation.html">1. Events, clocks, and incomplete observation</a></li><li><a href="02-functions.html">2. Survival, risk, hazard, and lifetime summaries</a></li></ol><p class="contents-part">Part II: Risk sets and nonparametric estimation</p><ol class="contents-chapters"><li><a href="03-km.html">3. Estimating survival from incomplete follow-up</a></li><li><a href="04-nelson-aalen.html" aria-current="page">4. Nelson--Aalen estimation and counting processes</a></li></ol><p class="contents-part">Part III: Likelihood and survival regression</p><ol class="contents-chapters"><li><a href="07-likelihood.html">5. Likelihood under incomplete observation</a></li><li><a href="08-parametric.html">6. Parametric survival regression</a></li><li><a href="09-cox.html">7. The Cox model: estimation and absolute risk</a></li><li><a href="10-strata-ties.html">8. Stratification and tied event times</a></li><li><a href="11-diagnostics.html">9. Diagnostics that answer model questions</a></li></ol><p class="contents-part">Part IV: Competing events</p><ol class="contents-chapters"><li><a href="15-competing-risks.html">10. Competing risks and first-event probabilities</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#a-cumulative-rate-estimated-from-changing-denominators">4.1 A cumulative rate, estimated from changing denominators</a></li><li><a href="#records-viewed-as-processes">4.2 Records viewed as processes</a></li><li><a href="#what-information-may-an-event-rate-use">4.3 What information may an event rate use?</a></li><li><a href="#deriving-the-estimator-and-locating-its-support">4.4 Deriving the estimator and locating its support</a></li><li><a href="#compute-the-same-cohort-on-two-scales">4.5 Compute the same cohort on two scales</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#why-the-product-and-the-exponential-differ">4.6 Why the product and the exponential differ</a></li><li><a href="#accumulating-uncertainty">4.7 Accumulating uncertainty</a></li><li><a href="#from-a-known-intensity-to-a-fitted-rate">4.8 From a known intensity to a fitted rate</a></li><li><a href="#a-simulation-of-the-compensator-argument">4.9 A simulation of the compensator argument</a></li><li><a href="#exercises">4.10 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Survival Analysis</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 4</span></p><div class="chapter-content"><h1 id="s4-chapter">Chapter 4. Nelson–Aalen estimation and counting processes</h1>
+<h2 id="a-cumulative-rate-estimated-from-changing-denominators">4.1 A
+cumulative rate, estimated from changing denominators</h2>
+<p>The previous chapter estimated survival by multiplying conditional
+chances of remaining event-free. Another useful question is how much
+event hazard has accumulated by a specified time. In the continuous
+model of Chapter <a href="02-functions.html#s2-functions" data-reference-type="ref" data-reference="s2-functions">2</a>, the target is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi><mo>=</mo><mo>−</mo><mo>log</mo><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">H(t)=\int_0^t\lambda(u)\,du=-\log S(t).
+ \label{s4-target}</annotation></semantics></math><span id="s4-target" class="equation-anchor"></span><span class="equation-number">(4.1)</span></span> This quantity is
+dimensionless and nonnegative. It is neither an event probability nor an
+expected number of recurrences per person. Its value can exceed one even
+when each person can experience only one event. A cumulative hazard of
+two corresponds to survival
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mrow><mo>−</mo><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">e^{-2}</annotation></semantics></math></span>,
+not to two observed events for every participant.</p>
+<p>The data still consist of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><msub><mi>Δ</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(X_i,\Delta_i)</annotation></semantics></math></span>,
+with the event-first convention and risk counts used in Chapter <a href="03-km.html#s3-km" data-reference-type="ref" data-reference="s3-km">3</a>. We begin with independent subjects,
+continuous event times, and independent right censoring. More precisely,
+the observable event rate among those still under observation must equal
+the population event hazard. Adequate follow-up is required over the
+reporting interval. These assumptions concern the same selection problem
+as before; a different transformation of the curve cannot remove it.</p>
+<p>The Nelson–Aalen estimator adds an observed event count divided by
+its current risk count. The arithmetic is simple. Understanding why its
+uncertainty can also be accumulated requires a language for the evolving
+information in a study. Counting processes supply that language without
+requiring us to treat the observed events as a Poisson process.</p>
+<h2 id="records-viewed-as-processes">4.2 Records viewed as processes</h2>
+<p>For one participant define the latent and observed counting processes
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>N</mi><mi>i</mi><mo>*</mo></msubsup><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>T</mi><mi>i</mi></msub><mo>≤</mo><mi>t</mi><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>N</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>Δ</mi><mi>i</mi></msub><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>X</mi><mi>i</mi></msub><mo>≤</mo><mi>t</mi><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>Y</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>X</mi><mi>i</mi></msub><mo>≥</mo><mi>t</mi><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">N_i^*(t)=\mathbf{1}\{T_i\leq t\},\qquad
+ N_i(t)=\Delta_i\mathbf{1}\{X_i\leq t\},\qquad
+ Y_i(t)=\mathbf{1}\{X_i\geq t\}.
+ \label{s4-processes}</annotation></semantics></math><span id="s4-processes" class="equation-anchor"></span><span class="equation-number">(4.2)</span></span> The latent count
+records whether the event has occurred. The observed count records
+whether it has been observed. A censored person’s observed count remains
+zero, even though their latent count may subsequently become one. The
+at-risk process records availability immediately before the event
+calculation. It includes a participant at their own event time and at a
+same-time censoring record.</p>
+<p>The processes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>N</mi><mi>i</mi></msub><annotation encoding="application/x-tex">N_i</annotation></semantics></math></span>
+are right-continuous step functions. The convention for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>Y</mi><mi>i</mi></msub><annotation encoding="application/x-tex">Y_i</annotation></semantics></math></span>
+makes it left-continuous at the recorded exit: it equals one at the exit
+and zero immediately afterward. This is not a cosmetic distinction.
+Replacing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>≥</mo><annotation encoding="application/x-tex">\geq</annotation></semantics></math></span>
+by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>&gt;</mo><annotation encoding="application/x-tex">&gt;</annotation></semantics></math></span>
+would exclude an event from its own denominator. Aggregate counts and
+risk sets are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>N</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">N(t)=\sum_iN_i(t)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>Y</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">Y(t)=\sum_iY_i(t)</annotation></semantics></math></span>.
+An individual first-event count has jumps of at most one. An aggregate
+count can jump by two or more when recorded events tie. Our cohort has
+just such a jump at month 4.</p>
+<p>Write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">dN(u)</annotation></semantics></math></span>
+for the increment concentrated at an event time. For these step
+functions an integral against
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>N</mi></mrow><annotation encoding="application/x-tex">dN</annotation></semantics></math></span>
+is a sum:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mi>a</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mrow><mi>u</mi><mo>≤</mo><mi>t</mi></mrow></munder><mi>a</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="prefix">{</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo>−</mo><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\int_0^t a(u)\,dN(u)=\sum_{u\leq t}a(u)\{N(u)-N(u-)\}.
+ \label{s4-count-integral}</annotation></semantics></math><span id="s4-count-integral" class="equation-anchor"></span><span class="equation-number">(4.3)</span></span> It differs
+from an ordinary time integral. Integrating
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Y</mi><annotation encoding="application/x-tex">Y</annotation></semantics></math></span>
+against time counts observed person-time, whereas integrating one
+against
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>N</mi></mrow><annotation encoding="application/x-tex">dN</annotation></semantics></math></span>
+counts events. At a finite horizon,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mi>Y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi><mo>=</mo><munder><mo>∑</mo><mi>i</mi></munder><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mi>d</mi><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>Δ</mi><mi>i</mi></msub><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>X</mi><mi>i</mi></msub><mo>≤</mo><mi>t</mi><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\int_0^tY(u)\,du=\sum_i\min(X_i,t),\qquad
+ \int_0^tdN(u)=\sum_i\Delta_i\mathbf{1}\{X_i\leq t\}.
+ \label{s4-exposure}</annotation></semantics></math><span id="s4-exposure" class="equation-anchor"></span><span class="equation-number">(4.4)</span></span> The first
+expression equals total recorded follow-up only when the horizon reaches
+every exit. For our cohort it is 46 person-months at month 5 and 56 at
+month 8. The observed event counts at those times are four and six. A
+rate calculation must specify both its event window and its exposure
+window.</p>
+<h2 id="what-information-may-an-event-rate-use">4.3 What information may an
+event rate use?</h2>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>ℱ</mi><mi>t</mi></msub><annotation encoding="application/x-tex">\mathcal F_t</annotation></semantics></math></span>
+denote the information accumulated through time
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>:
+baseline information, observed events, and exits up to that time. It
+does not include unobserved future event times. A process is
+<em>adapted</em> if its value at time
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>
+can be determined from that history. A <em>predictable</em> process can
+be evaluated immediately before the next event increment is revealed.
+Left-continuous adapted processes, including the risk indicator here,
+are predictable. This is the mathematical version of constructing a
+denominator without first looking at which person fails next.</p>
+<p>Under the continuous common-hazard model, the intensity of the
+observed count is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">Y_i(u)\lambda(u)</annotation></semantics></math></span>.
+Informally, conditional on the current history, an observable event in a
+sufficiently short interval has probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi></mrow><annotation encoding="application/x-tex">Y_i(u)\lambda(u)\,du</annotation></semantics></math></span>
+to first order. An individual who already exited has intensity zero.
+Independent censoring permits the event hazard in the remaining observed
+risk set to be the same
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\lambda(u)</annotation></semantics></math></span>
+as in the target population. If impending deterioration causes
+informative dropout, that equality may fail even though every risk count
+is calculated correctly.</p>
+<p>The accumulated intensity is called the <em>compensator</em>:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>B</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><msub><mi>Y</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>M</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>N</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msub><mi>B</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">B_i(t)=\int_0^tY_i(u)\lambda(u)\,du,\qquad
+ M_i(t)=N_i(t)-B_i(t).
+ \label{s4-compensator}</annotation></semantics></math><span id="s4-compensator" class="equation-anchor"></span><span class="equation-number">(4.5)</span></span> We use
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>B</mi><mi>i</mi></msub><annotation encoding="application/x-tex">B_i</annotation></semantics></math></span>
+for the compensator and retain
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>A</mi><annotation encoding="application/x-tex">A</annotation></semantics></math></span>
+for the discrete cumulative hazard from Chapter <a href="02-functions.html#s2-functions" data-reference-type="ref" data-reference="s2-functions">2</a>. The two accumulate
+different quantities. Under the stated model and integrability
+conditions,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>M</mi><mi>i</mi></msub><annotation encoding="application/x-tex">M_i</annotation></semantics></math></span>
+is a martingale:
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mo stretchy="false" form="prefix">{</mo><msub><mi>M</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>∣</mo><msub><mi>ℱ</mi><mi>s</mi></msub><mo stretchy="false" form="postfix">}</mo><mo>=</mo><msub><mi>M</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>s</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{E}\{M_i(t)\mid\mathcal F_s\}=M_i(s)</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mo>≤</mo><mi>t</mi></mrow><annotation encoding="application/x-tex">s\leq t</annotation></semantics></math></span>.
+Its future change has conditional mean zero, given the information
+already available. It need not be zero along an individual sample path.
+Its increments need not be independent or identically distributed.</p>
+<p>For a known exponential rate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math></span>,
+a participant’s compensator is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\lambda\min(X_i,t)</annotation></semantics></math></span>.
+Until exit it increases steadily; an observed event makes the count
+jump; after exit both are constant. The count is not a Poisson process:
+it stops after its first event, and its intensity depends on that
+stopping. The martingale property concerns conditional mean increments,
+a substantially weaker and more appropriate requirement.</p>
+<h2 id="deriving-the-estimator-and-locating-its-support">4.4 Deriving the
+estimator and locating its support</h2>
+<p>Summing individual compensators gives the aggregate decomposition
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>Y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi><mo>+</mo><mi>d</mi><mi>M</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>M</mi><mo>=</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>M</mi><mi>i</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">dN(u)=Y(u)\lambda(u)\,du+dM(u),\qquad M=\sum_iM_i.
+ \label{s4-decomposition}</annotation></semantics></math><span id="s4-decomposition" class="equation-anchor"></span><span class="equation-number">(4.6)</span></span> Define
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>Y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&gt;</mo><mn>0</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">J(u)=\mathbf{1}\{Y(u)&gt;0\}</annotation></semantics></math></span>
+and set
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>Y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">J(u)/Y(u)=0</annotation></semantics></math></span>
+when the risk set is empty. Multiplying by this predictable inverse
+denominator and integrating produces the estimator
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mfrac><mrow><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>Y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mspace width="0.167em"></mspace><mi>d</mi><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mrow><msub><mi>t</mi><mi>j</mi></msub><mo>≤</mo><mi>t</mi></mrow></munder><mfrac><msub><mi>d</mi><mi>j</mi></msub><msub><mi>y</mi><mi>j</mi></msub></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat H_{\mathrm{NA}}(t)=\int_0^t\frac{J(u)}{Y(u)}\,dN(u)
+ =\sum_{t_j\leq t}\frac{d_j}{y_j}.
+ \label{s4-na}</annotation></semantics></math><span id="s4-na" class="equation-anchor"></span><span class="equation-number">(4.7)</span></span> It is a right-continuous
+step function whose jumps are estimated cumulative hazard increments. A
+jump
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>j</mi></msub><mi>/</mi><msub><mi>y</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">d_j/y_j</annotation></semantics></math></span>
+has no time units; it is not itself an estimate of a continuous hazard
+rate at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mi>j</mi></msub><annotation encoding="application/x-tex">t_j</annotation></semantics></math></span>.
+Estimating a rate requires specifying an interval or a smoothing scale; a cumulative-hazard jump alone does not estimate an instantaneous rate.</p><p>The decomposition also states exactly what the estimator tracks:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mfrac><mrow><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>Y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mspace width="0.167em"></mspace><mi>d</mi><mi>M</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat H_{\mathrm{NA}}(t)-\int_0^tJ(u)\lambda(u)\,du
+ =\int_0^t\frac{J(u)}{Y(u)}\,dM(u).
+ \label{s4-supported-error}</annotation></semantics></math><span id="s4-supported-error" class="equation-anchor"></span><span class="equation-number">(4.8)</span></span> On an
+interval with nonempty risk sets the target inside the integral is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">H(t)</annotation></semantics></math></span>.
+After all subjects exit, the estimator stops accumulating information.
+In general the difference from
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">H(t)</annotation></semantics></math></span>
+includes the missing term
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>−</mo><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi></mrow><annotation encoding="application/x-tex">-\int_0^t\{1-J(u)\}\lambda(u)\,du</annotation></semantics></math></span>
+as well. Thus a mean-zero martingale calculation does not prove exact
+unbiasedness for an arbitrarily late fixed-horizon cumulative hazard.
+The distinction can be made quantitative. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&lt;</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">H(t)&lt;\infty</annotation></semantics></math></span>,
+the integrand
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mi>/</mi><mi>Y</mi></mrow><annotation encoding="application/x-tex">J/Y</annotation></semantics></math></span>
+is bounded by one, so the martingale integral has mean zero under the
+stated intensity model. Taking expectations gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mo stretchy="false" form="prefix">{</mo><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mi>ℙ</mi><mo stretchy="false" form="prefix">{</mo><mi>Y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&gt;</mo><mn>0</mn><mo stretchy="false" form="postfix">}</mo><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi><mo>≤</mo><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}\{\widehat H_{\mathrm{NA}}(t)\}
+ =\int_0^t\mathbb{P}\{Y(u)&gt;0\}\lambda(u)\,du\leq H(t).
+ \label{s4-finite-sample-mean}</annotation></semantics></math><span id="s4-finite-sample-mean" class="equation-anchor"></span><span class="equation-number">(4.9)</span></span> For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+independent identical records, write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>≥</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">y(u)=\mathbb{P}(X_i\geq u)</annotation></semantics></math></span>.
+Then
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mo stretchy="false" form="prefix">{</mo><mi>Y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&gt;</mo><mn>0</mn><mo stretchy="false" form="postfix">}</mo><mo>=</mo><mn>1</mn><mo>−</mo><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>−</mo><mi>y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mo stretchy="false" form="postfix">}</mo><mi>n</mi></msup></mrow><annotation encoding="application/x-tex">\mathbb{P}\{Y(u)&gt;0\}=1-\{1-y(u)\}^n</annotation></semantics></math></span>.
+At a fixed horizon where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">y(u)</annotation></semantics></math></span>
+remains positive, the missing-support factor tends to zero as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+grows. In a small sample or an unsupported tail it can matter. This is a
+finite-sample support effect, distinct from informative censoring, which
+would invalidate the event-intensity model in the first place.</p>
+<h2 id="compute-the-same-cohort-on-two-scales">4.5 Compute the same cohort
+on two scales</h2>
+<p>We return to the same twelve records and event-first risk sets
+calculated in Chapter <a href="03-km.html#s3-km" data-reference-type="ref" data-reference="s3-km">3</a>. At months 1, 2, and 4 the
+cumulative-hazard contributions are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>12</mn></mrow><annotation encoding="application/x-tex">1/12</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>11</mn></mrow><annotation encoding="application/x-tex">1/11</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mi>/</mi><mn>8</mn></mrow><annotation encoding="application/x-tex">2/8</annotation></semantics></math></span>.
+No event occurs at month 5, so
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mn>1</mn><mn>12</mn></mfrac><mo>+</mo><mfrac><mn>1</mn><mn>11</mn></mfrac><mo>+</mo><mfrac><mn>2</mn><mn>8</mn></mfrac><mo>=</mo><mfrac><mn>14</mn><mn>33</mn></mfrac><mo>=</mo><mn>0.4242424</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat H_{\mathrm{NA}}(5)=\frac1{12}+\frac1{11}+\frac28
+ =\frac{14}{33}=0.4242424.
+ \label{s4-month5}</annotation></semantics></math><span id="s4-month5" class="equation-anchor"></span><span class="equation-number">(4.10)</span></span> Exponentiating gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>=</mo><mn>0.6542653</mn></mrow><annotation encoding="application/x-tex">\exp\{-\widehat H_{\mathrm{NA}}(5)\}=0.6542653</annotation></semantics></math></span>.
+Kaplan–Meier gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.625</mn><annotation encoding="application/x-tex">0.625</annotation></semantics></math></span>.
+These two estimates need not agree in a finite sample, even though the
+continuous population identity is exact. At month 8 the cumulative
+estimate is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1.1242424</mn><annotation encoding="application/x-tex">1.1242424</annotation></semantics></math></span>,
+the exponential survival estimate is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.3248985</mn><annotation encoding="application/x-tex">0.3248985</annotation></semantics></math></span>,
+and Kaplan–Meier is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.25</mn><annotation encoding="application/x-tex">0.25</annotation></semantics></math></span>.
+The same data can therefore give different plug-in survival estimates
+without a contradiction: the continuous identity links population
+functions, whereas the two estimators use different finite jumps. Our
+month-level cohort is a worked calculation with recorded ties; the
+continuous-time martingale model explains the estimator’s usual
+asymptotics. A population with genuinely discrete failure masses
+requires the separate interpretation below.</p>
+<h3 id="from-first-principles">4.5.1 From first principles</h3>
+<p>Here is the central computation, with distinct recorded times
+<code>u</code>, risk counts <code>y</code>, and event counts
+<code>d</code>:</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R, survival. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# cumulative hazard and event-count martingales.
+options(stringsAsFactors = FALSE, width = 110)
+dir.create("results", showWarnings = FALSE)
+dir.create("figures", showWarnings = FALSE)
+if (!requireNamespace("survival", quietly = TRUE))
+  stop("Install package 'survival' before running this example.")
+
+na.table &lt;- function(time, status) {
+  stopifnot(length(time) == length(status), length(time) &gt; 0L,
+            all(is.finite(time)), all(time &gt;= 0), all(status %in% 0:1))
+  u &lt;- sort(unique(time))
+  y &lt;- vapply(u, function(t) sum(time &gt;= t), numeric(1))
+  d &lt;- vapply(u, function(t) sum(time == t &amp; status == 1), numeric(1))
+  H &lt;- cumsum(d/y)
+  VA &lt;- cumsum(d/y^2)
+  VB &lt;- cumsum(d*(y-d)/y^3)
+  S &lt;- cumprod(1-d/y)
+  lower &lt;- upper &lt;- rep(NA_real_, length(u))
+  ok &lt;- H &gt; 0
+  lower[ok] &lt;- H[ok]*exp(-qnorm(.975)*sqrt(VA[ok])/H[ok])
+  upper[ok] &lt;- H[ok]*exp(qnorm(.975)*sqrt(VA[ok])/H[ok])
+  data.frame(time = u, risk = y, events = d, cumulative.hazard = H,
+             survival.na = exp(-H), survival.km = S, variance.aalen = VA,
+             variance.binomial = VB, hazard.lower = lower, hazard.upper = upper,
+             survival.lower = exp(-upper), survival.upper = exp(-lower))
+}
+step.at &lt;- function(tab, t, variable, initial = 0) {
+  c(initial, tab[[variable]])[findInterval(t, tab$time)+1L]
+}
+save.plot &lt;- function(stem, draw, width = 7, height = 4.4) {
+  cairo_pdf(paste0("figures/", stem, ".pdf"), width = width, height = height,
+            family = "serif")
+  draw(); dev.off()
+  png(paste0("figures/", stem, ".png"), width = width*160, height = height*160, res = 160)
+  draw(); dev.off()
+}
+cohort &lt;- data.frame(id = LETTERS[1:12],
+  time = c(1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 8, 8),
+  status = c(1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0))
+tab &lt;- na.table(cohort$time, cohort$status)
+at5 &lt;- tab[tab$time == 5, ]; at6 &lt;- tab[tab$time == 6, ]
+stopifnot(abs(at5$cumulative.hazard-14/33) &lt; 1e-12,
+          abs(at6$cumulative.hazard-103/165) &lt; 1e-12,
+          abs(at5$variance.aalen-(1/144+1/121+2/64)) &lt; 1e-12,
+          abs(at6$variance.binomial-(11/12^3+10/11^3+12/8^3+4/5^3)) &lt; 1e-12,
+          all(tab$survival.km &lt;= tab$survival.na+1e-12),
+          all(vapply(c(2,5,8), function(t) sum(pmin(cohort$time,t)), 0.0)==c(23,46,56)))
+terminal &lt;- na.table(c(1,2,3), rep(1,3))
+stopifnot(tail(terminal$survival.km,1)==0,
+          abs(tail(terminal$cumulative.hazard,1)-11/6) &lt; 1e-12)
+# Standard R workflow: exp(-H_NA) with the same Aalen variance and log(H) CI.
+fit &lt;- survival::survfit(survival::Surv(time, status) ~ 1,
+  data = cohort, stype = 2, ctype = 1, robust = FALSE,
+  conf.int = .95, conf.type = "log-log", conf.lower = "usual")
+stopifnot(max(abs(fit$cumhaz - tab$cumulative.hazard)) &lt; 1e-12,
+          max(abs(fit$surv - tab$survival.na)) &lt; 1e-12,
+          max(abs(fit$std.chaz^2 - tab$variance.aalen)) &lt; 1e-12,
+          max(abs(fit$lower - tab$survival.lower)) &lt; 1e-12,
+          max(abs(fit$upper - tab$survival.upper)) &lt; 1e-12)
+# The tied-event correction replaces d/y by sum_{k=0}^{d-1} 1/(y-k).
+fit.tie.corrected &lt;- survival::survfit(survival::Surv(time, status) ~ 1,
+  data = cohort, stype = 2, ctype = 2, robust = FALSE,
+  conf.type = "log-log")
+corrected.increment &lt;- vapply(seq_along(tab$events), function(j) {
+  d &lt;- tab$events[j]; y &lt;- tab$risk[j]
+  if (d == 0) 0 else sum(1/(y - seq.int(0, d - 1)))
+}, numeric(1))
+stopifnot(max(abs(fit.tie.corrected$cumhaz - cumsum(corrected.increment))) &lt; 1e-12)
+workflow.comparison &lt;- data.frame(time = tab$time,
+  direct.H = tab$cumulative.hazard, survfit.H = fit$cumhaz,
+  direct.survival = tab$survival.na, survfit.survival = fit$surv,
+  tied.corrected.H = fit.tie.corrected$cumhaz,
+  survival.km = tab$survival.km, variance.aalen = fit$std.chaz^2,
+  lower = fit$lower, upper = fit$upper)
+write.csv(workflow.comparison, "results/ch04-package-comparison.csv", row.names = FALSE)
+selected &lt;- workflow.comparison[workflow.comparison$time %in% c(4, 5, 6, 8), ]
+table.lines &lt;- c("\\begin{tabular}{rrrrr}\\toprule",
+  "Month &amp; $\\widehat H_{\\rm NA}$ &amp; Tied correction &amp; $e^{-\\widehat H_{\\rm NA}}$ &amp; KM\\\\\\midrule")
+for (j in seq_len(nrow(selected))) {
+  rr &lt;- selected[j, ]
+  table.lines &lt;- c(table.lines, sprintf("%d &amp; %.6f &amp; %.6f &amp; %.6f &amp; %.6f\\\\",
+    rr$time, rr$survfit.H, rr$tied.corrected.H, rr$survfit.survival, rr$survival.km))
+}
+writeLines(c(table.lines, "\\bottomrule\\end{tabular}"),
+  "results/ch04-package-table.tex")
+write.csv(data.frame(package = c("R", "survival"),
+  version = c(as.character(getRversion()), as.character(utils::packageVersion("survival")))),
+  "results/ch04-package-versions.csv", row.names = FALSE)
+write.csv(tab,"results/ch04-na-table.csv",row.names=FALSE)
+save.plot("ch04-na-km", function() {
+  par(mfrow=c(1,2),mar=c(4.2,4.4,1.1,1),las=1)
+  plot(c(0,tab$time),c(0,tab$cumulative.hazard),type="s",col="#002D72",lwd=2,
+       xlab="Months since enrollment",ylab="Cumulative quantity",ylim=c(0,1.6))
+  lines(c(0,tab$time),c(0,-log(tab$survival.km)),type="s",lty=2,col="gray35",lwd=2)
+  legend("topleft",c("Nelson-Aalen","-log(Kaplan-Meier)"),lty=c(1,2),col=c("#002D72","gray35"),bty="n",cex=.8)
+  plot(c(0,tab$time),c(1,tab$survival.km),type="s",col="#002D72",lwd=2,
+       xlab="Months since enrollment",ylab="Survival estimate",ylim=c(0,1))
+  lines(c(0,tab$time),c(1,tab$survival.na),type="s",lty=2,col="gray35",lwd=2)
+  legend("bottomleft",c("Kaplan-Meier","exp(-Nelson-Aalen)"),lty=c(1,2),col=c("#002D72","gray35"),bty="n",cex=.8)
+},width=7.4,height=4)
+
+# The true event rate is used, rather than a fitted rate that forces M(5)=0.
+set.seed(6750401)
+n &lt;- 300L; B &lt;- 2000L; lambda &lt;- .12; censor.rate &lt;- .08
+horizon &lt;- 5; closure &lt;- 8; grid &lt;- seq(0,8,by=.1)
+replicates &lt;- matrix(NA_real_, B, 4L)
+colnames(replicates) &lt;- c("residual5","hazard5","variance5","exposure5")
+paths &lt;- matrix(0, B, length(grid))
+for (b in seq_len(B)) {
+  T &lt;- rexp(n,rate=lambda); C &lt;- rexp(n,rate=censor.rate)
+  X &lt;- pmin(T,C,closure); delta &lt;- as.integer(T&lt;=C &amp; T&lt;=closure)
+  events &lt;- sort(X[delta==1L &amp; X&lt;=horizon])
+  risk &lt;- vapply(events,function(t) sum(X&gt;=t),0.0)
+  exposure &lt;- sum(pmin(X,horizon))
+  replicates[b,] &lt;- c(length(events)-lambda*exposure,
+                     sum(1/risk),sum(1/risk^2),exposure)
+  paths[b,] &lt;- vapply(grid,function(t) sum(delta*(X&lt;=t))-lambda*sum(pmin(X,t)),0.0)
+}
+expected.exposure &lt;- n*(-expm1(-(lambda+censor.rate)*horizon))/(lambda+censor.rate)
+expected.events &lt;- lambda*expected.exposure
+summary &lt;- data.frame(quantity=c("M(5)","H_NA(5)","Aalen variance", "Observed exposure"),
+                      mean=colMeans(replicates),
+                      mc.se=apply(replicates,2,sd)/sqrt(B),
+                      target=c(0,lambda*horizon,NA,expected.exposure))
+stopifnot(abs(summary$mean[1]) &lt; 4*summary$mc.se[1],
+          abs(summary$mean[2]-lambda*horizon) &lt; 4*summary$mc.se[2],
+          abs(mean(replicates[,3])/var(replicates[,2])-1) &lt; .15)
+write.csv(as.data.frame(replicates),"results/ch04-martingale-replicates.csv",row.names=FALSE)
+write.csv(summary,"results/ch04-martingale-summary.csv",row.names=FALSE)
+write.csv(data.frame(time=grid, mean=colMeans(paths),t(paths[1:6,])),
+          "results/ch04-martingale-paths.csv",row.names=FALSE)
+save.plot("ch04-martingale", function() {
+  par(mar=c(4.3,4.7,1,1),las=1)
+  matplot(grid,t(paths[1:6,]),type="l",lty=1,col=rep("gray65",6),
+          xlab="Months since enrollment",ylab="N(t) - 0.12 x observed exposure")
+  lines(grid,colMeans(paths),col="#002D72",lwd=2)
+  abline(h=0,lty=3,col="gray40")
+  legend("bottomleft",c("Six independent cohorts","Mean of 2,000 cohorts"),
+         lty=1,col=c("gray65","#002D72"),lwd=c(1,2),bty="n")
+})
+
+capture.output(sessionInfo(),file="results/ch04-sessionInfo.txt")
+print(at5); print(at6); print(summary)
+print(selected, row.names = FALSE)
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>u <span class="ot">&lt;-</span> <span class="fu">sort</span>(<span class="fu">unique</span>(time))</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">vapply</span>(u, <span class="cf">function</span>(t) <span class="fu">sum</span>(time <span class="sc">&gt;=</span> t), <span class="fu">numeric</span>(<span class="dv">1</span>))</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="fu">vapply</span>(u, <span class="cf">function</span>(t) <span class="fu">sum</span>(time <span class="sc">==</span> t <span class="sc">&amp;</span> status <span class="sc">==</span> <span class="dv">1</span>), <span class="fu">numeric</span>(<span class="dv">1</span>))</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>H <span class="ot">&lt;-</span> <span class="fu">cumsum</span>(d<span class="sc">/</span>y)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>S.na <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="sc">-</span>H)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>S.km <span class="ot">&lt;-</span> <span class="fu">cumprod</span>(<span class="dv">1</span><span class="sc">-</span>d<span class="sc">/</span>y)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>V.aalen <span class="ot">&lt;-</span> <span class="fu">cumsum</span>(d<span class="sc">/</span>y<span class="sc">^</span><span class="dv">2</span>)</span></code></pre></div>
+<p>Keeping censoring-only times makes the output easier to audit: they
+add zero to the cumulative hazard. The quantity <code>V.aalen</code>
+stores the variance accumulation derived in the next section. The
+complete R example contains the twelve records and evaluates both the
+cumulative-hazard sum and the survival product without needing another
+chapter’s saved output.</p>
+<h3 id="standard-r-workflow">4.5.2 Standard R workflow</h3>
+<p>Use the same records with an explicit exponential-survival
+transformation and uncorrected cumulative-hazard increments <span class="citation" data-cites="r-survfit-doc"><a class="collection-citation" href="references.html#ref-r-survfit-doc" role="doc-biblioref" aria-label="Reference 1">[1]</a></span>:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>fit.na <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">survfit</span>(survival<span class="sc">::</span><span class="fu">Surv</span>(time, status) <span class="sc">~</span> <span class="dv">1</span>,</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> cohort, <span class="at">stype =</span> <span class="dv">2</span>, <span class="at">ctype =</span> <span class="dv">1</span>, <span class="at">robust =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">conf.type =</span> <span class="st">"log-log"</span>, <span class="at">conf.int =</span> .<span class="dv">95</span>, <span class="at">conf.lower =</span> <span class="st">"usual"</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(<span class="at">time =</span> fit.na<span class="sc">$</span>time,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">cumulative.hazard =</span> fit.na<span class="sc">$</span>cumhaz, <span class="at">survival =</span> fit.na<span class="sc">$</span>surv)</span></code></pre></div>
+<p><code>stype = 2</code> means survival is obtained by exponentiating
+the negative cumulative hazard. With <code>ctype = 1</code>,
+<code>fit.na$cumhaz</code> agrees with <code>cumsum(d/y)</code> and
+<code>fit.na$surv</code> agrees with <code>exp(-H)</code>. This
+agreement concerns the Nelson–Aalen route, not Kaplan–Meier. Choosing
+<code>stype = 1</code> would instead give the survival product while
+retaining the same accompanying cumulative-hazard sum.</p>
+<p>A second package choice is <code>ctype = 2</code>, a
+Fleming–Harrington correction for tied events. A tied increment with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math></span>
+events and risk count
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math></span>
+becomes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow><mrow><mi>d</mi><mo>−</mo><mn>1</mn></mrow></msubsup><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>y</mi><mo>−</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sum_{k=0}^{d-1}1/(y-k)</annotation></semantics></math></span>.
+At month 4 this is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>8</mn><mo>+</mo><mn>1</mn><mi>/</mi><mn>7</mn></mrow><annotation encoding="application/x-tex">1/8+1/7</annotation></semantics></math></span>,
+rather than
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mi>/</mi><mn>8</mn></mrow><annotation encoding="application/x-tex">2/8</annotation></semantics></math></span>.
+It agrees with the uncorrected increment when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">d=1</annotation></semantics></math></span>
+and is larger when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>&gt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">d&gt;1</annotation></semantics></math></span>.
+The complete R example calculates this alternative both directly and
+with <code>survfit()</code>. Table <a href="#s4-package-table" data-reference-type="ref" data-reference="s4-package-table">4.1</a>
+keeps the data fixed so that the effect of changing a numerical
+convention is visible. An analyst should choose and report a convention
+consistent with the observation model rather than alter options until
+different curves coincide.</p>
+<div id="s4-package-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 4.1. Cumulative-hazard and survival estimates for the same
+twelve-person cohort. The tied correction changes cumulative hazard; KM
+is the separate survival product.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">Month</th>
+<th style="text-align: right;"><span class="math inline">$\widehat
+H_{\rm NA}$</span></th>
+<th style="text-align: right;">Tied correction</th>
+<th style="text-align: right;"><span class="math inline">$e^{-\widehat
+H_{\rm NA}}$</span></th>
+<th style="text-align: right;">KM</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0.424242</td>
+<td style="text-align: right;">0.442100</td>
+<td style="text-align: right;">0.654265</td>
+<td style="text-align: right;">0.625000</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">0.424242</td>
+<td style="text-align: right;">0.442100</td>
+<td style="text-align: right;">0.654265</td>
+<td style="text-align: right;">0.625000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0.624242</td>
+<td style="text-align: right;">0.642100</td>
+<td style="text-align: right;">0.535667</td>
+<td style="text-align: right;">0.500000</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">1.124242</td>
+<td style="text-align: right;">1.142100</td>
+<td style="text-align: right;">0.324899</td>
+<td style="text-align: right;">0.250000</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<figure id="s4-two-scales">
+<a href="../assets/survival/ch04-na-km.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch04-na-km.png" alt="Figure 4.1. The recurring cohort on cumulative-hazard and survival
+scales. The differences grow when an event represents a large fraction
+of a small risk set. Both panels describe the same records.">
+</a><figcaption>Figure 4.1. The recurring cohort on cumulative-hazard and survival
+scales. The differences grow when an event represents a large fraction
+of a small risk set. Both panels describe the same records.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch04-na-km.png">Open full-size figure</a></p></figure>
+<h2 id="why-the-product-and-the-exponential-differ">4.6 Why the product and
+the exponential differ</h2>
+<p>Put
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>q</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub><mo>=</mo><msub><mi>d</mi><mi>j</mi></msub><mi>/</mi><msub><mi>y</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">\widehat q_j=d_j/y_j</annotation></semantics></math></span>.
+For every
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>≤</mo><mi>q</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0\leq q&lt;1</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>q</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≥</mo><mi>q</mi></mrow><annotation encoding="application/x-tex">-\log(1-q)\geq q</annotation></semantics></math></span>.
+Therefore, before a terminal jump to zero,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mo>log</mo><msub><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">K</mi><mi mathvariant="normal">M</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mrow><msub><mi>t</mi><mi>j</mi></msub><mo>≤</mo><mi>t</mi></mrow></munder><mo stretchy="false" form="prefix">{</mo><mo>−</mo><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mover><mi>q</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msub><mover><mi>q</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub><mo stretchy="false" form="postfix">}</mo><mo>≥</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">-\log\widehat S_{\mathrm{KM}}(t)-\widehat H_{\mathrm{NA}}(t)
+ =\sum_{t_j\leq t}\{-\log(1-\widehat q_j)-\widehat q_j\}\geq0.
+ \label{s4-log-gap}</annotation></semantics></math><span id="s4-log-gap" class="equation-anchor"></span><span class="equation-number">(4.11)</span></span> Equivalently,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">K</mi><mi mathvariant="normal">M</mi></mrow></msub><mo>≤</mo><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\widehat S_{\mathrm{KM}}\leq\exp(-\widehat H_{\mathrm{NA}})</annotation></semantics></math></span>.
+The discrepancy is not an implementation error. The exponential replaces
+each factor
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msub><mover><mi>q</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">1-\widehat q_j</annotation></semantics></math></span>
+by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mrow><mo>−</mo><msub><mover><mi>q</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub></mrow></msup><annotation encoding="application/x-tex">e^{-\widehat q_j}</annotation></semantics></math></span>.</p>
+<p>Taylor expansion supplies a useful quantitative condition. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>=</mo><msub><mo>max</mo><mrow><msub><mi>t</mi><mi>j</mi></msub><mo>≤</mo><mi>t</mi></mrow></msub><msub><mover><mi>q</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\delta=\max_{t_j\leq t}\widehat q_j&lt;1</annotation></semantics></math></span>,
+the gap is at most
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><munder><mo>∑</mo><mrow><msub><mi>t</mi><mi>j</mi></msub><mo>≤</mo><mi>t</mi></mrow></munder><msubsup><mover><mi>q</mi><mo accent="true">̂</mo></mover><mi>j</mi><mn>2</mn></msubsup></mrow><mrow><mn>2</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>δ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>≤</mo><mfrac><mrow><mi>δ</mi><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mn>2</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>δ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{\sum_{t_j\leq t}\widehat q_j^2}{2(1-\delta)}
+ \leq\frac{\delta\widehat H_{\mathrm{NA}}(t)}{2(1-\delta)}.
+ \label{s4-gap-bound}</annotation></semantics></math><span id="s4-gap-bound" class="equation-anchor"></span><span class="equation-number">(4.12)</span></span> For continuous
+event times on a fixed supported interval, increasing the sample size
+makes individual jumps small. Under usual regularity conditions the
+estimators then have the same first-order asymptotic behavior. That
+statement does not cover an interval whose last risk set remains tiny.
+If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>j</mi></msub><mo>=</mo><msub><mi>y</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">d_j=y_j</annotation></semantics></math></span>,
+Kaplan–Meier becomes zero while the corresponding Nelson–Aalen increment
+is only one; its exponential remains positive.</p>
+<p>Nor does the equivalence apply automatically to genuinely discrete
+event times with fixed positive masses. There
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>j</mi></msub><mi>/</mi><msub><mi>y</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">d_j/y_j</annotation></semantics></math></span>
+estimates a discrete conditional probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>j</mi></msub><annotation encoding="application/x-tex">q_j</annotation></semantics></math></span>.
+The sum estimates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>∑</mo><msub><mi>q</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">A(t)=\sum q_j</annotation></semantics></math></span>,
+while survival is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>∏</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\prod(1-q_j)</annotation></semantics></math></span>,
+not
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mrow><mo>−</mo><mi>A</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><annotation encoding="application/x-tex">e^{-A(t)}</annotation></semantics></math></span>.
+For one time with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mo>=</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">q=1/2</annotation></semantics></math></span>,
+the large-sample limits are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">1/2</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mrow><mo>−</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">e^{-1/2}</annotation></semantics></math></span>.
+More observations do not remove that difference. Recorded ties,
+grouping, and true discrete masses require attention to the observation
+model, not a blanket appeal to asymptotics.</p>
+<h2 id="accumulating-uncertainty">4.7 Accumulating uncertainty</h2>
+<p>For independent subjects with continuous event hazards and no
+simultaneous events, the aggregate martingale has predictable quadratic
+variation
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mi>Y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi></mrow><annotation encoding="application/x-tex">\int_0^tY(u)\lambda(u)\,du</annotation></semantics></math></span>.
+Weighting the increments by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mi>/</mi><mi>Y</mi></mrow><annotation encoding="application/x-tex">J/Y</annotation></semantics></math></span>
+gives the error process in <a href="#s4-supported-error" data-reference-type="eqref" data-reference="s4-supported-error">(4.8)</a> a
+predictable variance accumulation
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>Y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi></mrow><annotation encoding="application/x-tex">\int_0^tJ(u)\lambda(u)/Y(u)\,du</annotation></semantics></math></span>.
+Replacing the unobserved intensity increment by the observed count
+increment gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>V</mi><mo accent="true">̂</mo></mover><mi>A</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mfrac><mrow><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>Y</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow></mfrac><mspace width="0.167em"></mspace><mi>d</mi><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mrow><msub><mi>t</mi><mi>j</mi></msub><mo>≤</mo><mi>t</mi></mrow></munder><mfrac><msub><mi>d</mi><mi>j</mi></msub><msubsup><mi>y</mi><mi>j</mi><mn>2</mn></msubsup></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat V_A(t)=\int_0^t\frac{J(u)}{Y(u)^2}\,dN(u)
+ =\sum_{t_j\leq t}\frac{d_j}{y_j^2}.
+ \label{s4-aalen-var}</annotation></semantics></math><span id="s4-aalen-var" class="equation-anchor"></span><span class="equation-number">(4.13)</span></span> This is the usual
+Aalen variance estimate. The martingale argument uses conditional
+mean-zero increments, not independent random denominators. The formula
+is commonly calculated with tied recorded times too, but its
+continuous-time justification should not be mistaken for an exact tied
+binomial variance statement.</p>
+<p>Indeed, if
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mi>j</mi></msub><annotation encoding="application/x-tex">d_j</annotation></semantics></math></span>
+is modeled conditionally as binomial with parameters
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>j</mi></msub><mo>,</mo><msub><mi>q</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">y_j,q_j</annotation></semantics></math></span>,
+then the conditional variance of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>j</mi></msub><mi>/</mi><msub><mi>y</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">d_j/y_j</annotation></semantics></math></span>
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>j</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><msub><mi>y</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">q_j(1-q_j)/y_j</annotation></semantics></math></span>.
+Substitution gives the alternative accumulation
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>V</mi><mo accent="true">̂</mo></mover><mi>B</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mrow><msub><mi>t</mi><mi>j</mi></msub><mo>≤</mo><mi>t</mi></mrow></munder><mfrac><mrow><msub><mi>d</mi><mi>j</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>y</mi><mi>j</mi></msub><mo>−</mo><msub><mi>d</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><msubsup><mi>y</mi><mi>j</mi><mn>3</mn></msubsup></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat V_B(t)=\sum_{t_j\leq t}\frac{d_j(y_j-d_j)}{y_j^3}.
+ \label{s4-binomial-var}</annotation></semantics></math><span id="s4-binomial-var" class="equation-anchor"></span><span class="equation-number">(4.14)</span></span> These are
+distinct approximations motivated by distinct increment models. Neither
+is Greenwood’s variance for the survival product. At month 5,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>V</mi><mo accent="true">̂</mo></mover><mi>A</mi></msub><mo>=</mo><mn>0.0464589</mn></mrow><annotation encoding="application/x-tex">\widehat V_A=0.0464589</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>V</mi><mo accent="true">̂</mo></mover><mi>B</mi></msub><mo>=</mo><mn>0.0373164</mn></mrow><annotation encoding="application/x-tex">\widehat V_B=0.0373164</annotation></semantics></math></span>.
+Large tied event fractions make the distinction noticeable.</p>
+<p>For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>H</mi><mo accent="true">̂</mo></mover><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\widehat H&gt;0</annotation></semantics></math></span>,
+a delta-method standard error for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>log</mo><mover><mi>H</mi><mo accent="true">̂</mo></mover></mrow><annotation encoding="application/x-tex">\log\widehat H</annotation></semantics></math></span>
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><msub><mover><mi>V</mi><mo accent="true">̂</mo></mover><mi>A</mi></msub></msqrt><mi>/</mi><mover><mi>H</mi><mo accent="true">̂</mo></mover></mrow><annotation encoding="application/x-tex">\sqrt{\widehat V_A}/\widehat H</annotation></semantics></math></span>.
+Exponentiating an approximate normal interval gives positive
+cumulative-hazard limits
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>=</mo><mover><mi>H</mi><mo accent="true">̂</mo></mover><mo>exp</mo><mrow><mo stretchy="true" form="prefix">{</mo><mo>±</mo><msub><mi>z</mi><mn>0.975</mn></msub><mfrac><msqrt><msub><mover><mi>V</mi><mo accent="true">̂</mo></mover><mi>A</mi></msub></msqrt><mover><mi>H</mi><mo accent="true">̂</mo></mover></mfrac><mo stretchy="true" form="postfix">}</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">=\widehat H\exp\left\{\pm z_{0.975}\frac{\sqrt{\widehat V_A}}{\widehat H}\right\}.
+ \label{s4-interval}</annotation></semantics></math><span id="s4-interval" class="equation-anchor"></span><span class="equation-number">(4.15)</span></span> The minus sign
+defines
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>L</mi><mi>H</mi></msub><annotation encoding="application/x-tex">L_H</annotation></semantics></math></span>.
+At month 5 the limits are approximately
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.15673</mn><mo>,</mo><mn>1.14837</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.15673,1.14837)</annotation></semantics></math></span>.
+Survival limits from this construction are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">[</mo><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>U</mi><mi>H</mi></msub></mrow></msup><mo>,</mo><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>L</mi><mi>H</mi></msub></mrow></msup><mo stretchy="true" form="postfix">]</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.31715</mn><mo>,</mo><mn>0.85494</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">[e^{-U_H},e^{-L_H}]=(0.31715,0.85494)</annotation></semantics></math></span>.
+They concern the exponential Nelson–Aalen estimate, not the identical
+interval calculation used for Kaplan–Meier in Chapter <a href="03-km.html#s3-km" data-reference-type="ref" data-reference="s3-km">3</a>. These are
+pointwise large-sample approximations. Zero-event boundaries, small risk
+sets, and informative censoring are not resolved by transforming an
+interval. For the <code>stype = 2, ctype = 1</code> workflow above, the
+square of <code>fit.na$std.chaz</code> equals <code>V.aalen</code>, and
+<code>conf.type = "log-log"</code> applies the log-cumulative-hazard
+construction in <a href="#s4-interval" data-reference-type="eqref" data-reference="s4-interval">(4.15)</a>. Its survival limits
+agree with the explicit transformed limits. The identical option name in
+Chapter <a href="03-km.html#s3-km" data-reference-type="ref" data-reference="s3-km">3</a> acts on a different fitted curve and
+variance, so it produces different endpoints. Leaving
+<code>conf.type</code> at its default <code>"log"</code> would use a
+different interval transformation again.</p>
+<h2 id="from-a-known-intensity-to-a-fitted-rate">4.8 From a known intensity
+to a fitted rate</h2>
+<p>The compensator contains the unknown event hazard, so it is usually
+not directly observed in a real study. This does not make the argument
+circular: it specifies a model property from which an estimating
+procedure is derived. An analogy is the familiar regression statement
+that an error has conditional mean zero. One uses that assumption to fit
+regression coefficients; a fitted residual is then a different object
+from the original unobserved error.</p>
+<p>For example, suppose the event hazard is assumed constant on a
+prespecified interval
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>a</mi><mo>,</mo><mi>b</mi><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">(a,b]</annotation></semantics></math></span>.
+The compensator increment over that interval equals the unknown rate
+times observed exposure. Its unconditional expectation equals that of
+the event count; it need not be the conditional expected count given the
+entire realized exposure path. Equating the observed and compensator
+increments gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="false" form="prefix">(</mo><mi>a</mi><mo>,</mo><mi>b</mi><mo stretchy="false" form="postfix">]</mo></mrow></msub><mo>=</mo><mfrac><mrow><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><msubsup><mo>∫</mo><mi>a</mi><mi>b</mi></msubsup><mi>Y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi></mrow></mfrac><mo>,</mo></mrow><annotation encoding="application/x-tex">\widehat\lambda_{(a,b]}=\frac{N(b)-N(a)}{\int_a^bY(u)\,du},
+ \label{s4-interval-rate}</annotation></semantics></math><span id="s4-interval-rate" class="equation-anchor"></span><span class="equation-number">(4.16)</span></span> provided the
+denominator is positive. The denominator equals
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>i</mi></msub><mo stretchy="false" form="prefix">{</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><mi>b</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\sum_i\{\min(X_i,b)-\min(X_i,a)\}</annotation></semantics></math></span>
+for this all-at-baseline cohort. It counts the actual observed time
+contributed inside the interval. It does not assign the full interval
+width to a participant who left near its beginning. Independent
+censoring remains part of the justification, and the constant-rate
+restriction is an additional modeling assumption.</p>
+<p>The numerator has units of events and the denominator has units of
+person-months, so this estimator has rate units. In contrast, the
+Nelson–Aalen increment
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>j</mi></msub><mi>/</mi><msub><mi>y</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">d_j/y_j</annotation></semantics></math></span>
+is dimensionless. For the whole interval
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>5</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">(0,5]</annotation></semantics></math></span>,
+the cohort’s rate estimate is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>4</mn><mi>/</mi><mn>46</mn><mo>=</mo><mn>0.0869565</mn></mrow><annotation encoding="application/x-tex">4/46=0.0869565</annotation></semantics></math></span>
+per month. Multiplying by five gives a cumulative hazard of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.434783</mn><annotation encoding="application/x-tex">0.434783</annotation></semantics></math></span>
+under the constant-rate model, close to but different from the
+Nelson–Aalen value
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.424242</mn><annotation encoding="application/x-tex">0.424242</annotation></semantics></math></span>.
+One uses actual time exposure under a shape restriction; the other
+adapts its event denominator at every distinct event time. Numerical
+similarity in a small example does not make their assumptions
+identical.</p>
+<p>If no event occurs in an interval, the fitted constant rate is zero.
+That is a boundary estimate based on finite information, not proof that
+the population intensity was zero. If exposure is zero, the interval
+rate is not identified by these observations at all. Estimating a changing rate by borrowing information over nearby times adds a smoothing assumption. A smoother borrows
+information; it does not create follow-up where there was none.</p><h2 id="a-simulation-of-the-compensator-argument">4.9 A simulation of the
+compensator argument</h2>
+<p>We leave the twelve-person cohort for a separate simulation in which
+the population rate is known. Each generated cohort contains 300
+subjects with independent exponential event times at rate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.12</mn><annotation encoding="application/x-tex">0.12</annotation></semantics></math></span>
+per month, independent exponential censoring at rate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.08</mn><annotation encoding="application/x-tex">0.08</annotation></semantics></math></span>,
+and administrative closure at month 8. At time 5, the expected exposure
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>300</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>0.2</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mn>0.2</mn><mo>=</mo><mn>948.1808</mn></mrow><annotation encoding="application/x-tex">300(1-e^{-0.2(5)})/0.2=948.1808</annotation></semantics></math></span>
+person-months. Multiplication by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.12</mn><annotation encoding="application/x-tex">0.12</annotation></semantics></math></span>
+gives expected observed events
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>113.7817</mn><annotation encoding="application/x-tex">113.7817</annotation></semantics></math></span>.
+Consequently
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mn>0.12</mn><msub><mo>∑</mo><mi>i</mi></msub><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">M(5)=N(5)-0.12\sum_i\min(X_i,5)</annotation></semantics></math></span>
+has mean zero. The known rate is essential: we do not first fit a rate
+that forces the residual to vanish.</p>
+<p>The script uses seed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>6750401</mn><annotation encoding="application/x-tex">6750401</annotation></semantics></math></span>
+and 2,000 independent cohorts. The mean residual is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.1201</mn><annotation encoding="application/x-tex">0.1201</annotation></semantics></math></span>
+with Monte Carlo standard error
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.2405</mn><annotation encoding="application/x-tex">0.2405</annotation></semantics></math></span>;
+the mean cumulative-hazard estimate is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.600110</mn><annotation encoding="application/x-tex">0.600110</annotation></semantics></math></span>
+with Monte Carlo standard error
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.001329</mn><annotation encoding="application/x-tex">0.001329</annotation></semantics></math></span>,
+compared with target
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.6</mn><annotation encoding="application/x-tex">0.6</annotation></semantics></math></span>.
+Individual paths fluctuate substantially. The average estimated
+variance,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.003445</mn><annotation encoding="application/x-tex">0.003445</annotation></semantics></math></span>,
+is close to the empirical variance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.003531</mn><annotation encoding="application/x-tex">0.003531</annotation></semantics></math></span>
+across these cohorts. Their comparison tests the variance calculation in
+a specified model with independent censoring. It does not assess whether
+censoring in another study follows that model.</p>
+<p>Equation <a href="#s4-finite-sample-mean" data-reference-type="eqref" data-reference="s4-finite-sample-mean">(4.9)</a>
+explains why the cumulative-hazard mean is compared with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.6</mn><annotation encoding="application/x-tex">0.6</annotation></semantics></math></span>
+as a practically close reference rather than an exact finite-sample
+identity. Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup></mrow><annotation encoding="application/x-tex">y(5)=e^{-1}</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>300</mn></mrow><annotation encoding="application/x-tex">n=300</annotation></semantics></math></span>,
+so the probability that all subjects exit before the reporting horizon
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow><mn>300</mn></msup><annotation encoding="application/x-tex">(1-e^{-1})^{300}</annotation></semantics></math></span>,
+approximately
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1.74</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>60</mn></mrow></msup></mrow><annotation encoding="application/x-tex">1.74\times10^{-60}</annotation></semantics></math></span>.
+The support correction is negligible at the displayed precision, while
+Monte Carlo variation is plainly visible.</p>
+<figure id="s4-martingale-figure">
+<a href="../assets/survival/ch04-martingale.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch04-martingale.png" alt="Figure 4.2. Six individual aggregate residual paths and their average
+over 2,000 generated cohorts. A conditional mean-zero process need not
+follow a horizontal line in a realized sample.">
+</a><figcaption>Figure 4.2. Six individual aggregate residual paths and their average
+over 2,000 generated cohorts. A conditional mean-zero process need not
+follow a horizontal line in a realized sample.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch04-martingale.png">Open full-size figure</a></p></figure>
+<h2 id="exercises">4.10 Exercises</h2>
+<ol class="exercises" style='--chapter:"4."'><li id="exercise-4-1"><p><strong>Exposure and counts are different integrals.</strong> Use the twelve-person cohort with observed follow-up
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>3</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>5</mn><mo>,</mo><mn>6</mn><mo>,</mo><mn>6</mn><mo>,</mo><mn>7</mn><mo>,</mo><mn>8</mn><mo>,</mo><mn>8</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">x=(1,2,2,3,4,4,5,6,6,7,8,8)</annotation></semantics></math></span>
+months and event indicators
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\delta=(1,1,0,0,1,1,0,1,0,0,1,0)</annotation></semantics></math></span>,
+in participant order A–L. Everyone enters at zero. Same-time events are
+counted before censoring; a censor at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+establishes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T&gt;x</annotation></semantics></math></span>.
+Define
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>X</mi><mi>i</mi></msub><mo>≥</mo><mi>u</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">Y_i(u)=\mathbf1\{X_i\geq u\}</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>N</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>Δ</mi><mi>i</mi></msub><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>X</mi><mi>i</mi></msub><mo>≤</mo><mi>u</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">N_i(u)=\Delta_i\mathbf1\{X_i\leq u\}</annotation></semantics></math></span>.
+Prove
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>Y</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi><mo>=</mo><msub><mo>∑</mo><mi>i</mi></msub><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\int_0^t\sum_iY_i(u)\,du=\sum_i\min(X_i,t)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><mi>d</mi><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>N</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>Δ</mi><mi>i</mi></msub><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>X</mi><mi>i</mi></msub><mo>≤</mo><mi>t</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\int_0^t d\sum_iN_i(u)=\sum_i\Delta_i\mathbf1\{X_i\leq t\}</annotation></semantics></math></span>.
+Calculate both quantities at months 2, 5 and 8 and give their units.</p>
+</li><li id="exercise-4-2"><p><strong>The information available before an event.</strong> For a first-event record
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><msub><mi>Δ</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(X_i,\Delta_i)</annotation></semantics></math></span>,
+compare
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>X</mi><mi>i</mi></msub><mo>≥</mo><mi>t</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\mathbf1\{X_i\geq t\}</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>X</mi><mi>i</mi></msub><mo>&gt;</mo><mi>t</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\mathbf1\{X_i&gt;t\}</annotation></semantics></math></span>
+at an event time. State which convention represents membership just
+before that event and why the difference matters for integration against
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><msub><mi>N</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">dN_i</annotation></semantics></math></span>
+but not against
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>t</mi></mrow><annotation encoding="application/x-tex">dt</annotation></semantics></math></span>.
+In the usual observed-history filtration, assess whether a weight equal
+to one exactly when the next event will occur in a high-risk person is
+predictable. Contrast it with a measured baseline high-risk
+indicator.</p>
+</li><li id="exercise-4-3"><p><strong>When exponentiating a hazard sum is an approximation.</strong> For finitely many event fractions
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>j</mi></msub><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mi>δ</mi><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">q_j\in[0,\delta]</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\delta&lt;1</annotation></semantics></math></span>,
+prove
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>≤</mo><munder><mo>∑</mo><mi>j</mi></munder><mrow><mo stretchy="true" form="prefix">[</mo><mo>−</mo><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">]</mo></mrow><mo>≤</mo><mfrac><mrow><munder><mo>∑</mo><mi>j</mi></munder><msubsup><mi>q</mi><mi>j</mi><mn>2</mn></msubsup></mrow><mrow><mn>2</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>δ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>≤</mo><mfrac><mrow><mi>δ</mi><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>q</mi><mi>j</mi></msub></mrow><mrow><mn>2</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>δ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">0\leq\sum_j[-\log(1-q_j)-q_j]\leq\frac{\sum_jq_j^2}{2(1-\delta)}\leq\frac{\delta\sum_jq_j}{2(1-\delta)}.</annotation></semantics></math></span>
+Use the bound to state sufficient small-increment conditions for the
+survival product and exponentiated hazard sum to approach each other.
+Then construct a discrete event-time distribution with no censoring for
+which their probability limits differ at a fixed time.</p>
+</li><li id="exercise-4-4"><p><strong>The estimator stops when observation stops.</strong> Under the independent-subject continuous first-event intensity model,
+write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>Y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>u</mi><mo>+</mo><mi>d</mi><mi>M</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">dN(u)=Y(u)\lambda(u)\,du+dM(u)</annotation></semantics></math></span>,
+where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>M</mi><annotation encoding="application/x-tex">M</annotation></semantics></math></span>
+is the aggregate martingale, and let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>Y</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&gt;</mo><mn>0</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">J(u)=\mathbf1\{Y(u)&gt;0\}</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mi>/</mi><mi>Y</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">J/Y=0</annotation></semantics></math></span>
+when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Y</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">Y=0</annotation></semantics></math></span>.
+Derive the decomposition of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\widehat H_{\mathrm{NA}}(t)-H(t)</annotation></semantics></math></span>
+into a martingale integral and a missing-support term. Assume finite
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">H(t)</annotation></semantics></math></span>
+and the stated integrability conditions. Explain the sign of the stopped
+estimator’s bias. Separately, for three uncensored events at times 1, 2
+and 3, compute terminal Kaplan–Meier and exponentiated Nelson–Aalen
+survival and interpret their difference.</p>
+</li><li id="exercise-4-5"><p><strong>A fitted residual identity.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>300</mn></mrow><annotation encoding="application/x-tex">n=300</annotation></semantics></math></span>
+independent subjects have event time
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>∼</mo><mo>Exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.12</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">T\sim\operatorname{Exp}(0.12)</annotation></semantics></math></span>
+and independent dropout time
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mo>∼</mo><mo>Exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.08</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">C\sim\operatorname{Exp}(0.08)</annotation></semantics></math></span>,
+both in months. Observation closes at month 5. Derive expected total
+observed exposure and expected event count through that horizon. If each
+realized sample instead fits
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mo>=</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><msub><mo>∑</mo><mi>i</mi></msub><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\widehat\lambda=N(5)/\sum_i\min(X_i,5)</annotation></semantics></math></span>,
+show what its aggregate fitted residual is whenever exposure is
+positive. Explain why that identity cannot test whether the true hazard
+is constant.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="03-km.html">Previous: 3. Estimating survival from incomplete follow-up</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="07-likelihood.html">Next: 5. Likelihood under incomplete observation</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

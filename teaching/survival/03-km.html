@@ -1,0 +1,1116 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Survival Analysis — Chapter 3: Estimating survival from incomplete follow-up | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Estimating survival from incomplete follow-up.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/survival/03-km.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Survival Analysis — Chapter 3: Estimating survival from incomplete follow-up | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Estimating survival from incomplete follow-up.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/survival/03-km.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Survival Analysis — Chapter 3: Estimating survival from incomplete follow-up", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Survival Analysis", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/survival/03-km.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Survival Analysis</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Events, observation, and population functions</p><ol class="contents-chapters"><li><a href="01-observation.html">1. Events, clocks, and incomplete observation</a></li><li><a href="02-functions.html">2. Survival, risk, hazard, and lifetime summaries</a></li></ol><p class="contents-part">Part II: Risk sets and nonparametric estimation</p><ol class="contents-chapters"><li><a href="03-km.html" aria-current="page">3. Estimating survival from incomplete follow-up</a></li><li><a href="04-nelson-aalen.html">4. Nelson--Aalen estimation and counting processes</a></li></ol><p class="contents-part">Part III: Likelihood and survival regression</p><ol class="contents-chapters"><li><a href="07-likelihood.html">5. Likelihood under incomplete observation</a></li><li><a href="08-parametric.html">6. Parametric survival regression</a></li><li><a href="09-cox.html">7. The Cox model: estimation and absolute risk</a></li><li><a href="10-strata-ties.html">8. Stratification and tied event times</a></li><li><a href="11-diagnostics.html">9. Diagnostics that answer model questions</a></li></ol><p class="contents-part">Part IV: Competing events</p><ol class="contents-chapters"><li><a href="15-competing-risks.html">10. Competing risks and first-event probabilities</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#from-the-observation-model-to-an-estimator">3.1 From the observation model to an estimator</a></li><li><a href="#s3-likelihood">3.2 An observed-data likelihood</a></li><li><a href="#s3-product-limit">3.3 Risk sets and the product-limit likelihood</a></li><li><a href="#calculate-the-recurring-cohort-by-hand">3.4 Calculate the recurring cohort by hand</a></li><li><a href="#s3-uncertainty">3.5 Sampling uncertainty at a specified time</a></li><li><a href="#computing-and-presenting-the-same-survival-estimate">3.6 Computing and presenting the same survival estimate</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#s3-censoring-selection">3.7 A correctly computed curve can target the wrong population</a></li><li><a href="#interpretation-and-checks-that-matter">3.8 Interpretation and checks that matter</a></li><li><a href="#censoring-explorer-title">Explore: who remains in the risk set?</a></li><li><a href="#exercises">3.9 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Survival Analysis</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 3</span></p><div class="chapter-content"><h1 id="s3-km">Chapter 3. Estimating survival from incomplete follow-up</h1>
+<h2 id="from-the-observation-model-to-an-estimator">3.1 From the observation
+model to an estimator</h2>
+<p>Chapter <a href="01-observation.html#s1-observation" data-reference-type="ref" data-reference="s1-observation">1</a> established what
+the twelve records reveal. Chapter <a href="02-functions.html#s2-functions" data-reference-type="ref" data-reference="s2-functions">2</a> defined the population
+functions we want to estimate. We now connect those two pieces. The
+central idea is to estimate the chance of surviving each observed event
+time among people still at risk, then multiply those conditional
+survival probabilities. The resulting Kaplan–Meier estimator uses
+censored people until their observation ends. It does not invent their
+later event times.</p>
+<p>For the initial derivation assume independent, identically
+distributed subject-level pairs
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>T</mi><mi>i</mi></msub><mo>,</mo><msub><mi>C</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(T_i,C_i)</annotation></semantics></math></span>,
+marginal independence
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>i</mi></msub><mo>⊥</mo><msub><mi>C</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">T_i\perp C_i</annotation></semantics></math></span>,
+and positive follow-up support through the reporting horizon. If we
+model the censoring distribution, its parameters are allowed to vary
+independently of the event-distribution parameters. These sufficient
+assumptions let the observable risk set represent those who remain
+event-free in the population. We will deliberately violate marginal
+independence later to see which part of the argument fails.</p>
+<h2 id="s3-likelihood">3.2 An observed-data likelihood</h2>
+<p>First suppose
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math></span>
+and random
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>C</mi><annotation encoding="application/x-tex">C</annotation></semantics></math></span>
+are continuous, with event density
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>f</mi><annotation encoding="application/x-tex">f</annotation></semantics></math></span>,
+survival
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>S</mi><annotation encoding="application/x-tex">S</annotation></semantics></math></span>,
+censoring density
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>g</mi><annotation encoding="application/x-tex">g</annotation></semantics></math></span>,
+and censoring survival
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math></span>.
+An event near
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+requires
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math></span>
+near
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mo>&gt;</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">C&gt;x</annotation></semantics></math></span>.
+Under independence its observed-data density contribution is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>G</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f(x)G(x)</annotation></semantics></math></span>.
+A censoring record near
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+instead requires
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>C</mi><annotation encoding="application/x-tex">C</annotation></semantics></math></span>
+near
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T&gt;x</annotation></semantics></math></span>,
+giving
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">g(x)S(x)</annotation></semantics></math></span>.
+Combining event and censoring records yields
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>f</mi><mo>,</mo><mi>g</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munderover><mo>∏</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><mo stretchy="false" form="prefix">{</mo><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>G</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><msup><mo stretchy="false" form="postfix">}</mo><msub><mi>Δ</mi><mi>i</mi></msub></msup><mo stretchy="false" form="prefix">{</mo><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><msup><mo stretchy="false" form="postfix">}</mo><mrow><mn>1</mn><mo>−</mo><msub><mi>Δ</mi><mi>i</mi></msub></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">L(f,g)=\prod_{i=1}^n\{f(X_i)G(X_i)\}^{\Delta_i}
+                      \{S(X_i)g(X_i)\}^{1-\Delta_i}.
+ \label{s3-full-likelihood}</annotation></semantics></math><span id="s3-full-likelihood" class="equation-anchor"></span><span class="equation-number">(3.1)</span></span> Separate
+parameter spaces allow the factors involving
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>g</mi><annotation encoding="application/x-tex">g</annotation></semantics></math></span>
+to be set aside when maximizing over the event distribution. Its
+likelihood factor is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mi>T</mi></msub><mo>∝</mo><munderover><mo>∏</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><mi>f</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>Δ</mi><mi>i</mi></msub></msup><mi>S</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mn>1</mn><mo>−</mo><msub><mi>Δ</mi><mi>i</mi></msub></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">L_T\propto\prod_{i=1}^n f(X_i)^{\Delta_i}S(X_i)^{1-\Delta_i}.
+ \label{s3-event-likelihood}</annotation></semantics></math><span id="s3-event-likelihood" class="equation-anchor"></span><span class="equation-number">(3.2)</span></span> A censored
+person contributes a survival probability. Their contribution is neither
+the density of an event at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mi>i</mi></msub><annotation encoding="application/x-tex">X_i</annotation></semantics></math></span>
+nor a factor of one. Fixed administrative limits use the same survival
+contribution, although a censoring distribution with a point mass is not
+described by an ordinary density
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>g</mi><annotation encoding="application/x-tex">g</annotation></semantics></math></span>
+alone. The calculation is an application of observed-data likelihood,
+not a claim that the unobserved outcomes can be ignored without
+assumptions.</p>
+<p>As a parametric check, if event times follow an exponential
+distribution,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>λ</mi><msup><mi>e</mi><mrow><mo>−</mo><mi>λ</mi><mi>x</mi></mrow></msup></mrow><annotation encoding="application/x-tex">f(x)=\lambda e^{-\lambda x}</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>λ</mi><mi>x</mi></mrow></msup></mrow><annotation encoding="application/x-tex">S(x)=e^{-\lambda x}</annotation></semantics></math></span>.
+Hence
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mi>T</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>∝</mo><msup><mi>λ</mi><mrow><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>Δ</mi><mi>i</mi></msub></mrow></msup><msup><mi>e</mi><mrow><mo>−</mo><mi>λ</mi><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>X</mi><mi>i</mi></msub></mrow></msup><mo>,</mo><mspace width="2.0em"></mspace><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mo>=</mo><mfrac><mrow><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>Δ</mi><mi>i</mi></msub></mrow><mrow><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>X</mi><mi>i</mi></msub></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">L_T(\lambda)\propto\lambda^{\sum_i\Delta_i}
+ e^{-\lambda\sum_iX_i},\qquad
+ \widehat\lambda=\frac{\sum_i\Delta_i}{\sum_iX_i}.
+ \label{s3-exponential-mle}</annotation></semantics></math><span id="s3-exponential-mle" class="equation-anchor"></span><span class="equation-number">(3.3)</span></span> Observed
+time from censored participants contributes to the denominator. In the
+recurring cohort there are six events and 56 person-months, so
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mo>=</mo><mn>3</mn><mi>/</mi><mn>28</mn></mrow><annotation encoding="application/x-tex">\widehat\lambda=3/28</annotation></semantics></math></span>
+per month. The fitted five-month survival is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>e</mi><mrow><mo>−</mo><mn>15</mn><mi>/</mi><mn>28</mn></mrow></msup><mo>=</mo><mn>0.585251</mn></mrow><annotation encoding="application/x-tex">e^{-15/28}=0.585251</annotation></semantics></math></span>.
+This calculation assumes a constant hazard. Our next estimator relaxes
+that distributional shape restriction.</p>
+<h2 id="s3-product-limit">3.3 Risk sets and the product-limit
+likelihood</h2>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>t</mi><mn>1</mn></msub><mo>&lt;</mo><mi>⋯</mi><mo>&lt;</mo><msub><mi>t</mi><mi>m</mi></msub></mrow><annotation encoding="application/x-tex">t_1&lt;\cdots&lt;t_m</annotation></semantics></math></span>
+be the distinct observed event times. At each, define the number at risk
+immediately before events and the number of events:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>j</mi></msub><mo>=</mo><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>X</mi><mi>i</mi></msub><mo>≥</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>d</mi><mi>j</mi></msub><mo>=</mo><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>X</mi><mi>i</mi></msub><mo>=</mo><msub><mi>t</mi><mi>j</mi></msub><mo>,</mo><msub><mi>Δ</mi><mi>i</mi></msub><mo>=</mo><mn>1</mn><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">y_j=\sum_{i=1}^n\mathbf{1}\{X_i\geq t_j\},\qquad
+ d_j=\sum_{i=1}^n\mathbf{1}\{X_i=t_j,\Delta_i=1\}.
+ \label{s3-risk-counts}</annotation></semantics></math><span id="s3-risk-counts" class="equation-anchor"></span><span class="equation-number">(3.4)</span></span> The weak
+inequality in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>i</mi></msub><mo>≥</mo><msub><mi>t</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">X_i\geq t_j</annotation></semantics></math></span>
+matters. A person must be at risk for their own event. A person censored
+at the same recorded time also belongs to this denominator under the
+event-first convention. Both leave later risk sets after the current
+events have been counted.</p>
+<p>Use the discrete conditional-event probabilities from Section <a href="02-functions.html#s2-discrete-product" data-reference-type="ref" data-reference="s2-discrete-product">2.4</a>.
+Parameterize a nonparametric distribution by masses conditional on
+survival to the observed event times,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>j</mi></msub><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>=</mo><msub><mi>t</mi><mi>j</mi></msub><mo>∣</mo><mi>T</mi><mo>≥</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">q_j=\mathbb{P}(T=t_j\mid T\geq t_j)</annotation></semantics></math></span>,
+with any remaining mass placed beyond observed follow-up. This is a
+likelihood over probability masses; it is not maximization of an
+unrestricted continuous density at isolated data points. An event at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mi>j</mi></msub><annotation encoding="application/x-tex">t_j</annotation></semantics></math></span>
+contributes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>j</mi></msub><msub><mo>∏</mo><mrow><mi>k</mi><mo>&lt;</mo><mi>j</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">q_j\prod_{k&lt;j}(1-q_k)</annotation></semantics></math></span>.
+Censoring at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+contributes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∏</mo><mrow><msub><mi>t</mi><mi>k</mi></msub><mo>≤</mo><mi>x</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\prod_{t_k\leq x}(1-q_k)</annotation></semantics></math></span>
+because it establishes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T&gt;x</annotation></semantics></math></span>.</p>
+<p>Collect the factors involving one
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>j</mi></msub><annotation encoding="application/x-tex">q_j</annotation></semantics></math></span>.
+Every one of the
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mi>j</mi></msub><annotation encoding="application/x-tex">d_j</annotation></semantics></math></span>
+events contributes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>j</mi></msub><annotation encoding="application/x-tex">q_j</annotation></semantics></math></span>.
+Each of the other
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>j</mi></msub><mo>−</mo><msub><mi>d</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">y_j-d_j</annotation></semantics></math></span>
+people at risk contributes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(1-q_j)</annotation></semantics></math></span>.
+Thus
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mi>T</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>q</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>q</mi><mi>m</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>∝</mo><munderover><mo>∏</mo><mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow><mi>m</mi></munderover><msubsup><mi>q</mi><mi>j</mi><msub><mi>d</mi><mi>j</mi></msub></msubsup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mrow><msub><mi>y</mi><mi>j</mi></msub><mo>−</mo><msub><mi>d</mi><mi>j</mi></msub></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">L_T(q_1,\ldots,q_m)\propto
+ \prod_{j=1}^m q_j^{d_j}(1-q_j)^{y_j-d_j}.
+ \label{s3-product-likelihood}</annotation></semantics></math><span id="s3-product-likelihood" class="equation-anchor"></span><span class="equation-number">(3.5)</span></span> For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><msub><mi>d</mi><mi>j</mi></msub><mo>&lt;</mo><msub><mi>y</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">0&lt;d_j&lt;y_j</annotation></semantics></math></span>,
+differentiating its log gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>j</mi></msub><mi>/</mi><msub><mi>q</mi><mi>j</mi></msub><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>y</mi><mi>j</mi></msub><mo>−</mo><msub><mi>d</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">d_j/q_j-(y_j-d_j)/(1-q_j)</annotation></semantics></math></span>,
+whose zero is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>j</mi></msub><mo>=</mo><msub><mi>d</mi><mi>j</mi></msub><mi>/</mi><msub><mi>y</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">q_j=d_j/y_j</annotation></semantics></math></span>.
+The negative second derivative establishes the maximum. The boundary
+maxima are zero when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>j</mi></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">d_j=0</annotation></semantics></math></span>
+and one when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>j</mi></msub><mo>=</mo><msub><mi>y</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">d_j=y_j</annotation></semantics></math></span>.</p>
+<p>Substituting these estimates into the conditional-survival product
+gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><menclose notation="box"><mrow><msub><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">K</mi><mi mathvariant="normal">M</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∏</mo><mrow><mi>j</mi><mo>:</mo><msub><mi>t</mi><mi>j</mi></msub><mo>≤</mo><mi>t</mi></mrow></munder><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mfrac><msub><mi>d</mi><mi>j</mi></msub><msub><mi>y</mi><mi>j</mi></msub></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow></menclose><annotation encoding="application/x-tex">\boxed{\widehat S_{\mathrm{KM}}(t)=
+ \prod_{j:t_j\leq t}\left(1-\frac{d_j}{y_j}\right).}
+ \label{s3-km-estimator}</annotation></semantics></math><span id="s3-km-estimator" class="equation-anchor"></span><span class="equation-number">(3.6)</span></span> This is a
+right-continuous step function with jumps at observed event times. A
+censoring-only time changes future risk sets without changing the
+current survival estimate. Likelihood separation justifies the
+maximization; it does not prove that all random risk sets or estimated
+increments are independent in a finite sample.</p>
+<p>The formula has a useful complete-data check. Without censoring,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>j</mi></msub><mo>=</mo><mi>n</mi><mo>−</mo><msub><mo>∑</mo><mrow><mi>k</mi><mo>&lt;</mo><mi>j</mi></mrow></msub><msub><mi>d</mi><mi>k</mi></msub></mrow><annotation encoding="application/x-tex">y_j=n-\sum_{k&lt;j}d_k</annotation></semantics></math></span>,
+so each factor equals
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>−</mo><msub><mo>∑</mo><mrow><mi>k</mi><mo>≤</mo><mi>j</mi></mrow></msub><msub><mi>d</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>−</mo><msub><mo>∑</mo><mrow><mi>k</mi><mo>&lt;</mo><mi>j</mi></mrow></msub><msub><mi>d</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">(n-\sum_{k\leq j}d_k)/(n-\sum_{k&lt;j}d_k)</annotation></semantics></math></span>.
+Multiplying telescopes to the empirical proportion of event times
+exceeding
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>.
+This remains true with tied events. Kaplan–Meier therefore extends the
+ordinary empirical survival function rather than replacing it with an
+unrelated construction.</p>
+<h2 id="calculate-the-recurring-cohort-by-hand">3.4 Calculate the recurring
+cohort by hand</h2>
+<p>At month 1 all twelve people are at risk and one event occurs, giving
+factor
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>11</mn><mi>/</mi><mn>12</mn></mrow><annotation encoding="application/x-tex">11/12</annotation></semantics></math></span>.
+At month 2 eleven people are at risk, including both the event and the
+censor at that time. Its factor is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>10</mn><mi>/</mi><mn>11</mn></mrow><annotation encoding="application/x-tex">10/11</annotation></semantics></math></span>;
+both records are then removed. The censor at month 3 causes no drop but
+reduces the month-4 denominator. The two events at month 4 give factor
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>6</mn><mi>/</mi><mn>8</mn></mrow><annotation encoding="application/x-tex">6/8</annotation></semantics></math></span>.
+Table <a href="#s3-risk-table" data-reference-type="ref" data-reference="s3-risk-table">3.1</a> carries the calculation through
+month 8.</p>
+<div id="s3-risk-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 3.1. Risk sets for the cohort in Table <a href="01-observation.html#s1-cohort-table" data-reference-type="ref" data-reference="s1-cohort-table">1.1</a>. Survival is
+evaluated after events at each listed time.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">Time</th>
+<th style="text-align: right;">At risk</th>
+<th style="text-align: right;">Events</th>
+<th style="text-align: right;">Censored</th>
+<th style="text-align: right;">Factor</th>
+<th style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\widehat S(t)</annotation></semantics></math></span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>11</mn><mi>/</mi><mn>12</mn></mrow><annotation encoding="application/x-tex">11/12</annotation></semantics></math></span></td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>11</mn><mi>/</mi><mn>12</mn></mrow><annotation encoding="application/x-tex">11/12</annotation></semantics></math></span></td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>10</mn><mi>/</mi><mn>11</mn></mrow><annotation encoding="application/x-tex">10/11</annotation></semantics></math></span></td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>5</mn><mi>/</mi><mn>6</mn></mrow><annotation encoding="application/x-tex">5/6</annotation></semantics></math></span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1</mn><annotation encoding="application/x-tex">1</annotation></semantics></math></span></td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>5</mn><mi>/</mi><mn>6</mn></mrow><annotation encoding="application/x-tex">5/6</annotation></semantics></math></span></td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mi>/</mi><mn>4</mn></mrow><annotation encoding="application/x-tex">3/4</annotation></semantics></math></span></td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>5</mn><mi>/</mi><mn>8</mn></mrow><annotation encoding="application/x-tex">5/8</annotation></semantics></math></span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1</mn><annotation encoding="application/x-tex">1</annotation></semantics></math></span></td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>5</mn><mi>/</mi><mn>8</mn></mrow><annotation encoding="application/x-tex">5/8</annotation></semantics></math></span></td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>4</mn><mi>/</mi><mn>5</mn></mrow><annotation encoding="application/x-tex">4/5</annotation></semantics></math></span></td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">1/2</annotation></semantics></math></span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1</mn><annotation encoding="application/x-tex">1</annotation></semantics></math></span></td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">1/2</annotation></semantics></math></span></td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">1/2</annotation></semantics></math></span></td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>4</mn></mrow><annotation encoding="application/x-tex">1/4</annotation></semantics></math></span></td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>Estimated five-month recurrence-free survival is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>5</mn><mi>/</mi><mn>8</mn><mo>=</mo><mn>62.50</mn><mi>%</mi></mrow><annotation encoding="application/x-tex">5/8=62.50\%</annotation></semantics></math></span>
+and risk is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mi>/</mi><mn>8</mn><mo>=</mo><mn>37.50</mn><mi>%</mi></mrow><annotation encoding="application/x-tex">3/8=37.50\%</annotation></semantics></math></span>.
+This estimates a population probability under the stated assumptions; it
+does not recover the two unknown five-month outcomes in Chapter <a href="01-observation.html#s1-observation" data-reference-type="ref" data-reference="s1-observation">1</a>. At month 6 the
+estimate reaches
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">1/2</annotation></semantics></math></span>,
+so the estimated median is six months. An event makes a larger survival
+drop later because a smaller risk set represents the remaining
+event-free population.</p>
+<p>The final level
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>4</mn></mrow><annotation encoding="application/x-tex">1/4</annotation></semantics></math></span>
+is not an estimated fraction who will never have an event. One of the
+two remaining participants is censored at month 8, leaving positive
+probability unallocated to later times. Extending that step to month 20
+is a plotting convention, not new follow-up. By contrast, a fitted curve
+that reaches zero has allocated all its fitted mass to observed events;
+extending that zero is part of the fitted distribution, though it still
+does not prove zero population survival.</p>
+<p>The restricted mean from Section <a href="02-functions.html#s2-rmst" data-reference-type="ref" data-reference="s2-rmst">2.7.1</a> can be
+estimated at a supported horizon by integrating the step function. At
+five months,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>μ</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mo>⋅</mo><mn>1</mn><mo>+</mo><mn>1</mn><mo>⋅</mo><mfrac><mn>11</mn><mn>12</mn></mfrac><mo>+</mo><mn>2</mn><mo>⋅</mo><mfrac><mn>5</mn><mn>6</mn></mfrac><mo>+</mo><mn>1</mn><mo>⋅</mo><mfrac><mn>5</mn><mn>8</mn></mfrac><mo>=</mo><mfrac><mn>101</mn><mn>24</mn></mfrac><mo>≈</mo><mn>4.2083</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">months</mtext><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat\mu(5)=1\cdot1+1\cdot\frac{11}{12}
+       +2\cdot\frac56+1\cdot\frac58=\frac{101}{24}
+       \approx4.2083\ \text{months}.
+ \label{s3-rmst}</annotation></semantics></math><span id="s3-rmst" class="equation-anchor"></span><span class="equation-number">(3.7)</span></span> The area uses survival
+on each interval before its right endpoint. A value at one endpoint has
+zero width and does not change an integral. An unrestricted mean would
+require the later tail, which these records do not determine without
+further assumptions.</p>
+<h2 id="s3-uncertainty">3.5 Sampling uncertainty at a specified time</h2>
+<p>For an interior estimate, Greenwood’s variance estimate is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mo>Var</mo><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">{</mo><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>=</mo><mover><mi>S</mi><mo accent="true">̂</mo></mover><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><msub><mi>V</mi><mo>log</mo></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>V</mi><mo>log</mo></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mrow><mi>j</mi><mo>:</mo><msub><mi>t</mi><mi>j</mi></msub><mo>≤</mo><mi>t</mi></mrow></munder><mfrac><msub><mi>d</mi><mi>j</mi></msub><mrow><msub><mi>y</mi><mi>j</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>y</mi><mi>j</mi></msub><mo>−</mo><msub><mi>d</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat{\operatorname{Var}}\{\widehat S(t)\}
+ =\widehat S(t)^2 V_{\log}(t),\qquad
+ V_{\log}(t)=\sum_{j:t_j\leq t}\frac{d_j}{y_j(y_j-d_j)}.
+ \label{s3-greenwood}</annotation></semantics></math><span id="s3-greenwood" class="equation-anchor"></span><span class="equation-number">(3.8)</span></span> To understand its
+scale, write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>log</mo><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mo>∑</mo><mi>j</mi></msub><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mover><mi>q</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\log\widehat S(t)=\sum_j\log(1-\widehat q_j)</annotation></semantics></math></span>.
+A local binomial-information and delta-method calculation contributes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>j</mi></msub><mi>/</mi><mrow><mo stretchy="true" form="prefix">[</mo><msub><mi>y</mi><mi>j</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">q_j/[y_j(1-q_j)]</annotation></semantics></math></span>
+for an increment on the log-survival scale. Substituting
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>q</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub><mo>=</mo><msub><mi>d</mi><mi>j</mi></msub><mi>/</mi><msub><mi>y</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">\widehat q_j=d_j/y_j</annotation></semantics></math></span>
+gives the summand in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mo>log</mo></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">V_{\log}(t)</annotation></semantics></math></span>.
+Since the derivative of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>↦</mo><msup><mi>e</mi><mi>x</mi></msup></mrow><annotation encoding="application/x-tex">x\mapsto e^x</annotation></semantics></math></span>
+at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mo>log</mo><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">x=\log S(t)</annotation></semantics></math></span>
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(t)</annotation></semantics></math></span>,
+a second delta-method transformation multiplies the log-scale variance
+by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">S(t)^2</annotation></semantics></math></span>.
+This motivates a large-sample variance approximation. A formal
+justification uses event-count martingales rather than assuming
+independent random risk sets; the counting-process representation in Chapter <a href="04-nelson-aalen.html#s4-chapter" data-reference-type="ref" data-reference="s4-chapter">4</a> clarifies this distinction.
+The approximation is intended for a fixed horizon with positive
+population survival and observation probability, where information grows
+with the number of independent subjects.</p><p>For the five-month estimate,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mo>log</mo></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mn>1</mn><mrow><mn>12</mn><mo>⋅</mo><mn>11</mn></mrow></mfrac><mo>+</mo><mfrac><mn>1</mn><mrow><mn>11</mn><mo>⋅</mo><mn>10</mn></mrow></mfrac><mo>+</mo><mfrac><mn>2</mn><mrow><mn>8</mn><mo>⋅</mo><mn>6</mn></mrow></mfrac><mo>=</mo><mfrac><mn>7</mn><mn>120</mn></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mover><mo>Var</mo><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">{</mo><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>=</mo><mfrac><mn>35</mn><mn>1536</mn></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">V_{\log}(5)=\frac1{12\cdot11}+\frac1{11\cdot10}+\frac2{8\cdot6}
+      =\frac7{120},\qquad
+ \widehat{\operatorname{Var}}\{\widehat S(5)\}=\frac{35}{1536}.
+ \label{s3-greenwood-example}</annotation></semantics></math><span id="s3-greenwood-example" class="equation-anchor"></span><span class="equation-number">(3.9)</span></span> The
+standard error is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.15095</mn><annotation encoding="application/x-tex">0.15095</annotation></semantics></math></span>.
+A normal interval centered directly on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\widehat S(t)</annotation></semantics></math></span>
+may cross zero or one. The log-minus-log transform provides a
+probability-respecting alternative. With
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>η</mi><mo accent="true">̂</mo></mover><mo>=</mo><mo>log</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><mo>log</mo><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>s</mi><mi>η</mi></msub><mo>=</mo><mfrac><msqrt><mrow><msub><mi>V</mi><mo>log</mo></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msqrt><mrow><mo stretchy="true" form="prefix">|</mo><mo>log</mo><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">|</mo></mrow></mfrac><mo>,</mo></mrow><annotation encoding="application/x-tex">\widehat\eta=\log\{-\log\widehat S(t)\},\qquad
+ s_\eta=\frac{\sqrt{V_{\log}(t)}}{|\log\widehat S(t)|},
+ \label{s3-loglog-se}</annotation></semantics></math><span id="s3-loglog-se" class="equation-anchor"></span><span class="equation-number">(3.10)</span></span> set
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>=</mo><mover><mi>η</mi><mo accent="true">̂</mo></mover><mo>−</mo><msub><mi>z</mi><mn>0.975</mn></msub><msub><mi>s</mi><mi>η</mi></msub></mrow><annotation encoding="application/x-tex">a=\widehat\eta-z_{0.975}s_\eta</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>=</mo><mover><mi>η</mi><mo accent="true">̂</mo></mover><mo>+</mo><msub><mi>z</mi><mn>0.975</mn></msub><msub><mi>s</mi><mi>η</mi></msub></mrow><annotation encoding="application/x-tex">b=\widehat\eta+z_{0.975}s_\eta</annotation></semantics></math></span>.
+Inverting the decreasing transform gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">[</mo><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><msup><mi>e</mi><mi>b</mi></msup><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="0.222em"></mspace><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><msup><mi>e</mi><mi>a</mi></msup><mo stretchy="false" form="postfix">}</mo><mo stretchy="true" form="postfix">]</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\left[\exp\{-e^b\},\ \exp\{-e^a\}\right].
+ \label{s3-loglog-ci}</annotation></semantics></math><span id="s3-loglog-ci" class="equation-anchor"></span><span class="equation-number">(3.11)</span></span> The endpoints
+reverse. At month 5 the result is approximately
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.27615</mn><mo>,</mo><mn>0.84226</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.27615,0.84226)</annotation></semantics></math></span>,
+which is wide despite the apparently precise fraction
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>5</mn><mi>/</mi><mn>8</mn></mrow><annotation encoding="application/x-tex">5/8</annotation></semantics></math></span>.
+An interval for risk is obtained by subtracting the survival endpoints
+from one and again reversing their order.</p>
+<figure id="s3-km-figure">
+<a href="../assets/survival/ch03-km.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch03-km.png" alt="Figure 3.1. Kaplan–Meier curve for the synthetic cohort. Crosses mark
+censoring. Dashed limits are approximate 95% pointwise log-minus-log
+intervals, not a simultaneous confidence band.">
+</a><figcaption>Figure 3.1. Kaplan–Meier curve for the synthetic cohort. Crosses mark
+censoring. Dashed limits are approximate 95% pointwise log-minus-log
+intervals, not a simultaneous confidence band.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch03-km.png">Open full-size figure</a></p></figure>
+<p>The nominal 95% level describes repeated-sample coverage at a
+prespecified time under the assumptions. Connecting pointwise limits
+does not give 95% simultaneous coverage of an entire curve. Selecting a
+striking time after inspecting many points changes the question.
+Moreover, transforming an interval into
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0,1]</annotation></semantics></math></span>
+does not guarantee accurate coverage with a very small risk set.</p>
+<p>The transform is undefined when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>S</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat S</annotation></semantics></math></span>
+equals zero or one. When
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>j</mi></msub><mo>=</mo><msub><mi>y</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">d_j=y_j</annotation></semantics></math></span>,
+the displayed Greenwood summand also divides by zero. Our implementation
+reports missing transformed limits at such boundaries rather than
+claiming certainty. Neither Greenwood’s formula nor a larger sample
+removes systematic error from dependent censoring.</p>
+<h2 id="computing-and-presenting-the-same-survival-estimate">3.6 Computing
+and presenting the same survival estimate</h2>
+<h3 id="from-first-principles">3.6.1 From first principles</h3>
+<p>A short implementation makes the product in <a href="#s3-km-estimator" data-reference-type="eqref" data-reference="s3-km-estimator">(3.6)</a> visible. Use
+<code>time</code> and <code>status</code> from the twelve-person cohort,
+with <code>status = 1</code> denoting an observed event. Keep
+censoring-only times so that each change in the denominator can be
+traced.</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R, survival, survminer, ggplot2. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# Kaplan-Meier estimation and censoring selection.
+options(stringsAsFactors = FALSE, width = 110)
+dir.create("figures", showWarnings = FALSE)
+dir.create("results", showWarnings = FALSE)
+for (package in c("survival", "survminer", "ggplot2")) {
+  if (!requireNamespace(package, quietly = TRUE))
+    stop("Install package '", package, "' before running this example.")
+}
+
+# BEGIN KM
+km.table &lt;- function(time, status) {
+  stopifnot(length(time) == length(status), length(time) &gt; 0L,
+            all(is.finite(time)), all(time &gt;= 0), !anyNA(status),
+            all(status %in% c(0, 1)))
+  u &lt;- sort(unique(time))
+  group &lt;- match(time, u)
+  exits &lt;- tabulate(group, nbins = length(u))
+  d &lt;- tabulate(group[status == 1], nbins = length(u))
+  y &lt;- rev(cumsum(rev(exits)))
+  s &lt;- cumprod(1 - d/y)
+  g.increment &lt;- numeric(length(u))
+  ok &lt;- d &gt; 0 &amp; d &lt; y
+  g.increment[ok] &lt;- d[ok] / (y[ok] * (y[ok] - d[ok]))
+  g.increment[d == y &amp; d &gt; 0] &lt;- Inf
+  g &lt;- cumsum(g.increment)
+  se &lt;- s * sqrt(g)
+  se[!is.finite(se)] &lt;- NA_real_
+  lower &lt;- upper &lt;- rep(NA_real_, length(u))
+  ok &lt;- s &gt; 0 &amp; s &lt; 1 &amp; is.finite(g)
+  eta &lt;- log(-log(s[ok]))
+  se.eta &lt;- sqrt(g[ok]) / abs(log(s[ok]))
+  lower[ok] &lt;- exp(-exp(eta + qnorm(.975) * se.eta))
+  upper[ok] &lt;- exp(-exp(eta - qnorm(.975) * se.eta))
+  data.frame(time = u, risk = y, events = d, censored = exits - d,
+             survival = s, greenwood.sum = g, se = se,
+             lower = lower, upper = upper, nelson.aalen = cumsum(d/y))
+}
+# END KM
+
+km.at &lt;- function(tab, t) {
+  value &lt;- c(1, tab$survival)[findInterval(t, tab$time) + 1L]
+  # A fitted terminal zero uses all fitted event mass. A positive terminal
+  # step is not extended into follow-up unsupported by this data set.
+  if (tail(tab$survival, 1) &gt; 0) value[t &gt; max(tab$time)] &lt;- NA_real_
+  value
+}
+rmst.at &lt;- function(tab, horizon) {
+  if (horizon &gt; max(tab$time) &amp;&amp; tail(tab$survival, 1) &gt; 0) return(NA_real_)
+  cuts &lt;- sort(unique(c(0, tab$time[tab$time &lt; horizon], horizon)))
+  sum(diff(cuts) * km.at(tab, head(cuts, -1L)))
+}
+save.plot &lt;- function(stem, draw, width = 7, height = 4.4) {
+  cairo_pdf(paste0("figures/", stem, ".pdf"), width = width, height = height)
+  draw(); dev.off()
+  png(paste0("figures/", stem, ".png"), width = width * 160,
+      height = height * 160, res = 160)
+  draw(); dev.off()
+}
+
+cohort &lt;- data.frame(id = LETTERS[1:12],
+  time = c(1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 8, 8),
+  status = c(1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0))
+tab &lt;- km.table(cohort$time, cohort$status)
+stopifnot(identical(as.numeric(tab$risk), c(12, 11, 9, 8, 6, 5, 3, 2)),
+          max(abs(tab$survival - c(11/12, 5/6, 5/6, 5/8, 5/8, .5, .5, .25))) &lt; 1e-12,
+          abs(tab$greenwood.sum[tab$time == 5] - 7/120) &lt; 1e-12,
+          abs(tab$se[tab$time == 5]^2 - 35/1536) &lt; 1e-12,
+          abs(rmst.at(tab, 5) - 101/24) &lt; 1e-12,
+          abs(rmst.at(tab, 8) - 35/6) &lt; 1e-12,
+          is.na(km.at(tab, 9)))
+complete &lt;- km.table(c(1, 2, 2, 5), c(1, 1, 1, 1))
+grid.check &lt;- c(0, 1, 1.5, 2, 4, 5, 9)
+stopifnot(max(abs(km.at(complete, grid.check) -
+                   vapply(grid.check, function(t) mean(c(1, 2, 2, 5) &gt; t), 0.0))) &lt; 1e-12,
+          is.na(tail(complete$lower, 1)),
+          all(km.table(c(1, 2, 3), c(0, 0, 0))$survival == 1))
+if (file.exists("results/ch01-cohort.csv")) {
+  first &lt;- read.csv(text="id,time,status,known.at.5,event.by.5\nA,1,1,TRUE,1\nB,2,1,TRUE,1\nC,2,0,FALSE,NA\nD,3,0,FALSE,NA\nE,4,1,TRUE,1\nF,4,1,TRUE,1\nG,5,0,TRUE,0\nH,6,1,TRUE,0\nI,6,0,TRUE,0\nJ,7,0,TRUE,0\nK,8,1,TRUE,0\nL,8,0,TRUE,0\n")
+  stopifnot(identical(first$id, cohort$id), identical(first$time, as.integer(cohort$time)),
+            identical(first$status, as.integer(cohort$status)))
+}
+# Standard R workflow: the same twelve records and event-first risk sets.
+fit &lt;- survival::survfit(survival::Surv(time, status) ~ 1,
+  data = cohort, stype = 1, ctype = 1, robust = FALSE,
+  conf.int = .95, conf.type = "log-log", conf.lower = "usual")
+fitted.rows &lt;- summary(fit, censored = TRUE)
+stopifnot(max(abs(fit$surv - tab$survival)) &lt; 1e-12,
+          all(fit$n.risk == tab$risk),
+          all(fit$n.event == tab$events),
+          max(abs(fitted.rows$std.err - tab$se), na.rm = TRUE) &lt; 1e-12,
+          max(abs(fit$lower - tab$lower), na.rm = TRUE) &lt; 1e-12,
+          max(abs(fit$upper - tab$upper), na.rm = TRUE) &lt; 1e-12)
+package.comparison &lt;- data.frame(time = tab$time, n.risk = fit$n.risk,
+  n.event = fit$n.event, direct = tab$survival, survfit = fit$surv,
+  se = fitted.rows$std.err, lower = fit$lower, upper = fit$upper)
+write.csv(package.comparison, "results/ch03-package-comparison.csv", row.names = FALSE)
+
+# Isolate the CI choice: point estimates and Greenwood SE remain unchanged.
+ci.methods &lt;- c("plain", "log", "log-log")
+at5 &lt;- tab[tab$time == 5, ]
+zcrit &lt;- qnorm(.975)
+hand.ci &lt;- rbind(
+  plain = pmin(1, pmax(0, at5$survival + c(-1, 1)*zcrit*at5$se)),
+  log = pmin(1, exp(log(at5$survival) + c(-1, 1)*zcrit*sqrt(at5$greenwood.sum))),
+  `log-log` = c(at5$lower, at5$upper))
+ci.comparison &lt;- do.call(rbind, lapply(seq_along(ci.methods), function(j) {
+  method &lt;- ci.methods[j]
+  curve &lt;- survival::survfit(survival::Surv(time, status) ~ 1,
+    data = cohort, stype = 1, ctype = 1, robust = FALSE,
+    conf.int = .95, conf.type = method, conf.lower = "usual")
+  report &lt;- summary(curve, times = 5, extend = FALSE)
+  stopifnot(abs(report$surv - 5/8) &lt; 1e-12,
+            abs(report$std.err - at5$se) &lt; 1e-12,
+            max(abs(c(report$lower, report$upper) - hand.ci[j, ])) &lt; 1e-12)
+  data.frame(method = method, survival = report$surv, se = report$std.err,
+    lower = report$lower, upper = report$upper)
+}))
+write.csv(ci.comparison, "results/ch03-ci-methods.csv", row.names = FALSE)
+ci.lines &lt;- c("\\begin{tabular}{lrrrr}\\toprule",
+  "Interval scale &amp; Survival &amp; SE &amp; Lower &amp; Upper\\\\\\midrule")
+for (j in seq_len(nrow(ci.comparison))) {
+  rr &lt;- ci.comparison[j, ]
+  ci.lines &lt;- c(ci.lines, sprintf("%s &amp; %.6f &amp; %.6f &amp; %.6f &amp; %.6f\\\\",
+    rr$method, rr$survival, rr$se, rr$lower, rr$upper))
+}
+writeLines(c(ci.lines, "\\bottomrule\\end{tabular}"),
+  "results/ch03-ci-methods-table.tex")
+
+# Presentation changes neither the fit nor its confidence-interval method.
+km.presentation &lt;- survminer::ggsurvplot(fit, data = cohort,
+  conf.int = TRUE, conf.int.alpha = .15, censor = TRUE,
+  risk.table = TRUE, risk.table.height = .23,
+  xlim = c(0, 8), break.time.by = 2, palette = "#002D72",
+  xlab = "Months since enrollment", ylab = "Recurrence-free survival",
+  legend = "none", risk.table.y.text = FALSE,
+  ggtheme = ggplot2::theme_classic(base_size = 11, base_family = "serif"),
+  tables.theme = ggplot2::theme_classic(base_size = 11, base_family = "serif"))
+risk.display &lt;- km.presentation$data.survtable
+curve.display &lt;- km.presentation$data.survplot
+curve.rows &lt;- match(fit$time, curve.display$time)
+expected.risk &lt;- vapply(risk.display$time,
+  function(t) sum(cohort$time &gt;= t), numeric(1))
+stopifnot(all(risk.display$n.risk == expected.risk),
+          !anyNA(curve.rows),
+          max(abs(curve.display$surv[curve.rows] - fit$surv)) &lt; 1e-12,
+          max(abs(curve.display$lower[curve.rows] - fit$lower)) &lt; 1e-12,
+          max(abs(curve.display$upper[curve.rows] - fit$upper)) &lt; 1e-12)
+write.csv(risk.display, "results/ch03-presentation-risk-table.csv", row.names = FALSE)
+save.plot("ch03-standard-workflow", function() print(km.presentation),
+  width = 6.8, height = 5.4)
+write.csv(data.frame(package = c("R", "survival", "survminer", "ggplot2"),
+  version = c(as.character(getRversion()),
+    vapply(c("survival", "survminer", "ggplot2"),
+      function(p) as.character(utils::packageVersion(p)), character(1)))),
+  "results/ch03-package-versions.csv", row.names = FALSE)
+write.csv(tab, "results/ch03-km-table.csv", row.names = FALSE)
+save.plot("ch03-km", function() {
+  par(mar = c(4.3, 4.5, 1, 1), las = 1)
+  plot(c(0, tab$time), c(1, tab$survival), type = "s", col = "#002D72", lwd = 2,
+       xlim = c(0, 8), ylim = c(0, 1), xlab = "Months since enrollment",
+       ylab = "Estimated recurrence-free survival")
+  lines(tab$time, tab$lower, type = "s", lty = 2, col = "gray40")
+  lines(tab$time, tab$upper, type = "s", lty = 2, col = "gray40")
+  cc &lt;- cohort$time[cohort$status == 0]
+  points(cc, km.at(tab, cc), pch = 3, col = "#002D72")
+  legend("bottomleft", c("Kaplan-Meier", "95% pointwise interval", "Censoring"),
+         lty = c(1, 2, NA), pch = c(NA, NA, 3),
+         col = c("#002D72", "gray40", "#002D72"), bty = "n", cex = .85)
+})
+
+# Exact latent-stratum model for static figures and local interaction.
+pi.high &lt;- .4
+lambda &lt;- c(.08, .35)
+admin &lt;- 8
+regimes &lt;- data.frame(regime.id = c("independent", "high.dropout", "low.dropout"),
+  label = c("Independent censoring", "High-risk dropout", "Low-risk dropout"),
+  c.low = c(.08, .04, .50), c.high = c(.08, .50, .04))
+true.surv &lt;- function(t) (1-pi.high)*exp(-lambda[1]*t) + pi.high*exp(-lambda[2]*t)
+pool.limit &lt;- function(t, c.low, c.high) {
+  b &lt;- lambda[2]+c.high-lambda[1]-c.low
+  if (abs(b) &lt; 1e-10) return(exp(-(lambda[1]+(lambda[2]-lambda[1])*pi.high)*t))
+  exp(-lambda[1]*t + (lambda[2]-lambda[1])/b * log(1-pi.high+pi.high*exp(-b*t)))
+}
+risk.fraction &lt;- function(t, c.low, c.high) {
+  a &lt;- pi.high*exp(-(lambda[2]+c.high)*t)
+  a / ((1-pi.high)*exp(-(lambda[1]+c.low)*t)+a)
+}
+observe &lt;- function(z, tt, uu, c.low, c.high) {
+  cc &lt;- -log(uu)/ifelse(z == 1, c.high, c.low)
+  cc &lt;- pmin(cc, admin)
+  data.frame(z = z, time = pmin(tt, cc), status = as.integer(tt &lt;= cc))
+}
+
+set.seed(6752026)
+n &lt;- 3000
+z &lt;- rbinom(n, 1, pi.high)
+tt &lt;- rexp(n, rate = lambda[z+1L])
+uu &lt;- runif(n)
+grid &lt;- seq(0, admin, length.out = 321)
+curves &lt;- vector("list", nrow(regimes))
+for (r in seq_len(nrow(regimes))) {
+  rr &lt;- regimes[r, ]
+  dat &lt;- observe(z, tt, uu, rr$c.low, rr$c.high)
+  kt &lt;- km.table(dat$time, dat$status)
+  curves[[r]] &lt;- data.frame(regime.id = rr$regime.id, regime = rr$label,
+    time = grid, target = true.surv(grid), sample.km = km.at(kt, grid),
+    pooled.limit = pool.limit(grid, rr$c.low, rr$c.high),
+    high.risk.fraction = risk.fraction(grid, rr$c.low, rr$c.high),
+    n.risk = vapply(grid, function(t) sum(dat$time &gt;= t), 0L),
+    expected.n.risk = n*((1-pi.high)*exp(-(lambda[1]+rr$c.low)*grid)+
+                          pi.high*exp(-(lambda[2]+rr$c.high)*grid)))
+}
+curve.data &lt;- do.call(rbind, curves)
+write.csv(curve.data, "results/ch03-censoring-curves.csv", row.names = FALSE)
+write.csv(regimes, "results/ch03-censoring-regimes.csv", row.names = FALSE)
+stopifnot(max(abs(pool.limit(grid,.08,.08)-true.surv(grid))) &lt; 1e-12,
+          pool.limit(5,.04,.5) &gt; true.surv(5), pool.limit(5,.5,.04) &lt; true.surv(5),
+          all(curve.data$high.risk.fraction &gt;= 0 &amp; curve.data$high.risk.fraction &lt;= 1))
+save.plot("ch03-censoring", function() {
+  par(mfrow = c(1,3), mar = c(4,4.7,2.1,.7), las = 1, cex = .86)
+  for (r in seq_len(nrow(regimes))) {
+    ss &lt;- curves[[r]]
+    plot(ss$time, ss$target, type = "l", lwd = 2, ylim = c(.1,1),
+         xlab = "Time", ylab = if (r == 1) "Survival" else "", main = regimes$label[r])
+    lines(ss$time, ss$pooled.limit, lwd = 2, lty = 2, col = "#B24C00")
+    lines(ss$time, ss$sample.km, type = "s", lwd = 1.3, col = "#002D72")
+    if (r == 1) legend("bottomleft", c("Target", "Pooled limit", "Sample KM"),
+                      lty = c(1,2,1), col = c("black","#B24C00","#002D72"),
+                      lwd = c(2,2,1.3), bty = "n", cex = .9)
+  }
+}, width = 9, height = 3.8)
+save.plot("ch03-risk-composition", function() {
+  par(mar = c(4.3,4.5,1,1), las = 1)
+  plot(grid, curves[[1]]$high.risk.fraction, type = "l", lwd = 2,
+       ylim = c(0,.85), xlab = "Time", ylab = "High-risk fraction among those at risk",
+       col = "#002D72")
+  lines(grid, curves[[2]]$high.risk.fraction, lwd = 2, lty = 2, col = "#B24C00")
+  lines(grid, curves[[3]]$high.risk.fraction, lwd = 2, lty = 3, col = "#28704F")
+  legend("right", regimes$label, lty = 1:3, lwd = 2,
+         col = c("#002D72","#B24C00","#28704F"), bty = "n", cex = .85)
+})
+
+set.seed(6752027)
+B &lt;- 300L; n.mc &lt;- 500L; horizon &lt;- 5
+rows &lt;- vector("list", B*nrow(regimes)); k &lt;- 0L
+for (b in seq_len(B)) {
+  z &lt;- rbinom(n.mc, 1, pi.high)
+  tt &lt;- rexp(n.mc, rate = lambda[z+1L]); uu &lt;- runif(n.mc)
+  for (r in seq_len(nrow(regimes))) {
+    rr &lt;- regimes[r, ]
+    dat &lt;- observe(z, tt, uu, rr$c.low, rr$c.high)
+    pooled &lt;- km.at(km.table(dat$time, dat$status), horizon)
+    s0 &lt;- km.at(km.table(dat$time[z==0], dat$status[z==0]), horizon)
+    s1 &lt;- km.at(km.table(dat$time[z==1], dat$status[z==1]), horizon)
+    adjusted &lt;- (1-mean(z))*s0 + mean(z)*s1
+    k &lt;- k+1L
+    rows[[k]] &lt;- data.frame(replicate=b, regime=rr$label,
+                            pooled=pooled, standardized=adjusted)
+  }
+}
+mc &lt;- do.call(rbind, rows)
+write.csv(mc, "results/ch03-monte-carlo-replicates.csv", row.names=FALSE)
+summaries &lt;- list()
+for (rr in regimes$label) for (method in c("pooled", "standardized")) {
+  value &lt;- mc[mc$regime==rr, method]; ok &lt;- is.finite(value)
+  summaries[[length(summaries)+1L]] &lt;- data.frame(
+    regime=rr, method=method, B=B, valid=sum(ok), missing=sum(!ok), target=true.surv(5),
+    mean.available=mean(value[ok]), bias.available=mean(value[ok])-true.surv(5),
+    sd.available=sd(value[ok]), mcse.mean.available=sd(value[ok])/sqrt(sum(ok)),
+    rmse.available=sqrt(mean((value[ok]-true.surv(5))^2)))
+}
+summary.mc &lt;- do.call(rbind, summaries)
+write.csv(summary.mc, "results/ch03-monte-carlo-summary.csv", row.names=FALSE)
+tablines &lt;- c("\\begin{tabular}{lrrrr}\\toprule",
+             "Regime &amp; Mean &amp; Mean minus target &amp; SD &amp; MCSE\\\\\\midrule")
+for (i in which(summary.mc$method=="pooled")) {
+  a &lt;- summary.mc[i,]
+  tablines &lt;- c(tablines, sprintf("%s &amp; %.6f &amp; %.6f &amp; %.6f &amp; %.6f\\\\",
+    a$regime,a$mean.available,a$bias.available,a$sd.available,a$mcse.mean.available))
+}
+writeLines(c(tablines,"\\bottomrule\\end{tabular}"),"results/ch03-monte-carlo-table.tex")
+
+
+writeLines(capture.output(sessionInfo()),"results/ch03-sessionInfo.txt")
+
+
+print(tab, row.names=FALSE)
+print(ci.comparison, row.names=FALSE)
+print(package.comparison[package.comparison$time %in% c(4, 5, 6, 8), ], row.names=FALSE)
+print(summary.mc, row.names=FALSE)
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>u <span class="ot">&lt;-</span> <span class="fu">sort</span>(<span class="fu">unique</span>(time))</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>group <span class="ot">&lt;-</span> <span class="fu">match</span>(time, u)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>exits <span class="ot">&lt;-</span> <span class="fu">tabulate</span>(group, <span class="at">nbins =</span> <span class="fu">length</span>(u))</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="fu">tabulate</span>(group[status <span class="sc">==</span> <span class="dv">1</span>], <span class="at">nbins =</span> <span class="fu">length</span>(u))</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">rev</span>(<span class="fu">cumsum</span>(<span class="fu">rev</span>(exits)))</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>S <span class="ot">&lt;-</span> <span class="fu">cumprod</span>(<span class="dv">1</span> <span class="sc">-</span> d<span class="sc">/</span>y)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>Vlog <span class="ot">&lt;-</span> <span class="fu">cumsum</span>(d <span class="sc">/</span> (y <span class="sc">*</span> (y<span class="sc">-</span>d)))</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>SE <span class="ot">&lt;-</span> S <span class="sc">*</span> <span class="fu">sqrt</span>(Vlog)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(<span class="at">time =</span> u, <span class="at">n.risk =</span> y, <span class="at">n.event =</span> d, <span class="at">survival =</span> S, <span class="at">SE =</span> SE)</span></code></pre></div>
+<p>The reversed cumulative sum is exactly the count with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>i</mi></msub><mo>≥</mo><mi>u</mi></mrow><annotation encoding="application/x-tex">X_i\geq u</annotation></semantics></math></span>.
+It does not depend on within-tie row order. Removing censors before
+computing the current event denominator would implement a different
+observation convention and gives the wrong answer for our data. The
+final two lines translate <a href="#s3-greenwood" data-reference-type="eqref" data-reference="s3-greenwood">(3.8)</a> directly into R. They
+apply to this cohort, whose event fractions remain below one. The full
+<code>km.table()</code> function in the complete R example also handles
+the zero-event and terminal all-fail boundaries, validates the inputs,
+and computes the log-minus-log limits.</p>
+<p>At month 5 this implementation returns
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>y</mi><mo>=</mo><mn>6</mn></mrow><annotation encoding="application/x-tex">y=6</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">d=0</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mo>=</mo><mn>0.625</mn></mrow><annotation encoding="application/x-tex">S=0.625</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">S</mi><mi mathvariant="normal">E</mi></mrow><mo>=</mo><mn>0.150952</mn></mrow><annotation encoding="application/x-tex">\mathrm{SE}=0.150952</annotation></semantics></math></span>.
+Zero events at month 5 do not erase the four previous events or their
+accumulated uncertainty. Evaluating the step function at five months
+gives the survival estimate after all events up through that time.
+Integrating its earlier levels gives the restricted mean in <a href="#s3-rmst" data-reference-type="eqref" data-reference="s3-rmst">(3.7)</a>. The complete R example keeps
+both operations explicit and refuses to extend a positive last step
+beyond observed follow-up.</p>
+<h3 id="standard-r-workflow">3.6.2 Standard R workflow</h3>
+<p>The established <code>survival</code> package fits the same estimator
+from <code>Surv(time, status)</code>. Specify the choices that link its
+output to our calculation <span class="citation" data-cites="r-survfit-doc"><a class="collection-citation" href="references.html#ref-r-survfit-doc" role="doc-biblioref" aria-label="Reference 1">[1]</a></span>:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>fit <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">survfit</span>(survival<span class="sc">::</span><span class="fu">Surv</span>(time, status) <span class="sc">~</span> <span class="dv">1</span>,</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> cohort, <span class="at">stype =</span> <span class="dv">1</span>, <span class="at">ctype =</span> <span class="dv">1</span>, <span class="at">robust =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">conf.int =</span> .<span class="dv">95</span>, <span class="at">conf.type =</span> <span class="st">"log-log"</span>, <span class="at">conf.lower =</span> <span class="st">"usual"</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fit, <span class="at">censored =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fit, <span class="at">times =</span> <span class="dv">5</span>, <span class="at">extend =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<p>Here <code>stype = 1</code> selects the direct survival product,
+<code>ctype = 1</code> selects uncorrected Nelson–Aalen
+cumulative-hazard increments, and <code>robust = FALSE</code> requests
+the usual model-based variance for these independent, equally weighted
+subjects. The second choice concerns the accompanying cumulative-hazard
+estimate; it does not turn the direct survival product into its
+exponential. The event-first risk counts, point estimates, and
+log-minus-log intervals agree with the explicit calculation. The same
+data, target, and censoring assumptions underlie both routes. Package
+agreement says nothing about whether censoring in a scientific study is
+independent.</p>
+<p>Read each output column on its intended scale.
+<code>summary(fit)</code> reports a survival-scale standard error,
+whereas <code>fit$std.err</code> is on the log-survival scale for this
+ordinary survival fit. At requested times, the event count is ordinarily
+the number since the previous reported time, rather than the count at
+precisely that time <span class="citation" data-cites="r-summary-survfit-doc"><a class="collection-citation" href="references.html#ref-r-summary-survfit-doc" role="doc-biblioref" aria-label="Reference 2">[2]</a></span>. Thus the single-row
+request at month 5 reports four accumulated events, although the
+risk-table row for month 5 has zero events. The reported number at risk
+is six, immediately before that time; the survival value
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.625</mn><annotation encoding="application/x-tex">0.625</annotation></semantics></math></span>
+is after any events there.</p>
+<p>The default confidence-interval scale is <code>"log"</code>, which
+differs from the chapter’s <code>"log-log"</code> choice. Table <a href="#s3-ci-methods" data-reference-type="ref" data-reference="s3-ci-methods">3.2</a> holds the curve and Greenwood
+standard error fixed while changing the transformation. The log
+interval’s untruncated upper endpoint is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1.003378</mn><annotation encoding="application/x-tex">1.003378</annotation></semantics></math></span>,
+so the package limits it to one. The direct calculation reproduces all
+three sets of limits using their stated transformations and probability
+bounds. They are different approximations to pointwise uncertainty, not
+three different survival targets.</p>
+<div id="s3-ci-methods">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 3.2. The same five-month Kaplan–Meier estimate with three
+approximate 95% pointwise interval choices.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Interval scale</th>
+<th style="text-align: right;">Survival</th>
+<th style="text-align: right;">SE</th>
+<th style="text-align: right;">Lower</th>
+<th style="text-align: right;">Upper</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">plain</td>
+<td style="text-align: right;">0.625000</td>
+<td style="text-align: right;">0.150952</td>
+<td style="text-align: right;">0.329140</td>
+<td style="text-align: right;">0.920860</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">log</td>
+<td style="text-align: right;">0.625000</td>
+<td style="text-align: right;">0.150952</td>
+<td style="text-align: right;">0.389310</td>
+<td style="text-align: right;">1.000000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">log-log</td>
+<td style="text-align: right;">0.625000</td>
+<td style="text-align: right;">0.150952</td>
+<td style="text-align: right;">0.276152</td>
+<td style="text-align: right;">0.842258</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>For presentation, <code>survminer::ggsurvplot()</code> takes the
+fitted curve rather than fitting a new one <span class="citation" data-cites="r-ggsurvplot-doc"><a class="collection-citation" href="references.html#ref-r-ggsurvplot-doc" role="doc-biblioref" aria-label="Reference 3">[3]</a></span>:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb3" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> survminer<span class="sc">::</span><span class="fu">ggsurvplot</span>(fit, <span class="at">data =</span> cohort,</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">conf.int =</span> <span class="cn">TRUE</span>, <span class="at">censor =</span> <span class="cn">TRUE</span>, <span class="at">risk.table =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">risk.table.height =</span> .<span class="dv">23</span>, <span class="at">xlim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">8</span>), <span class="at">break.time.by =</span> <span class="dv">2</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">palette =</span> <span class="st">"#002D72"</span>, <span class="at">legend =</span> <span class="st">"none"</span>, <span class="at">risk.table.y.text =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">xlab =</span> <span class="st">"Months since enrollment"</span>, <span class="at">ylab =</span> <span class="st">"Recurrence-free survival"</span>,</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">ggtheme =</span> ggplot2<span class="sc">::</span><span class="fu">theme_classic</span>(<span class="at">base_size =</span> <span class="dv">11</span>))</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(p)</span></code></pre></div>
+<p>Use <code>print(p)</code> to draw the combined curve and risk table,
+including when an R script writes to a graphics device. Displaying
+<code>p$plot</code> alone omits the table. The <code>conf.int</code>
+option displays the limits already stored in <code>fit</code>; it does
+not change their transformation. The counts at months 0, 2, 4, 6, and 8
+are 12, 11, 8, 5, and 2. Seeing the final denominator alongside the
+curve makes the last drop interpretable. Styling a plot cannot repair
+uncertain status coding, informative loss to follow-up, or an
+unsupported tail.</p>
+<figure id="s3-standard-workflow">
+<a href="../assets/survival/ch03-standard-workflow.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch03-standard-workflow.png" alt="Figure 3.2. The same fitted Kaplan–Meier curve presented with
+ggsurvplot(). The shaded region displays the approximate
+pointwise log-minus-log limits; the row below shows the shrinking risk
+set.">
+</a><figcaption>Figure 3.2. The same fitted Kaplan–Meier curve presented with
+<code>ggsurvplot()</code>. The shaded region displays the approximate
+pointwise log-minus-log limits; the row below shows the shrinking risk
+set.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch03-standard-workflow.png">Open full-size figure</a></p></figure>
+<p>The complete R example contains the cohort, both computational
+routes, the interval comparison, and the plotting call. Its base-R
+estimator is intended for single-event, right-censored records from a
+common time origin. It does not accept interval-censored, delayed-entry,
+or recurrent-event observations merely because they can be coerced into
+two numerical columns.</p>
+<h2 id="s3-censoring-selection">3.7 A correctly computed curve can target
+the wrong population</h2>
+<p>The twelve-person calculation shows how Kaplan–Meier uses each
+record. To examine its censoring assumption, we now generate new cohorts
+from a population whose event-time distribution is known. This
+population differs from both the twelve-person cohort and the
+two-stratum numerical example in Chapter <a href="01-observation.html#s1-observation" data-reference-type="ref" data-reference="s1-observation">1</a>. Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>∼</mo><mo>Bernoulli</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>π</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">Z\sim\operatorname{Bernoulli}(\pi)</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>π</mi><mo>=</mo><mn>0.4</mn></mrow><annotation encoding="application/x-tex">\pi=0.4</annotation></semantics></math></span>.
+Conditional on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>=</mo><mi>z</mi></mrow><annotation encoding="application/x-tex">Z=z</annotation></semantics></math></span>,
+generate event and random-censoring times independently:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>∣</mo><mi>Z</mi><mo>=</mo><mi>z</mi><mo>∼</mo><mo>Exponential</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>λ</mi><mi>z</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="1.0em"></mspace><msub><mi>C</mi><mn>0</mn></msub><mo>∣</mo><mi>Z</mi><mo>=</mo><mi>z</mi><mo>∼</mo><mo>Exponential</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>c</mi><mi>z</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="1.0em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>λ</mi><mn>0</mn></msub><mo>,</mo><msub><mi>λ</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.08</mn><mo>,</mo><mn>0.35</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">T\mid Z=z\sim\operatorname{Exponential}(\lambda_z),\quad
+ C_0\mid Z=z\sim\operatorname{Exponential}(c_z),\quad
+ (\lambda_0,\lambda_1)=(0.08,0.35).
+ \label{s3-generating-model}</annotation></semantics></math><span id="s3-generating-model" class="equation-anchor"></span><span class="equation-number">(3.12)</span></span> Set
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>C</mi><mn>0</mn></msub><mo>,</mo><mn>8</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">C=\min(C_0,8)</annotation></semantics></math></span>.
+The marginal target is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>π</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>λ</mi><mn>0</mn></msub><mi>t</mi></mrow></msup><mo>+</mo><mi>π</mi><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>λ</mi><mn>1</mn></msub><mi>t</mi></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">S(t)=(1-\pi)e^{-\lambda_0t}+\pi e^{-\lambda_1t}.
+ \label{s3-mixture-target}</annotation></semantics></math><span id="s3-mixture-target" class="equation-anchor"></span><span class="equation-number">(3.13)</span></span> It does not
+depend on the censoring rates. We compare independent censoring
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>c</mi><mn>0</mn></msub><mo>,</mo><msub><mi>c</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.08</mn><mo>,</mo><mn>0.08</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">(c_0,c_1)=(0.08,0.08)</annotation></semantics></math></span>,
+high-risk dropout
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.04</mn><mo>,</mo><mn>0.50</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.04,0.50)</annotation></semantics></math></span>,
+and low-risk dropout
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.50</mn><mo>,</mo><mn>0.04</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.50,0.04)</annotation></semantics></math></span>.
+All three preserve independence <em>within</em> strata. Only the first
+preserves it marginally in this construction.</p>
+<p>Before administrative closure, the high-risk proportion among people
+who are both event-free and still observable is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>w</mi><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>π</mi><msup><mi>e</mi><mrow><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>λ</mi><mn>1</mn></msub><mo>+</mo><msub><mi>c</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>t</mi></mrow></msup></mrow><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>π</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>λ</mi><mn>0</mn></msub><mo>+</mo><msub><mi>c</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>t</mi></mrow></msup><mo>+</mo><mi>π</mi><msup><mi>e</mi><mrow><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>λ</mi><mn>1</mn></msub><mo>+</mo><msub><mi>c</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>t</mi></mrow></msup></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">w_1(t)=\frac{\pi e^{-(\lambda_1+c_1)t}}
+ {(1-\pi)e^{-(\lambda_0+c_0)t}+\pi e^{-(\lambda_1+c_1)t}}.
+ \label{s3-risk-mixture}</annotation></semantics></math><span id="s3-risk-mixture" class="equation-anchor"></span><span class="equation-number">(3.14)</span></span> This follows by
+Bayes’ rule using the within-stratum probability of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>≥</mo><mi>t</mi></mrow><annotation encoding="application/x-tex">T\geq t</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>C</mi><mn>0</mn></msub><mo>≥</mo><mi>t</mi></mrow><annotation encoding="application/x-tex">C_0\geq t</annotation></semantics></math></span>.
+The event hazard in that observable risk set is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mrow><mi mathvariant="normal">o</mi><mi mathvariant="normal">b</mi><mi mathvariant="normal">s</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>λ</mi><mn>0</mn></msub><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>λ</mi><mn>1</mn></msub><mo>−</mo><msub><mi>λ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>w</mi><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\lambda_{\mathrm{obs}}(t)=\lambda_0+
+(\lambda_1-\lambda_0)w_1(t)</annotation></semantics></math></span>. The
+target-population event hazard instead weights strata among all
+event-free people, without the censoring terms. Equal censoring rates
+cancel from <a href="#s3-risk-mixture" data-reference-type="eqref" data-reference="s3-risk-mixture">(3.14)</a>; unequal rates
+select the mixture further. Even under independent censoring, the
+mixture among survivors differs from the baseline mixture because events
+remove high-risk people sooner.</p>
+<p>An exact probability limit makes the distortion particularly clear.
+To integrate the selected risk-set hazard explicitly, put
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>λ</mi><mn>1</mn></msub><mo>+</mo><msub><mi>c</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>λ</mi><mn>0</mn></msub><mo>+</mo><msub><mi>c</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">b=(\lambda_1+c_1)-(\lambda_0+c_0)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>π</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>π</mi><msup><mi>e</mi><mrow><mo>−</mo><mi>b</mi><mi>t</mi></mrow></msup></mrow><annotation encoding="application/x-tex">D(t)=(1-\pi)+\pi e^{-bt}</annotation></semantics></math></span>.
+Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math></span>
+is a difference of exit rates, not the Weibull time scale used earlier.
+For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>≠</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">b\ne0</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>log</mo><mi>D</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>d</mi><mi>t</mi><mo>=</mo><mo>−</mo><mi>b</mi><msub><mi>w</mi><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">d\log D(t)/dt=-b w_1(t)</annotation></semantics></math></span>.
+Integrating the observed hazard and exponentiating its negative gives
+the large-sample pooled limit
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>S</mi><mrow><mi mathvariant="normal">p</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">l</mi></mrow><mo>*</mo></msubsup><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>λ</mi><mn>0</mn></msub><mi>t</mi></mrow></msup><mi>D</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>λ</mi><mn>1</mn></msub><mo>−</mo><msub><mi>λ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>b</mi></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">S_{\mathrm{pool}}^*(t)=
+ e^{-\lambda_0t}D(t)^{(\lambda_1-\lambda_0)/b}.
+ \label{s3-pool-limit}</annotation></semantics></math><span id="s3-pool-limit" class="equation-anchor"></span><span class="equation-number">(3.15)</span></span> When
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">b=0</annotation></semantics></math></span>,
+use
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>S</mi><mrow><mi mathvariant="normal">p</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">l</mi></mrow><mo>*</mo></msubsup><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>exp</mo><mrow><mo stretchy="true" form="prefix">[</mo><mo>−</mo><mo stretchy="false" form="prefix">{</mo><msub><mi>λ</mi><mn>0</mn></msub><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>λ</mi><mn>1</mn></msub><mo>−</mo><msub><mi>λ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>π</mi><mo stretchy="false" form="postfix">}</mo><mi>t</mi><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">S_{\mathrm{pool}}^*(t)=\exp[-\{\lambda_0+
+(\lambda_1-\lambda_0)\pi\}t]</annotation></semantics></math></span> instead.
+These formulas concern times supported before administrative closure,
+with the continuous left limit available at its endpoint. They do not
+justify extrapolating beyond eight.</p>
+<p>At time 5 the target is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.471701605</mn><annotation encoding="application/x-tex">0.471701605</annotation></semantics></math></span>.
+The independent-censoring limit equals it, the high-risk-dropout limit
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.558454784</mn><annotation encoding="application/x-tex">0.558454784</annotation></semantics></math></span>,
+and the low-risk-dropout limit is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.333528240</mn><annotation encoding="application/x-tex">0.333528240</annotation></semantics></math></span>.
+Preferentially losing high-risk participants makes observed survival
+appear better; preferentially losing low-risk participants makes it
+appear worse. Neither sign follows from the censoring percentage
+alone.</p>
+<figure id="s3-censoring-figure">
+<a href="../assets/survival/ch03-censoring.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch03-censoring.png" alt="Figure 3.3. Matched simulation with 3,000 subjects and seed 6752026.
+Baseline strata and event times are held fixed across panels; censoring
+changes. The black curve is the population target, the dashed curve is
+the pooled limit, and blue is the sample Kaplan–Meier
+curve.">
+</a><figcaption>Figure 3.3. Matched simulation with 3,000 subjects and seed 6752026.
+Baseline strata and event times are held fixed across panels; censoring
+changes. The black curve is the population target, the dashed curve is
+the pooled limit, and blue is the sample Kaplan–Meier
+curve.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch03-censoring.png">Open full-size figure</a></p></figure>
+<figure id="s3-composition-figure">
+<a href="../assets/survival/ch03-risk-composition.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch03-risk-composition.png" alt="Figure 3.4. Composition of the observable risk sets in the same three
+regimes. Changing observation can change the mixture whose event rate is
+estimated.">
+</a><figcaption>Figure 3.4. Composition of the observable risk sets in the same three
+regimes. Changing observation can change the mixture whose event rate is
+estimated.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch03-risk-composition.png">Open full-size figure</a></p></figure>
+<p>The script also generates 300 independent cohorts of 500 people with
+seed 6752027. Regimes within each replicate share underlying event times
+and uniform random numbers, permitting a paired comparison. The
+resulting pooled five-unit estimates are summarized in Table <a href="#s3-mc-table" data-reference-type="ref" data-reference="s3-mc-table">3.3</a>.</p>
+<div id="s3-mc-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 3.3. Executed repeated-cohort experiment; target
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.471702</mn></mrow><annotation encoding="application/x-tex">S(5)=0.471702</annotation></semantics></math></span>.
+SD describes variation across cohorts. MCSE is SD divided by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msqrt><mn>300</mn></msqrt><annotation encoding="application/x-tex">\sqrt{300}</annotation></semantics></math></span>
+and describes Monte Carlo precision of the reported mean.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Regime</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Mean minus target</th>
+<th style="text-align: right;">SD</th>
+<th style="text-align: right;">MCSE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Independent censoring</td>
+<td style="text-align: right;">0.470830</td>
+<td style="text-align: right;">-0.000872</td>
+<td style="text-align: right;">0.024771</td>
+<td style="text-align: right;">0.001430</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">High-risk dropout</td>
+<td style="text-align: right;">0.556028</td>
+<td style="text-align: right;">0.084326</td>
+<td style="text-align: right;">0.027755</td>
+<td style="text-align: right;">0.001602</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Low-risk dropout</td>
+<td style="text-align: right;">0.335115</td>
+<td style="text-align: right;">-0.136587</td>
+<td style="text-align: right;">0.030486</td>
+<td style="text-align: right;">0.001760</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>Increasing cohort size concentrates the curve around its limit; it
+does not make an incorrect limit equal the target. Increasing the number
+of simulation replicates refines the Monte Carlo summary, a different
+source of precision. Here exact limits give an independent check on what
+the simulation illustrates.</p>
+<p>If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math></span>
+is measured, conditional independent censoring can justify separate
+curves
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>S</mi><mo accent="true">̂</mo></mover><mn>0</mn></msub><annotation encoding="application/x-tex">\widehat S_0</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>S</mi><mo accent="true">̂</mo></mover><mn>1</mn></msub><annotation encoding="application/x-tex">\widehat S_1</annotation></semantics></math></span>,
+then standardization using baseline population weights:
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mover><mi>π</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><msub><mover><mi>S</mi><mo accent="true">̂</mo></mover><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mover><mi>π</mi><mo accent="true">̂</mo></mover><msub><mover><mi>S</mi><mo accent="true">̂</mo></mover><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">(1-\widehat\pi)\widehat S_0(t)+\widehat\pi\widehat S_1(t)</annotation></semantics></math></span>.
+Weighting by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>w</mi><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">w_1(t)</annotation></semantics></math></span>
+would instead reuse the selected risk-set composition. Stratification
+also requires sufficient follow-up in each stratum. In nine of the 300
+high-risk-dropout replicates, a stratum has a positive terminal step
+before the target horizon. The code marks those standardized estimates
+as missing rather than silently extrapolating. Its available-case
+summaries therefore describe computable replicates, not unconditional
+estimation bias.</p>
+<p>The three-regime comparison shows the survival curve together with
+the composition of its risk sets. Before revealing those curves,
+consider which direction preferential high-risk or low-risk dropout
+should move the pooled estimate. The fixed population and matched event
+times make censoring the feature being changed. The true curve is
+visible only because this is an invented model, not because a real
+censored cohort supplies it.</p>
+<h2 id="interpretation-and-checks-that-matter">3.8 Interpretation and checks
+that matter</h2>
+<p>A flat segment means no observed event produced a jump; it does not
+establish zero population hazard. A large late drop may reflect a small
+denominator. Report numbers at risk at the horizons readers will
+interpret. Inspect status coding, time origins, duplicate records, ties,
+and the reasons for loss to follow-up before treating a clean plot as
+evidence of a clean design.</p>
+<p>For the recurring cohort, a defensible report is: “Estimated
+five-month recurrence-free survival was 62.50%, with an approximate 95%
+pointwise interval of 27.62% to 84.23%, under independent right
+censoring.” The small cohort, limited tail, and synthetic setting
+qualify its use. Nothing in the computation establishes a treatment
+effect, individual future outcomes, or real-world cumulative incidence
+in the presence of competing death. The endpoint, observation scheme,
+estimator, and interpretation have to remain connected.</p>
+<section class="interaction" id="censoring-explorer" aria-labelledby="censoring-explorer-title">
+<h2 id="censoring-explorer-title">Explore: who remains in the risk set?</h2>
+<p>The event-time distribution stays fixed. Change the censoring mechanism, predict whether pooled Kaplan–Meier will tend to overestimate or underestimate survival, then reveal the curves. Censoring is independent of event time within the two risk groups in all three regimes.</p>
+<div class="controls"><label>Censoring regime<br><select id="censoring-regime"><option value="independent">Same censoring rate in both groups</option><option value="high_dropout">Faster dropout in the high-risk group</option><option value="low_dropout">Faster dropout in the low-risk group</option></select></label><button id="reveal-censoring" type="button">Reveal curves and risk set</button></div>
+<p class="prediction" id="censoring-prompt">Predict the direction before revealing. Which group becomes disproportionately represented among those still under observation?</p>
+<div id="censoring-result" hidden aria-live="polite"><svg id="censoring-plot" viewbox="0 0 640 300" role="img" aria-label="True survival, pooled Kaplan–Meier, and the pooled large-sample limit"></svg><div class="legend"><span class="swatch">True survival</span><span class="swatch orange">One sample’s Kaplan–Meier</span><span class="swatch gray">Pooled large-sample limit</span></div><p class="result-text" id="censoring-explanation"></p></div>
+<p><small>Static counterpart: the chapter’s censoring and risk-composition figures. Curves use the executed R experiment, n = 3,000 per regime; the limit is computed from the stated model. The display samples the curves on a 0.025-month grid. A change in one sample is not itself evidence of population bias.</small></p></section>
+<h2 id="exercises">3.9 Exercises</h2>
+<ol class="exercises" style='--chapter:"3."'><li id="exercise-3-1"><p><strong>Risk sets and tied records.</strong> Use the twelve-person cohort with observed follow-up
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>3</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>5</mn><mo>,</mo><mn>6</mn><mo>,</mo><mn>6</mn><mo>,</mo><mn>7</mn><mo>,</mo><mn>8</mn><mo>,</mo><mn>8</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">x=(1,2,2,3,4,4,5,6,6,7,8,8)</annotation></semantics></math></span>
+months and event indicators
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\delta=(1,1,0,0,1,1,0,1,0,0,1,0)</annotation></semantics></math></span>,
+in participant order A–L. Everyone enters at zero. Same-time events are
+counted before censoring; a censor at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+establishes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T&gt;x</annotation></semantics></math></span>.
+Write the event-only discrete likelihood as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∏</mo><mi>j</mi></msub><msubsup><mi>q</mi><mi>j</mi><msub><mi>d</mi><mi>j</mi></msub></msubsup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mrow><msub><mi>y</mi><mi>j</mi></msub><mo>−</mo><msub><mi>d</mi><mi>j</mi></msub></mrow></msup></mrow><annotation encoding="application/x-tex">\prod_jq_j^{d_j}(1-q_j)^{y_j-d_j}</annotation></semantics></math></span>,
+deriving the exponents from individual records. Maximize over each
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>j</mi></msub><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">q_j\in[0,1]</annotation></semantics></math></span>,
+including boundaries. Prove that without censoring the resulting
+survival product equals the empirical survival function even with tied
+events. Finally, remove the month-2 censor before computing that time’s
+event denominator while leaving later risk sets correct. Calculate the
+resulting erroneous five-month estimate.</p>
+</li><li id="exercise-3-2"><p><strong>The portion of a lifetime observed.</strong> Use the twelve-person cohort with observed follow-up
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>3</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>5</mn><mo>,</mo><mn>6</mn><mo>,</mo><mn>6</mn><mo>,</mo><mn>7</mn><mo>,</mo><mn>8</mn><mo>,</mo><mn>8</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">x=(1,2,2,3,4,4,5,6,6,7,8,8)</annotation></semantics></math></span>
+months and event indicators
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\delta=(1,1,0,0,1,1,0,1,0,0,1,0)</annotation></semantics></math></span>,
+in participant order A–L. Everyone enters at zero. Same-time events are
+counted before censoring; a censor at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+establishes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T&gt;x</annotation></semantics></math></span>.
+Calculate the Kaplan–Meier restricted means through months 5 and 8 by
+integrating its step levels, and find its median using the first time at
+which survival is at most one half. Explain why these summaries do not
+identify the unrestricted population mean or the unobserved tail.</p>
+</li><li id="exercise-3-3"><p><strong>Pointwise uncertainty on two scales.</strong> Use the twelve-person cohort with observed follow-up
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>3</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>5</mn><mo>,</mo><mn>6</mn><mo>,</mo><mn>6</mn><mo>,</mo><mn>7</mn><mo>,</mo><mn>8</mn><mo>,</mo><mn>8</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">x=(1,2,2,3,4,4,5,6,6,7,8,8)</annotation></semantics></math></span>
+months and event indicators
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\delta=(1,1,0,0,1,1,0,1,0,0,1,0)</annotation></semantics></math></span>,
+in participant order A–L. Everyone enters at zero. Same-time events are
+counted before censoring; a censor at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+establishes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T&gt;x</annotation></semantics></math></span>.
+At month 6, compute Greenwood’s variance for the survival product.
+Construct a pointwise approximate 95% log-minus-log interval with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>z</mi><mn>0.975</mn></msub><mo>=</mo><msup><mi>Φ</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.975</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">z_{0.975}=\Phi^{-1}(0.975)</annotation></semantics></math></span>,
+then convert it to an event-risk interval. Explain both endpoint
+reversals. Distinguish pointwise from simultaneous coverage and state
+which censoring assumption this calculation requires.</p>
+</li><li id="exercise-3-4"><p><strong>Selection changes the pooled hazard.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Pr</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>Z</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>π</mi><mo>=</mo><mn>0.4</mn></mrow><annotation encoding="application/x-tex">\Pr(Z=1)=\pi=0.4</annotation></semantics></math></span>.
+Conditional on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>=</mo><mi>z</mi></mrow><annotation encoding="application/x-tex">Z=z</annotation></semantics></math></span>,
+event and censoring times are independent exponential variables with
+rates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mn>0</mn></msub><mo>=</mo><mn>0.08</mn></mrow><annotation encoding="application/x-tex">\lambda_0=0.08</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mn>1</mn></msub><mo>=</mo><mn>0.35</mn></mrow><annotation encoding="application/x-tex">\lambda_1=0.35</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>c</mi><mi>z</mi></msub><annotation encoding="application/x-tex">c_z</annotation></semantics></math></span>,
+with administrative closure at month 8. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>&lt;</mo><mn>8</mn></mrow><annotation encoding="application/x-tex">t&lt;8</annotation></semantics></math></span>,
+derive the high-risk proportion among observable event-free people and
+the hazard that a pooled Kaplan–Meier curve accumulates. Put
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>=</mo><msub><mi>λ</mi><mn>1</mn></msub><mo>+</mo><msub><mi>c</mi><mn>1</mn></msub><mo>−</mo><msub><mi>λ</mi><mn>0</mn></msub><mo>−</mo><msub><mi>c</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">b=\lambda_1+c_1-\lambda_0-c_0</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mo>−</mo><mi>π</mi><mo>+</mo><mi>π</mi><msup><mi>e</mi><mrow><mo>−</mo><mi>b</mi><mi>t</mi></mrow></msup></mrow><annotation encoding="application/x-tex">D(t)=1-\pi+\pi e^{-bt}</annotation></semantics></math></span>;
+derive the pooled survival limit for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>≠</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">b\neq0</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">b=0</annotation></semantics></math></span>.
+Evaluate it at month 5 for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>c</mi><mn>0</mn></msub><mo>,</mo><msub><mi>c</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.08</mn><mo>,</mo><mn>0.08</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.04</mn><mo>,</mo><mn>0.50</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.50</mn><mo>,</mo><mn>0.04</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">(c_0,c_1)=(0.08,0.08),(0.04,0.50),(0.50,0.04)</annotation></semantics></math></span>.
+Compare with marginal survival and explain why baseline-weighted stratum
+estimates target it under adequate stratum support.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="02-functions.html">Previous: 2. Survival, risk, hazard, and lifetime summaries</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="04-nelson-aalen.html">Next: 4. Nelson--Aalen estimation and counting processes</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

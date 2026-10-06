@@ -1,0 +1,1045 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Statistical Inference — Chapter 7: Hypothesis Testing as a Statistical Procedure | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Hypothesis Testing as a Statistical Procedure.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/inference/09-testing.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Statistical Inference — Chapter 7: Hypothesis Testing as a Statistical Procedure | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Hypothesis Testing as a Statistical Procedure.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/inference/09-testing.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Statistical Inference — Chapter 7: Hypothesis Testing as a Statistical Procedure", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Statistical Inference", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/inference/09-testing.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Statistical Inference</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Questions, probability models, and likelihood</p><ol class="contents-chapters"><li><a href="01-models.html">1. Probability models and statistical targets</a></li><li><a href="02-likelihood.html">2. Likelihood, data reduction, and constructing estimators</a></li></ol><p class="contents-part">Part II: Conditional targets, regression, and loss</p><ol class="contents-chapters"><li><a href="conditional-regression.html">3. Regression and conditional targets</a></li><li><a href="03-decisions.html">4. Can a better estimate lead to a worse decision?</a></li></ol><p class="contents-part">Part III: Estimation, uncertainty, and testing</p><ol class="contents-chapters"><li><a href="07-limits.html">5. Sampling limits and asymptotic approximations</a></li><li><a href="08-confidence.html">6. Likelihood asymptotics and confidence sets</a></li><li><a href="09-testing.html" aria-current="page">7. Hypothesis Testing as a Statistical Procedure</a></li><li><a href="06-bayes.html">8. Bayesian inference and predictive uncertainty</a></li></ol><p class="contents-part">Part IV: Shrinkage and regularized regression</p><ol class="contents-chapters"><li><a href="12-shrinkage.html">9. Empirical Bayes and the geometry of shrinkage</a></li><li><a href="regularization-association.html">10. Regularization, bias correction, and association inference</a></li></ol><p class="contents-part">Part V: Association claims and multiplicity</p><ol class="contents-chapters"><li><a href="14-multiplicity.html">11. Multiplicity, simultaneous claims, and false discoveries</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#specify-a-rule-before-judging-its-outcome">7.1 A testing rule and its error probabilities</a></li><li><a href="#exact-calibration-by-enumerating-the-count">7.2 Exact calibration by enumerating the count</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#why-likelihood-ratios-select-the-upper-tail">7.3 Why likelihood ratios select the upper tail</a></li><li><a href="#boundary-randomization-and-honest-power-comparisons">7.4 Boundary randomization and honest power comparisons</a></li><li><a href="#a-p-value-is-a-calibrated-function-of-the-data">7.5 A p-value is a calibrated function of the data</a></li><li><a href="#score-wald-and-likelihood-ratio-an-approximation-audit">7.6 Score, Wald, and likelihood ratio: an approximation audit</a></li><li><a href="#from-a-tail-calculation-to-a-scientific-interpretation">7.7 From a tail calculation to a scientific interpretation</a></li><li><a href="#exercises">7.8 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Statistical Inference</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 7</span></p><div class="chapter-content"><h1 id="i9-chapter">Chapter 7. Hypothesis Testing as a Statistical Procedure</h1>
+<p>A point estimate reports a plausible parameter value, and a
+confidence set retains a range of values under a coverage procedure. A
+hypothesis test asks a narrower question: do the observations reject a
+specified set of parameter values under a rule with a controlled error
+probability? We return to the Bernoulli count to construct such a rule
+and check its operating characteristics for every possible sample.</p>
+<p>Suppose a scientifically specified reference probability is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>0</mn></msub><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p_0=0.15</annotation></semantics></math></span>.
+A study records events in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>20</mn></mrow><annotation encoding="application/x-tex">n=20</annotation></semantics></math></span>
+independently sampled individuals. The question is whether their common
+event probability exceeds that reference. An observed proportion of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.30</mn><annotation encoding="application/x-tex">0.30</annotation></semantics></math></span>
+is twice the reference, but that ratio alone supplies neither an error
+guarantee nor an assessment of practical importance. We need to
+formulate the null, determine what observations count against it, and
+examine the procedure under both null and alternative distributions. The
+reference value is illustrative; it is not a clinical treatment
+threshold.</p>
+<p>We first derive an exact procedure in the Bernoulli model.
+Approximation can then be evaluated against its actual rejection
+probability, using the confidence-set and likelihood calculations from
+Chapter <a href="08-confidence.html#i8-chapter" data-reference-type="ref" data-reference="i8-chapter">6</a>.</p>
+<h2 id="specify-a-rule-before-judging-its-outcome">7.1 A testing rule and
+its error probabilities</h2>
+<p>Retain
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>X</mi><mi>n</mi></msub><mover><mo>∼</mo><mrow><mi mathvariant="normal">i</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">d</mi></mrow></mover><mo>Bernoulli</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">X_1,\ldots,X_n\stackrel{\mathrm{iid}}\sim\operatorname{Bernoulli}(p)</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>X</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">K=\sum_iX_i</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>=</mo><mi>K</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">\widehat p=K/n</annotation></semantics></math></span>.
+The hypotheses are
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mn>0</mn></msub><mo>:</mo><mi>p</mi><mo>≤</mo><msub><mi>p</mi><mn>0</mn></msub><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>H</mi><mn>1</mn></msub><mo>:</mo><mi>p</mi><mo>&gt;</mo><msub><mi>p</mi><mn>0</mn></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">H_0:p\le p_0,\qquad H_1:p&gt;p_0.
+ \label{i9-hypotheses}</annotation></semantics></math><span id="i9-hypotheses" class="equation-anchor"></span><span class="equation-number">(7.1)</span></span> The null is
+composite: it contains every probability at or below the reference. An
+event is encoded by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>i</mi></msub><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">X_i=1</annotation></semantics></math></span>,
+so larger counts provide evidence in the stated alternative direction.
+Reversing the encoding would require reversing the rejection rule, not
+merely reusing its numerical cutoff.</p>
+<p>A test is a function
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ϕ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">\phi(X)\in[0,1]</annotation></semantics></math></span>.
+It gives the conditional probability of rejection at the observed
+sample. A nonrandomized test has values zero and one; a randomized test
+also uses an independent random device when its value lies strictly
+between them. Its power function is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>β</mi><mi>ϕ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>𝔼</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">{</mo><mi>ϕ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="2.0em"></mspace><mo>size</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>ϕ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>sup</mo><mrow><mi>p</mi><mo>≤</mo><msub><mi>p</mi><mn>0</mn></msub></mrow></munder><msub><mi>β</mi><mi>ϕ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\beta_\phi(p)=\mathbb{E}_p\{\phi(X)\},\qquad
+ \operatorname{size}(\phi)=\sup_{p\le p_0}\beta_\phi(p).
+ \label{i9-power-size}</annotation></semantics></math><span id="i9-power-size" class="equation-anchor"></span><span class="equation-number">(7.2)</span></span> We call it level
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>
+if its size is at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>.
+Size is the actual worst-case rejection probability under the null;
+level is an upper bound promised by the procedure. At an alternative
+value,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>β</mi><mi>ϕ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\beta_\phi(p)</annotation></semantics></math></span>
+is power and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msub><mi>β</mi><mi>ϕ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">1-\beta_\phi(p)</annotation></semantics></math></span>
+is the probability of failing to reject. At a null value, rejection is a
+type I error. These are probabilities over repeated entire experiments,
+not probabilities assigned to the truth of the observed hypothesis.</p>
+<p>The model also states what is repeated. The sample size is fixed in
+advance, the observations are independent, and they share one event
+probability. Dependence, unequal risks, outcome-selected sampling, or
+optional stopping changes the count distribution. A small nominal tail
+probability computed from the wrong distribution cannot repair those
+changes. Nor does a one-sample test of a proportion establish that an
+exposure caused the events. The inferential target here is one
+population probability under a sampling model.</p>
+<p>Failure to reject is a procedural outcome, rather than proof that
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>≤</mo><msub><mi>p</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">p\le p_0</annotation></semantics></math></span>.
+Alternatives near
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mn>0</mn></msub><annotation encoding="application/x-tex">p_0</annotation></semantics></math></span>
+can be difficult to distinguish at this sample size. Conversely, a
+sufficiently large sample can detect a scientifically negligible
+increase. A useful report therefore combines the estimate, a compatible
+uncertainty assessment, the prespecified testing question, and the
+operating characteristics relevant to meaningful alternatives. The test
+should not replace the scientific question with a binary label.</p>
+<h2 id="exact-calibration-by-enumerating-the-count">7.2 Exact calibration by
+enumerating the count</h2>
+<p>Consider the upper-tail rule
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ϕ</mi><mi>c</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>K</mi><mo>≥</mo><mi>c</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\phi_c(K)=\mathbf{1}\{K\ge c\}</annotation></semantics></math></span>.
+Its rejection probability is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>β</mi><mi>c</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munderover><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mi>c</mi></mrow><mi>n</mi></munderover><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mi>n</mi><mi>k</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>p</mi><mi>k</mi></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>n</mi><mo>−</mo><mi>k</mi></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\beta_c(p)=\sum_{k=c}^{n}\binom nk p^k(1-p)^{n-k}.
+ \label{i9-upper-power}</annotation></semantics></math><span id="i9-upper-power" class="equation-anchor"></span><span class="equation-number">(7.3)</span></span> The expression
+is exact for every
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+To show that its largest null probability occurs at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mn>0</mn></msub><annotation encoding="application/x-tex">p_0</annotation></semantics></math></span>,
+use independent
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>U</mi><mi>i</mi></msub><mo>∼</mo><mo>Uniform</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">U_i\sim\operatorname{Uniform}(0,1)</annotation></semantics></math></span>
+and construct
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>U</mi><mi>i</mi></msub><mo>≤</mo><mi>p</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">X_i(p)=\mathbf{1}\{U_i\le p\}</annotation></semantics></math></span>.
+For each realized vector of uniforms,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">K(p)</annotation></semantics></math></span>
+cannot decrease when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+increases. Hence
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>K</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≥</mo><mi>c</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\mathbf{1}\{K(p)\ge c\}</annotation></semantics></math></span>
+and its expectation are nondecreasing. This coupling argument
+establishes the composite-null calibration without differentiating a
+long binomial sum.</p>
+<p>Choose the smallest integer cutoff with an acceptable tail:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mi>α</mi></msub><mo>=</mo><mo>min</mo><mo stretchy="false" form="prefix">{</mo><mi>c</mi><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mi>…</mi><mo>,</mo><mi>n</mi><mo>+</mo><mn>1</mn><mo stretchy="false" form="postfix">}</mo><mo>:</mo><msub><mi>ℙ</mi><msub><mi>p</mi><mn>0</mn></msub></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>≥</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><mi>α</mi><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">c_\alpha=\min\{c\in\{0,\ldots,n+1\}:\mathbb{P}_{p_0}(K\ge c)\le\alpha\}.
+ \label{i9-cutoff}</annotation></semantics></math><span id="i9-cutoff" class="equation-anchor"></span><span class="equation-number">(7.4)</span></span> The value
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>+</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">n+1</annotation></semantics></math></span>
+describes never rejecting, so the set is never empty. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>20</mn></mrow><annotation encoding="application/x-tex">n=20</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>0</mn></msub><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p_0=0.15</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><mo>=</mo><mn>0.05</mn></mrow><annotation encoding="application/x-tex">\alpha=0.05</annotation></semantics></math></span>,
+the cutoff is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>7</mn><annotation encoding="application/x-tex">7</annotation></semantics></math></span>.
+Its size is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.02193510</mn><annotation encoding="application/x-tex">0.02193510</annotation></semantics></math></span>.
+Reducing the cutoff to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>6</mn><annotation encoding="application/x-tex">6</annotation></semantics></math></span>
+would give size
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.06730797</mn><annotation encoding="application/x-tex">0.06730797</annotation></semantics></math></span>,
+exceeding the promised level. No rounding to “about five percent” makes
+that latter rule a
+level-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>
+test.</p>
+<p>This gap is a consequence of discreteness. A nonrandomized upper-tail
+rule can only choose among a finite set of rejection probabilities. For
+the conservative rule, power at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.30</mn></mrow><annotation encoding="application/x-tex">p=0.30</annotation></semantics></math></span>
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.39199019</mn><annotation encoding="application/x-tex">0.39199019</annotation></semantics></math></span>;
+power at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.40</mn></mrow><annotation encoding="application/x-tex">p=0.40</annotation></semantics></math></span>
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.74998933</mn><annotation encoding="application/x-tex">0.74998933</annotation></semantics></math></span>.
+Thus the observed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>6</mn></mrow><annotation encoding="application/x-tex">K=6</annotation></semantics></math></span>,
+although twice the reference in proportion, does not reject with the
+exact
+level-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>
+rule. The correct interpretation is that this count does not pass the
+prespecified rejection criterion. It does not assert equality of
+probabilities or absence of a meaningful effect.</p>
+<p>The R implementation searches count states rather than using a
+rounded normal quantile:</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# exact testing and approximate calibration in a Bernoulli model.
+out &lt;- "generated"; out.dir &lt;- out
+dir.create(out,recursive=TRUE,showWarnings=FALSE)
+p0 &lt;- 0.15; alpha &lt;- 0.05; n &lt;- 20L
+# An exact upper-tail cutoff; c = n+1 means that no count rejects.
+upper.test &lt;- function(n, p0, alpha) {
+  k &lt;- 0:n
+  mass &lt;- dbinom(k, n, p0)
+  tails &lt;- c(pbinom(k - 1, n, p0, lower.tail = FALSE), 0)
+  c &lt;- which(tails &lt;= alpha)[1] - 1L
+  boundary &lt;- c - 1L
+  gamma &lt;- if (boundary &gt;= 0L) (alpha - tails[c + 1L]) / mass[boundary + 1L] else 0
+  stopifnot(gamma &gt;= -1e-12, gamma &lt;= 1 + 1e-12)
+  phi &lt;- as.numeric(k &gt;= c)
+  if (boundary &gt;= 0L) phi[boundary + 1L] &lt;- gamma
+  list(c = c, boundary = boundary, gamma = gamma,
+       size = tails[c + 1L], phi = phi)
+}
+test &lt;- upper.test(n, p0, alpha)
+k &lt;- 0:n; q &lt;- k/n; null.mass &lt;- dbinom(k, n, p0)
+exact.p &lt;- pbinom(k - 1, n, p0, lower.tail = FALSE)
+z.score &lt;- (q - p0) / sqrt(p0 * (1 - p0) / n)
+# Wald is undefined at q=0 or q=1. Limits below implement a comparison rule,
+# rather than turning a zero standard error into a valid normal approximation.
+z.wald &lt;- rep(NA_real_, length(k))
+interior &lt;- k &gt; 0 &amp; k &lt; n
+z.wald[interior] &lt;- (q[interior] - p0) / sqrt(q[interior] * (1-q[interior]) / n)
+z.wald[k == 0] &lt;- -Inf; z.wald[k == n] &lt;- Inf
+xlogratio &lt;- function(x, y) {
+  ans &lt;- numeric(length(x)); pos &lt;- x &gt; 0
+  ans[pos] &lt;- x[pos] * log(x[pos]/y)
+  ans
+}
+dev &lt;- 2*n*(xlogratio(q, p0) + xlogratio(1-q, 1-p0))
+z.lr &lt;- sign(q-p0)*sqrt(pmax(dev, 0))
+critical &lt;- qnorm(1-alpha)
+comparison &lt;- data.frame(count = k, proportion = q, null.mass = null.mass,
+  exact.p = exact.p, score.stat = z.score, wald.stat = z.wald, signed.root.lr = z.lr,
+  score.p = pnorm(z.score, lower.tail = FALSE),
+  wald.p = pnorm(z.wald, lower.tail = FALSE),
+  lr.p = pnorm(z.lr, lower.tail = FALSE),
+  exact.reject = as.integer(k &gt;= test$c),
+  randomized.reject.probability = test$phi,
+  score.reject = as.integer(z.score &gt; critical),
+  wald.reject = as.integer(z.wald &gt; critical),
+  lr.reject = as.integer(z.lr &gt; critical))
+write.csv(comparison, file.path(out.dir, "ch09-comparison.csv"), row.names = FALSE)
+# Entire power curves are exact binomial sums, without simulation error.
+p.grid &lt;- seq(0, 1, by = 0.005)
+operating &lt;- do.call(rbind, lapply(c(20L, 40L, 80L), function(nn) {
+  do.call(rbind, lapply(c(0.01, 0.05, 0.10), function(aa) {
+    tt &lt;- upper.test(nn, p0, aa)
+    power &lt;- pbinom(tt$c-1, nn, p.grid, lower.tail = FALSE)
+    randomized.power &lt;- power + tt$gamma*dbinom(tt$boundary, nn, p.grid)
+    data.frame(n = nn, alpha = aa, null.boundary = p0, p = p.grid,
+      cutoff = tt$c, boundary = tt$boundary, gamma = tt$gamma,
+      exact.size = tt$size, conservative.power = power,
+      randomized.power = randomized.power)
+  }))
+}))
+write.csv(operating, file.path(out.dir, "ch09-operating.csv"), row.names = FALSE)
+# A separately specified uniform prior gives a posterior hypothesis probability.
+posterior.null &lt;- pbeta(p0, 6+1, n-6+1)
+stopifnot(abs(posterior.null - 0.028741031856184)&lt;1e-10)
+# Quantifying invalid post-selection: selecting one of two independent tests.
+selected.size &lt;- 1-(1-test$size)^2
+approx.size &lt;- function(reject) sum(null.mass[reject == 1])
+summary &lt;- data.frame(procedure = c("Exact nonrandomized", "Exact randomized", "Score-normal", "Wald-normal", "Signed-root-LR-normal"),
+  size = c(test$size, sum(null.mass*test$phi),
+    approx.size(comparison$score.reject), approx.size(comparison$wald.reject),
+    approx.size(comparison$lr.reject)))
+write.csv(summary, file.path(out.dir, "ch09-size.csv"), row.names = FALSE)
+# Exact p-values are super-uniform under every p&lt;=p0.
+for (p in seq(0, p0, length.out = 31)) {
+  mass &lt;- dbinom(k, n, p)
+  for (a in seq(0, 1, length.out = 101))
+    stopifnot(sum(mass[exact.p &lt;= a]) &lt;= a + 2e-12)
+}
+stopifnot(all(diff(exact.p) &lt;= 1e-12), abs(sum(null.mass)-1)&lt;1e-12,
+          test$size &lt;= alpha, abs(sum(null.mass*test$phi)-alpha)&lt;1e-12,
+          identical(comparison$score.reject,as.integer(k&gt;=6)),
+          identical(comparison$wald.reject,as.integer(k&gt;=7)),
+          identical(comparison$lr.reject,as.integer(k&gt;=6)),
+          all(is.finite(dev)), all(dev &gt;= -1e-12),
+          abs(exact.p[7]-0.067307974185774)&lt;1e-12)
+# Monotone power; randomized threshold improves upon its conservative version.
+for (nn in c(20L,40L,80L)) for (aa in c(.01,.05,.10)) {
+  d &lt;- operating[operating$n == nn &amp; operating$alpha == aa, ]
+  stopifnot(all(diff(d$conservative.power) &gt;= -1e-12),
+    all(diff(d$randomized.power) &gt;= -1e-12),
+    all(d$randomized.power &gt;= d$conservative.power - 1e-12))
+}
+# NP inequality checked against many arbitrary randomized tests with level &lt;=alpha.
+set.seed(602917)
+for (p1 in c(.20,.30,.50,.80)) {
+  alt &lt;- dbinom(k, n, p1)
+  for (i in seq_len(1000L)) {
+    candidate &lt;- runif(n+1)
+    candidate &lt;- candidate*min(1, alpha/sum(null.mass*candidate))
+    stopifnot(sum(alt*test$phi) &gt;= sum(alt*candidate)-1e-12)
+  }
+}
+# Known-variance normal test supplies an exact continuous benchmark.
+normal.power &lt;- function(mu, mu0, sigma, n, alpha) {
+  pnorm(qnorm(1-alpha) - sqrt(n)*(mu-mu0)/sigma, lower.tail = FALSE)
+}
+normal.n &lt;- ceiling(((qnorm(.95)+qnorm(.80))/.5)^2)
+stopifnot(abs(normal.power(0,0,1,20,.05)-.05)&lt;1e-12,
+          normal.n == 25L, normal.power(.5,0,1,normal.n,.05) &gt;= .8,
+          normal.power(.5,0,1,normal.n-1,.05) &lt; .8)
+# Tables are generated by the executable script to keep R and prose aligned.
+con &lt;- file(file.path(out.dir, "ch09-size.tex"), "w")
+writeLines(c("\\begin{tabular}{lr}\\toprule", "Procedure &amp; Exact null rejection probability \\\\", "\\midrule"), con)
+for (i in seq_len(nrow(summary)))
+  writeLines(sprintf("%s &amp; %.5f \\\\", summary$procedure[i], summary$size[i]), con)
+writeLines(c("\\bottomrule", "\\end{tabular}"), con); close(con)
+make.figure &lt;- function(file, ext) {
+  path &lt;- file.path(out.dir, paste0(file,".",ext))
+  if (ext=="pdf") cairo_pdf(path,width=7,height=3.8) else png(path,width=1400,height=760,res=200)
+  par(mar=c(4,4,1,1),mfrow=c(1,2))
+  d &lt;- operating[operating$n == 20 &amp; operating$alpha == .05,]
+  plot(d$p,d$conservative.power,type="l",lwd=2,col="#002D72",ylim=c(0,1),
+       xlab="True event probability p",ylab="Rejection probability")
+  lines(d$p,d$randomized.power,lwd=2,lty=2,col="#6CACE4")
+  abline(v=p0,lty=3,col="gray50"); abline(h=alpha,lty=3,col="gray50")
+  legend("bottomright",c("Nonrandomized","Randomized"),lty=c(1,2),lwd=2,
+         col=c("#002D72","#6CACE4"),bty="n",cex=.8)
+  for (i in seq_along(c(20,40,80))) {
+    nn &lt;- c(20,40,80)[i]
+    dd &lt;- operating[operating$n==nn &amp; operating$alpha==.05,]
+    if(i==1) plot(dd$p,dd$randomized.power,type="l",lwd=2,col="#002D72",ylim=c(0,1),
+       xlab="True event probability p",ylab="Rejection probability")
+    else lines(dd$p,dd$randomized.power,lwd=2,lty=i,col=c("#002D72","#0072CE","gray40")[i])
+  }
+  abline(v=p0,lty=3,col="gray50");abline(h=alpha,lty=3,col="gray50")
+  legend("bottomright",paste("n =",c(20,40,80)),lty=1:3,lwd=2,
+    col=c("#002D72","#0072CE","gray40"),bty="n",cex=.8)
+  dev.off()
+}
+for(ext in c("pdf","png")) make.figure("ch09-power",ext)
+writeLines(c("ch09-operating.csv: n, alpha, null.boundary, p, cutoff, boundary, gamma, exact.size, conservative.power, randomized.power.",
+ "ch09-comparison.csv: each possible count and its null mass, exact and approximate p-values, rejection rules.",
+ "ch09-size.csv: exact null probabilities for five rules; no simulation is used.",
+ "Wald statistics at endpoint counts are stored as +/-Inf, and their tail probabilities are finite.",
+ "The count model fixes n and assumes independent, identically distributed Bernoulli observations.",
+ "Power curves are finite sums of binomial probabilities."),
+ file.path(out.dir,"ch09-schema.txt"))
+print(summary)
+writeLines(capture.output(sessionInfo()),file.path(out.dir,"ch09-session-info.txt"))
+
+# Exact discrete sample-size design at a specified meaningful alternative.
+design &lt;- do.call(rbind,lapply(1:200,function(nn) {
+  rule &lt;- upper.test(nn,.15,.05)
+  data.frame(n=nn,cutoff=rule$c,size=rule$size,
+    power=pbinom(rule$c-1,nn,.30,lower.tail=FALSE))
+}))
+first.design &lt;- which(design$power&gt;=.80)[1]
+stopifnot(design$n[first.design]==48L,design$cutoff[first.design]==12L,
+  all(design$power[design$n&lt;48]&lt;.80),all(design$size&lt;=.05+1e-12),
+  design$power[design$n==49]&lt;design$power[design$n==48])
+write.csv(design,file.path(out.dir,"ch09-exact-design.csv"),row.names=FALSE)
+print(design[design$n %in% c(48L,49L),])
+
+
+# From first principles: enumerate the prespecified upper count tail.
+k.obs &lt;- 6L; n.obs &lt;- 20L; p.ref &lt;- .15
+count.states &lt;- 0:n.obs
+null.prob &lt;- dbinom(count.states,n.obs,p.ref)
+upper.direct &lt;- sum(null.prob[count.states &gt;= k.obs])
+# Two-sided orderings are separate choices; neither changes the data.
+lower.direct &lt;- sum(null.prob[count.states &lt;= k.obs])
+equal.tail.direct &lt;- min(1,2*min(upper.direct,lower.direct))
+probability.direct &lt;- sum(null.prob[
+  null.prob &lt;= null.prob[k.obs+1]*(1+1e-7)])
+
+# Standard R workflow: specify the scientific direction rather than a default.
+upper.fit &lt;- stats::binom.test(k.obs,n.obs,p=p.ref,
+                               alternative="greater",conf.level=.95)
+two.sided.fit &lt;- stats::binom.test(k.obs,n.obs,p=p.ref,
+                                   alternative="two.sided",conf.level=.95)
+c(upper.tail=upper.fit$p.value,
+  two.sided.probability.order=two.sided.fit$p.value,
+  two.sided.equal.tail=equal.tail.direct)
+
+stopifnot(abs(upper.direct-upper.fit$p.value)&lt;1e-12,
+  abs(probability.direct-two.sided.fit$p.value)&lt;1e-12)
+# Compare all count states, including symmetric mass ties and boundaries.
+for(nn in c(1L,10L,20L,50L)) for(pp in c(.01,.15,.30,.50,.99)) {
+  mass &lt;- dbinom(0:nn,nn,pp)
+  for(kk in 0:nn) {
+    tails &lt;- c(sum(mass[(0:nn)&gt;=kk]),sum(mass[(0:nn)&lt;=kk]))
+    fitted &lt;- c(stats::binom.test(kk,nn,p=pp,alternative="greater")$p.value,
+                stats::binom.test(kk,nn,p=pp,alternative="less")$p.value)
+    probability.order &lt;- sum(mass[mass &lt;= mass[kk+1]*(1+1e-7)])
+    p.two &lt;- stats::binom.test(kk,nn,p=pp,alternative="two.sided")$p.value
+    stopifnot(max(abs(tails-fitted))&lt;1e-12,
+              abs(probability.order-p.two)&lt;1e-12)
+  }
+}
+testing.workflow &lt;- data.frame(
+  procedure=c("Upper tail: direct", "Upper tail: binom.test",
+    "Two-sided: doubled smaller tail", "Two-sided: probability ordering"),
+  p.value=c(upper.direct,upper.fit$p.value,equal.tail.direct,
+            two.sided.fit$p.value))
+write.csv(testing.workflow,file.path(out.dir,"ch09-r-workflow.csv"),row.names=FALSE)
+capture.output(print(testing.workflow,digits=8),
+  file=file.path(out.dir,"ch09-r-workflow-output.txt"))
+print(testing.workflow,digits=8)
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>upper.test <span class="ot">&lt;-</span> <span class="cf">function</span>(n, p0, alpha) {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  k <span class="ot">&lt;-</span> <span class="dv">0</span><span class="sc">:</span>n</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  mass <span class="ot">&lt;-</span> <span class="fu">dbinom</span>(k, n, p0)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  tails <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">pbinom</span>(k <span class="sc">-</span> <span class="dv">1</span>, n, p0, <span class="at">lower.tail =</span> <span class="cn">FALSE</span>), <span class="dv">0</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  c <span class="ot">&lt;-</span> <span class="fu">which</span>(tails <span class="sc">&lt;=</span> alpha)[<span class="dv">1</span>] <span class="sc">-</span> <span class="dv">1</span><span class="dt">L</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  boundary <span class="ot">&lt;-</span> c <span class="sc">-</span> <span class="dv">1</span><span class="dt">L</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  gamma <span class="ot">&lt;-</span> <span class="cf">if</span> (boundary <span class="sc">&gt;=</span> <span class="dv">0</span><span class="dt">L</span>) (alpha <span class="sc">-</span> tails[c <span class="sc">+</span> <span class="dv">1</span><span class="dt">L</span>]) <span class="sc">/</span> mass[boundary <span class="sc">+</span> <span class="dv">1</span><span class="dt">L</span>] <span class="cf">else</span> <span class="dv">0</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(gamma <span class="sc">&gt;=</span> <span class="sc">-</span><span class="fl">1e-12</span>, gamma <span class="sc">&lt;=</span> <span class="dv">1</span> <span class="sc">+</span> <span class="fl">1e-12</span>)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  phi <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(k <span class="sc">&gt;=</span> c)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (boundary <span class="sc">&gt;=</span> <span class="dv">0</span><span class="dt">L</span>) phi[boundary <span class="sc">+</span> <span class="dv">1</span><span class="dt">L</span>] <span class="ot">&lt;-</span> gamma</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">c =</span> c, <span class="at">boundary =</span> boundary, <span class="at">gamma =</span> gamma,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>       <span class="at">size =</span> tails[c <span class="sc">+</span> <span class="dv">1</span><span class="dt">L</span>], <span class="at">phi =</span> phi)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>test <span class="ot">&lt;-</span> <span class="fu">upper.test</span>(n, p0, alpha)</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>k <span class="ot">&lt;-</span> <span class="dv">0</span><span class="sc">:</span>n; q <span class="ot">&lt;-</span> k<span class="sc">/</span>n; null.mass <span class="ot">&lt;-</span> <span class="fu">dbinom</span>(k, n, p0)</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>exact.p <span class="ot">&lt;-</span> <span class="fu">pbinom</span>(k <span class="sc">-</span> <span class="dv">1</span>, n, p0, <span class="at">lower.tail =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<p>Here <code>pbinom(c-1,n,p0,lower.tail=FALSE)</code> computes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><msub><mi>p</mi><mn>0</mn></msub></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>≥</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}_{p_0}(K\ge c)</annotation></semantics></math></span>.
+The subtraction by one matters. Using the tail beyond
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>c</mi><annotation encoding="application/x-tex">c</annotation></semantics></math></span>
+would omit the boundary count, changing both the rejection probability
+and the stated rule. A diagnostic calculation should compare the cutoff
+with the adjacent cutoff, since that verifies why a less conservative
+integer choice is unavailable.</p>
+<h2 id="why-likelihood-ratios-select-the-upper-tail">7.3 Why likelihood
+ratios select the upper tail</h2>
+<p>A valid level bound does not by itself imply good discrimination. To
+compare procedures, first fix a simple alternative
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>1</mn></msub><mo>&gt;</mo><msub><mi>p</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">p_1&gt;p_0</annotation></semantics></math></span>.
+The ratio of count probabilities is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><msub><mi>f</mi><msub><mi>p</mi><mn>1</mn></msub></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><msub><mi>f</mi><msub><mi>p</mi><mn>0</mn></msub></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mrow><mn>1</mn><mo>−</mo><msub><mi>p</mi><mn>1</mn></msub></mrow><mrow><mn>1</mn><mo>−</mo><msub><mi>p</mi><mn>0</mn></msub></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mi>n</mi></msup><msup><mrow><mo stretchy="true" form="prefix">{</mo><mfrac><mrow><msub><mi>p</mi><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><msub><mi>p</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo stretchy="true" form="postfix">}</mo></mrow><mi>k</mi></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{f_{p_1}(k)}{f_{p_0}(k)}
+ =\left(\frac{1-p_1}{1-p_0}\right)^n
+  \left\{\frac{p_1(1-p_0)}{p_0(1-p_1)}\right\}^{k}.
+ \label{i9-mlr}</annotation></semantics></math><span id="i9-mlr" class="equation-anchor"></span><span class="equation-number">(7.5)</span></span> For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><msub><mi>p</mi><mn>0</mn></msub><mo>&lt;</mo><msub><mi>p</mi><mn>1</mn></msub><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;p_0&lt;p_1&lt;1</annotation></semantics></math></span>,
+the term in braces exceeds one. Therefore larger counts have larger
+alternative-to-null likelihood ratios. The count orders observations by
+how strongly they distinguish these two distributions.</p>
+<p>The Neyman–Pearson argument turns that ordering into an optimality
+statement. Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mn>0</mn></msub><mo>,</mo><msub><mi>f</mi><mn>1</mn></msub></mrow><annotation encoding="application/x-tex">f_0,f_1</annotation></semantics></math></span>
+be two densities with respect to a common measure. Suppose a rule
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>ϕ</mi><mo>*</mo></msup><annotation encoding="application/x-tex">\phi^*</annotation></semantics></math></span>
+rejects where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mn>1</mn></msub><mo>&gt;</mo><mi>a</mi><msub><mi>f</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">f_1&gt;af_0</annotation></semantics></math></span>,
+does not reject where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mn>1</mn></msub><mo>&lt;</mo><mi>a</mi><msub><mi>f</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">f_1&lt;af_0</annotation></semantics></math></span>,
+and may randomize on equality, with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mn>0</mn></msub><msup><mi>ϕ</mi><mo>*</mo></msup><mo>=</mo><mi>α</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}_0\phi^*=\alpha</annotation></semantics></math></span>.
+For any competitor
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ϕ</mi><annotation encoding="application/x-tex">\phi</annotation></semantics></math></span>
+satisfying
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mn>0</mn></msub><mi>ϕ</mi><mo>≤</mo><mi>α</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}_0\phi\le\alpha</annotation></semantics></math></span>,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><msub><mi>𝔼</mi><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>ϕ</mi><mo>*</mo></msup><mo>−</mo><mi>ϕ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mo>∫</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>ϕ</mi><mo>*</mo></msup><mo>−</mo><mi>ϕ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>f</mi><mn>1</mn></msub><mo>−</mo><mi>a</mi><msub><mi>f</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>a</mi><mo stretchy="false" form="prefix">{</mo><msub><mi>𝔼</mi><mn>0</mn></msub><msup><mi>ϕ</mi><mo>*</mo></msup><mo>−</mo><msub><mi>𝔼</mi><mn>0</mn></msub><mi>ϕ</mi><mo stretchy="false" form="postfix">}</mo></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"></mtd><mtd columnalign="left" style="text-align: left"><mo>≥</mo><mn>0</mn><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+ \mathbb{E}_1(\phi^*-\phi)
+ &amp;=\int(\phi^*-\phi)(f_1-af_0)
+   +a\{\mathbb{E}_0\phi^*-\mathbb{E}_0\phi\}\\
+ &amp;\ge0.
+ \label{i9-np-proof}
+\end{aligned}</annotation></semantics></math><span id="i9-np-proof" class="equation-anchor"></span><span class="equation-number">(7.6)</span></span> In the first integral the
+factors have the same sign: where the likelihood ratio is large,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>ϕ</mi><mo>*</mo></msup><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\phi^*=1</annotation></semantics></math></span>;
+where it is small,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>ϕ</mi><mo>*</mo></msup><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\phi^*=0</annotation></semantics></math></span>.
+The second term is nonnegative by the level constraint and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>≥</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">a\ge0</annotation></semantics></math></span>.
+Consequently
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>ϕ</mi><mo>*</mo></msup><annotation encoding="application/x-tex">\phi^*</annotation></semantics></math></span>
+has at least as much power as any
+level-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>
+competitor for the chosen simple alternative. This proof compares
+complete procedures; it is not a claim that a large likelihood ratio
+makes the null have a small posterior probability.</p>
+<p>For the Bernoulli problem, every alternative
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>1</mn></msub><mo>&gt;</mo><msub><mi>p</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">p_1&gt;p_0</annotation></semantics></math></span>
+gives the same ordering in <a href="#i9-mlr" data-reference-type="eqref" data-reference="i9-mlr">(7.5)</a>. A
+size-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>
+upper-tail test with suitable boundary randomization is therefore most
+powerful for each such alternative simultaneously. Its monotone power
+also makes it level
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>
+over the whole composite null. This yields a uniformly most powerful
+test for <a href="#i9-hypotheses" data-reference-type="eqref" data-reference="i9-hypotheses">(7.1)</a>, within the class of
+tests that permits randomization.</p>
+<p>The count loses no information for this comparison. Conditional on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mi>k</mi></mrow><annotation encoding="application/x-tex">K=k</annotation></semantics></math></span>,
+every binary sequence with that count has probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mi>n</mi><mi>k</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">1/\binom nk</annotation></semantics></math></span>,
+independent of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+Replacing any sample-based rule by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mo stretchy="false" form="prefix">{</mo><mi>ϕ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>∣</mo><mi>K</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\mathbb{E}\{\phi(X)\mid K\}</annotation></semantics></math></span>
+preserves its rejection probability at every
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+This is the testing analogue of conditioning on a sufficient statistic.
+It also reveals that seemingly nonrandomized choices among equal-count
+sequences can act as partial rejection after conditioning. We should not
+label an integer cutoff uniformly most powerful at a larger nominal
+level merely because we chose not to randomize.</p>
+<h2 id="boundary-randomization-and-honest-power-comparisons">7.4 Boundary
+randomization and honest power comparisons</h2>
+<p>Boundary randomization uses the remaining type I error allowance.
+Reject at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>≥</mo><mn>7</mn></mrow><annotation encoding="application/x-tex">K\ge7</annotation></semantics></math></span>,
+reject with probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>γ</mi><annotation encoding="application/x-tex">\gamma</annotation></semantics></math></span>
+at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>6</mn></mrow><annotation encoding="application/x-tex">K=6</annotation></semantics></math></span>,
+and otherwise do not reject. Choose
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>γ</mi><mo>=</mo><mfrac><mrow><mi>α</mi><mo>−</mo><msub><mi>ℙ</mi><msub><mi>p</mi><mn>0</mn></msub></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>≥</mo><mn>7</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><msub><mi>ℙ</mi><msub><mi>p</mi><mn>0</mn></msub></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>=</mo><mn>6</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>=</mo><mn>0.61853916</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\gamma=\frac{\alpha-\mathbb{P}_{p_0}(K\ge7)}{\mathbb{P}_{p_0}(K=6)}
+       =0.61853916.
+ \label{i9-randomization}</annotation></semantics></math><span id="i9-randomization" class="equation-anchor"></span><span class="equation-number">(7.7)</span></span> Then
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><msub><mi>p</mi><mn>0</mn></msub></msub><mi>ϕ</mi><mo>=</mo><mi>α</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}_{p_0}\phi=\alpha</annotation></semantics></math></span>
+exactly and
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>β</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">n</mi><mi mathvariant="normal">d</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>ℙ</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>≥</mo><mn>7</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>γ</mi><msub><mi>ℙ</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>=</mo><mn>6</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\beta_{\mathrm{rand}}(p)=\mathbb{P}_p(K\ge7)+\gamma\mathbb{P}_p(K=6).
+ \label{i9-random-power}</annotation></semantics></math><span id="i9-random-power" class="equation-anchor"></span><span class="equation-number">(7.8)</span></span> Because the
+rejection function is nondecreasing in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math></span>,
+the coupling argument still controls the composite null. At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.30</mn></mrow><annotation encoding="application/x-tex">p=0.30</annotation></semantics></math></span>,
+power increases from
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.39199019</mn><annotation encoding="application/x-tex">0.39199019</annotation></semantics></math></span>
+to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.51052640</mn><annotation encoding="application/x-tex">0.51052640</annotation></semantics></math></span>;
+at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.40</mn></mrow><annotation encoding="application/x-tex">p=0.40</annotation></semantics></math></span>
+it increases from
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.74998933</mn><annotation encoding="application/x-tex">0.74998933</annotation></semantics></math></span>
+to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.82694284</mn><annotation encoding="application/x-tex">0.82694284</annotation></semantics></math></span>.</p>
+<p>Randomizing a substantive decision may be unappealing. Its value here
+is conceptual: it separates the statistical cost of discreteness from
+the shape of the best rejection ordering. The conservative rule remains
+valid and can be chosen for transparency. At its achieved size
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>α</mi><mo>*</mo></msub><mo>=</mo><mn>0.02193510</mn></mrow><annotation encoding="application/x-tex">\alpha_*=0.02193510</annotation></semantics></math></span>,
+it is a most powerful test against every higher-probability alternative.
+At nominal level
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>,
+the randomized procedure has a larger allowance and can improve power.
+Comparing power without reporting achieved size would confound those
+facts.</p>
+<figure id="i9-power-figure">
+<a href="../assets/inference/ch09-power.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch09-power.png" alt="Figure 7.1. Exact binomial power. Left: boundary randomization fills the
+unused level at
+n=20n=20.
+Right: randomized
+size-0.050.05
+rules for three sample sizes. Each curve is calculated by enumeration,
+not simulation. The vertical reference is
+p0=0.15p_0=0.15.">
+</a><figcaption>Figure 7.1. Exact binomial power. Left: boundary randomization fills the
+unused level at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>20</mn></mrow><annotation encoding="application/x-tex">n=20</annotation></semantics></math></span>.
+Right: randomized
+size-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>
+rules for three sample sizes. Each curve is calculated by enumeration,
+not simulation. The vertical reference is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>0</mn></msub><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p_0=0.15</annotation></semantics></math></span>.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch09-power.png">Open full-size figure</a></p></figure>
+<p>The right panel illustrates the design problem. We must specify an
+alternative worth detecting before choosing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>;
+“eighty percent power” is incomplete without that alternative, the
+rejection rule, and the level. Under discrete nonrandomized tests,
+increasing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+can occasionally move an integer cutoff enough to reduce power locally.
+Such irregularities are calibration effects, rather than evidence that
+information in an additional independent observation is intrinsically
+harmful. A procedure with more observations can always ignore them, but
+a particular automatically selected cutoff need not preserve every
+pointwise comparison.</p>
+<p>A fixed experiment cannot sharply separate probabilities immediately
+on opposite sides of the reference. For any count-based test, randomized
+or not, its power is a finite polynomial in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+and hence is continuous. In particular,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munder><mo>lim</mo><mrow><mi>p</mi><mo>↓</mo><msub><mi>p</mi><mn>0</mn></msub></mrow></munder><msub><mi>β</mi><mi>ϕ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>β</mi><mi>ϕ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>p</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><mi>α</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\lim_{p\downarrow p_0}\beta_\phi(p)=\beta_\phi(p_0)\le\alpha.
+ \label{i9-local-continuity}</annotation></semantics></math><span id="i9-local-continuity" class="equation-anchor"></span><span class="equation-number">(7.9)</span></span> Thus a
+level-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>
+test cannot have power
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.80</mn><annotation encoding="application/x-tex">0.80</annotation></semantics></math></span>
+uniformly over all
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>&gt;</mo><msub><mi>p</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">p&gt;p_0</annotation></semantics></math></span>
+at a fixed finite sample size. This is a structural limit rather than a
+defect of the chosen method. The practical design question needs a
+separation that matters scientifically, such as detecting
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.30</mn></mrow><annotation encoding="application/x-tex">p=0.30</annotation></semantics></math></span>
+against the reference
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.15</mn><annotation encoding="application/x-tex">0.15</annotation></semantics></math></span>.
+A prespecified interval of meaningful alternatives can also be examined
+rather than one convenient value. In either case, low power near the
+null boundary explains why a nonrejection is weak evidence for a broad
+claim of equivalence. An equivalence or noninferiority question requires
+its own hypotheses and scientifically justified margin; it is not
+obtained by reversing the verbal meaning of an ordinary
+nonrejection.</p>
+<p>Before inspecting Figure <a href="#i9-power-figure" data-reference-type="ref" data-reference="i9-power-figure">7.1</a>,
+predict how the curves change when the sample size or the level
+increases. At a given null boundary, greater power under alternatives
+should be examined together with the permitted null rejection
+probability. Moving a cutoff changes the procedure and its operating
+characteristics.</p>
+<p>An exact sample-size search makes the discrete design issue concrete.
+Suppose the design target is at least
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.80</mn><annotation encoding="application/x-tex">0.80</annotation></semantics></math></span>
+power at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.30</mn></mrow><annotation encoding="application/x-tex">p=0.30</annotation></semantics></math></span>,
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>0</mn></msub><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p_0=0.15</annotation></semantics></math></span>
+and a nonrandomized
+level-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>
+upper-tail rule. Using the function <code>upper.test</code> defined
+above, enumerate candidate sample sizes:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>design <span class="ot">&lt;-</span> <span class="fu">do.call</span>(rbind,<span class="fu">lapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">200</span>,<span class="cf">function</span>(nn) {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  rule <span class="ot">&lt;-</span> <span class="fu">upper.test</span>(nn,.<span class="dv">15</span>,.<span class="dv">05</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>(<span class="at">n=</span>nn,<span class="at">cutoff=</span>rule<span class="sc">$</span>c,<span class="at">size=</span>rule<span class="sc">$</span>size,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">power=</span><span class="fu">pbinom</span>(rule<span class="sc">$</span>c<span class="dv">-1</span>,nn,.<span class="dv">30</span>,<span class="at">lower.tail=</span><span class="cn">FALSE</span>))</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>}))</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>design[<span class="fu">which</span>(design<span class="sc">$</span>power<span class="sc">&gt;=</span>.<span class="dv">80</span>)[<span class="dv">1</span>],]</span></code></pre></div>
+<p>The first qualifying size is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>48</mn></mrow><annotation encoding="application/x-tex">n=48</annotation></semantics></math></span>,
+with cutoff 12, achieved size
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.04778017</mn><annotation encoding="application/x-tex">0.04778017</annotation></semantics></math></span>,
+and power
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.8185554</mn><annotation encoding="application/x-tex">0.8185554</annotation></semantics></math></span>.
+Applying the same cutoff-selection algorithm at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>49</mn></mrow><annotation encoding="application/x-tex">n=49</annotation></semantics></math></span>
+moves the cutoff to 13 and gives power
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.7498297</mn><annotation encoding="application/x-tex">0.7498297</annotation></semantics></math></span>.
+This decrease comes from recalibrating the discrete rule: a design with
+49 observations could retain the original test on its first 48
+observations and keep its power. A search should therefore evaluate
+every candidate in order, rather than use a binary search that assumes
+monotonic power. A final design report names the chosen rule and the
+meaningful alternative, not just the sample size.</p>
+<h2 id="a-p-value-is-a-calibrated-function-of-the-data">7.5 A p-value is a
+calibrated function of the data</h2>
+<p>For the upper-tail ordering define the exact p-value
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi mathvariant="normal">e</mi><mi mathvariant="normal">x</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">c</mi><mi mathvariant="normal">t</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>ℙ</mi><msub><mi>p</mi><mn>0</mn></msub></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>≥</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munderover><mo>∑</mo><mrow><mi>j</mi><mo>=</mo><mi>k</mi></mrow><mi>n</mi></munderover><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mi>n</mi><mi>j</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><msubsup><mi>p</mi><mn>0</mn><mi>j</mi></msubsup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>n</mi><mo>−</mo><mi>j</mi></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">P_{\mathrm{exact}}(k)=\mathbb{P}_{p_0}(K\ge k)
+ =\sum_{j=k}^n\binom njp_0^j(1-p_0)^{n-j}.
+ \label{i9-exact-p}</annotation></semantics></math><span id="i9-exact-p" class="equation-anchor"></span><span class="equation-number">(7.10)</span></span> It is the smallest
+level at which a nonrandomized upper-tail rule would reject the observed
+count, with rejection at equality. At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>6</mn></mrow><annotation encoding="application/x-tex">K=6</annotation></semantics></math></span>
+it equals
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.06730797</mn><annotation encoding="application/x-tex">0.06730797</annotation></semantics></math></span>.
+Once the count is observed, this is a fixed number. Before observation,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi mathvariant="normal">e</mi><mi mathvariant="normal">x</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">c</mi><mi mathvariant="normal">t</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">P_{\mathrm{exact}}(K)</annotation></semantics></math></span>
+is a random variable whose null distribution supplies its
+calibration.</p>
+<p>Specifically, for every
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>≤</mo><msub><mi>p</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">p\le p_0</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>u</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">u\in[0,1]</annotation></semantics></math></span>,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">{</mo><msub><mi>P</mi><mrow><mi mathvariant="normal">e</mi><mi mathvariant="normal">x</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">c</mi><mi mathvariant="normal">t</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><mi>u</mi><mo stretchy="false" form="postfix">}</mo><mo>≤</mo><mi>u</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}_p\{P_{\mathrm{exact}}(K)\le u\}\le u.
+ \label{i9-superuniform}</annotation></semantics></math><span id="i9-superuniform" class="equation-anchor"></span><span class="equation-number">(7.11)</span></span> To prove this,
+note that the p-value decreases with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math></span>.
+Its values at or below
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>u</mi><annotation encoding="application/x-tex">u</annotation></semantics></math></span>,
+if any, form an upper tail
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>≥</mo><mi>c</mi></mrow><annotation encoding="application/x-tex">K\ge c</annotation></semantics></math></span>.
+The probability of that tail at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mn>0</mn></msub><annotation encoding="application/x-tex">p_0</annotation></semantics></math></span>
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi mathvariant="normal">e</mi><mi mathvariant="normal">x</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">c</mi><mi mathvariant="normal">t</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><mi>u</mi></mrow><annotation encoding="application/x-tex">P_{\mathrm{exact}}(c)\le u</annotation></semantics></math></span>,
+and coupling bounds the probability at every smaller
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+This property is sometimes called super-uniformity. Discreteness makes
+the inequality strict for many
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>u</mi><annotation encoding="application/x-tex">u</annotation></semantics></math></span>;
+an exact p-value need not have a continuous uniform null
+distribution.</p>
+<p>There is a direct bridge to confidence sets. For a family of
+level-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>
+tests indexed by a candidate parameter
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+collect the candidates not rejected at the realized data. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">C(X)</annotation></semantics></math></span>
+is that set, then under the true
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+the event
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∉</mo><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p\notin C(X)</annotation></semantics></math></span>
+is exactly rejection of that true candidate. Consequently
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">{</mo><mi>p</mi><mo>∈</mo><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>≥</mo><mn>1</mn><mo>−</mo><mi>α</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}_p\{p\in C(X)\}\ge1-\alpha</annotation></semantics></math></span>.
+This is the inversion principle behind the score intervals in Chapter <a href="08-confidence.html#i8-chapter" data-reference-type="ref" data-reference="i8-chapter">6</a>. It transfers an error
+statement only when the entire family of tests has the claimed
+calibration. Inverting an approximate test does not manufacture exact
+coverage. For directional tests the resulting set is typically
+one-sided, and equality conventions at a discrete tail boundary should
+be stated rather than hidden by decimal rounding. The bridge connects
+testing and estimation without making them identical reporting tasks:
+the set retains the range of candidates, while a single test supplies
+one prespecified comparison.</p>
+<p>The definition does not give
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>H</mi><mn>0</mn></msub><mo>∣</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}(H_0\mid X)</annotation></semantics></math></span>,
+the chance that the result was “caused by randomness,” or the chance
+that replication will fail. No prior over probabilities has been
+supplied by a p-value calculation. If we separately adopt a
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Beta}(1,1)</annotation></semantics></math></span>
+prior, the posterior at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>6</mn></mrow><annotation encoding="application/x-tex">K=6</annotation></semantics></math></span>
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>7</mn><mo>,</mo><mn>15</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{Beta}(7,15)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>≤</mo><mn>0.15</mn><mo>∣</mo><mi>K</mi><mo>=</mo><mn>6</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.02874103</mn></mrow><annotation encoding="application/x-tex">\mathbb{P}(p\le0.15\mid K=6)=0.02874103</annotation></semantics></math></span>.
+That is a different calculation with an additional modeling choice, not
+a reinterpretation of the exact tail. Chapter <a href="06-bayes.html#i6-chapter" data-reference-type="ref" data-reference="i6-chapter">8</a>
+derives this conditioning calculation and examines its interpretation.
+The p-value also does not give the probability of the observed count
+alone: the tail includes outcomes judged at least as inconsistent in the
+prespecified direction. Different alternative directions and different
+orderings can produce different valid p-values. In particular, simply
+doubling a one-sided number is not a universal definition of an exact
+two-sided test in a discrete asymmetric model.</p>
+<h3 class="unnumbered" id="from-first-principles">From first
+principles</h3>
+<p>For the observed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>6</mn></mrow><annotation encoding="application/x-tex">K=6</annotation></semantics></math></span>
+out of twenty, enumerate the specified upper count tail. The code makes
+both the sample states and the null probabilities visible:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb3" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>k.obs <span class="ot">&lt;-</span> <span class="dv">6</span><span class="dt">L</span>; n.obs <span class="ot">&lt;-</span> <span class="dv">20</span><span class="dt">L</span>; p.ref <span class="ot">&lt;-</span> .<span class="dv">15</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>count.states <span class="ot">&lt;-</span> <span class="dv">0</span><span class="sc">:</span>n.obs</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>null.prob <span class="ot">&lt;-</span> <span class="fu">dbinom</span>(count.states,n.obs,p.ref)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>upper.direct <span class="ot">&lt;-</span> <span class="fu">sum</span>(null.prob[count.states <span class="sc">&gt;=</span> k.obs])</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Two-sided orderings are separate choices; neither changes the data.</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>lower.direct <span class="ot">&lt;-</span> <span class="fu">sum</span>(null.prob[count.states <span class="sc">&lt;=</span> k.obs])</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>equal.tail.direct <span class="ot">&lt;-</span> <span class="fu">min</span>(<span class="dv">1</span>,<span class="dv">2</span><span class="sc">*</span><span class="fu">min</span>(upper.direct,lower.direct))</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>probability.direct <span class="ot">&lt;-</span> <span class="fu">sum</span>(null.prob[</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  null.prob <span class="sc">&lt;=</span> null.prob[k.obs<span class="sc">+</span><span class="dv">1</span>]<span class="sc">*</span>(<span class="dv">1</span><span class="fl">+1e-7</span>)])</span></code></pre></div>
+<p>It returns
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.06730797</mn><annotation encoding="application/x-tex">0.06730797</annotation></semantics></math></span>,
+agreeing with equation <a href="#i9-exact-p" data-reference-type="eqref" data-reference="i9-exact-p">(7.10)</a>. The direction is part of
+the scientific question, not a setting to choose after comparing
+p-values.</p>
+<h3 class="unnumbered" id="standard-r-workflow">Standard R workflow</h3>
+<p><code>stats::binom.test()</code> performs that same calculation with
+<code>alternative="greater"</code>. Its default alternative is
+two-sided, which would answer a different question <span class="citation" data-cites="R-stats-binom-test"><a class="collection-citation" href="references.html#ref-R-stats-binom-test" role="doc-biblioref" aria-label="Reference 3">[3]</a></span>:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb4" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>upper.fit <span class="ot">&lt;-</span> stats<span class="sc">::</span><span class="fu">binom.test</span>(k.obs,n.obs,<span class="at">p=</span>p.ref,</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>                               <span class="at">alternative=</span><span class="st">"greater"</span>,<span class="at">conf.level=</span>.<span class="dv">95</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>two.sided.fit <span class="ot">&lt;-</span> stats<span class="sc">::</span><span class="fu">binom.test</span>(k.obs,n.obs,<span class="at">p=</span>p.ref,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>                                   <span class="at">alternative=</span><span class="st">"two.sided"</span>,<span class="at">conf.level=</span>.<span class="dv">95</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">upper.tail=</span>upper.fit<span class="sc">$</span>p.value,</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">two.sided.probability.order=</span>two.sided.fit<span class="sc">$</span>p.value,</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">two.sided.equal.tail=</span>equal.tail.direct)</span></code></pre></div>
+<p>The upper-tail result remains
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.06730797</mn><annotation encoding="application/x-tex">0.06730797</annotation></semantics></math></span>.
+For a two-sided comparison, the tested R 4.3.3 implementation includes
+counts whose null probability mass is no larger than the observed
+count’s mass, yielding
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.10606751</mn><annotation encoding="application/x-tex">0.10606751</annotation></semantics></math></span>.
+Doubling the smaller tail instead gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.13461595</mn><annotation encoding="application/x-tex">0.13461595</annotation></semantics></math></span>.
+Both are finite-sample calculations with different orderings; neither
+should be forced to match the other. The complete R example enumerates
+the probability ordering directly, using the package’s small relative
+tolerance to include numerically equal masses, and checks agreement
+across all counts in several symmetric and asymmetric binomial
+models.</p>
+<p>The package’s reported two-sided confidence interval uses equal-tail
+Clopper–Pearson bounds, as in Chapter <a href="08-confidence.html#i8-chapter" data-reference-type="ref" data-reference="i8-chapter">6</a>.
+It is not the inversion of its probability-ordered two-sided p-value. A
+p-value and an interval printed by one function therefore need not
+describe one exactly matching inversion. Report the alternative,
+interval construction, and confidence level explicitly rather than
+inferring them from a shared function name.</p>
+<p>Preselection is part of the calibration. If two independent studies
+both use a rule with achieved size
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>α</mi><mo>*</mo></msub><annotation encoding="application/x-tex">\alpha_*</annotation></semantics></math></span>,
+rejecting whenever either rejects has size
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>α</mi><mo>*</mo></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">1-(1-\alpha_*)^2</annotation></semantics></math></span>
+under their common boundary null. For our conservative rule this is
+approximately
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.04338905</mn><annotation encoding="application/x-tex">0.04338905</annotation></semantics></math></span>,
+exceeding its single-study size. Selecting among more outcomes or
+analyses changes the procedure even when only one final p-value is
+printed. Dependence changes this particular formula, but does not
+justify ignoring selection. Similarly, continuing recruitment until the
+ordinary
+fixed-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+p-value crosses
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>
+requires a sequentially valid design; <a href="#i9-superuniform" data-reference-type="eqref" data-reference="i9-superuniform">(7.11)</a> alone is not such
+a guarantee.</p>
+<h2 id="score-wald-and-likelihood-ratio-an-approximation-audit">7.6 Score,
+Wald, and likelihood ratio: an approximation audit</h2>
+<p>Exact enumeration has shown which counts the calibrated rule rejects.
+We now compare that benchmark with the large-sample constructions
+developed in Chapter <a href="07-limits.html#i7-chapter" data-reference-type="ref" data-reference="i7-chapter">5</a> and Chapter <a href="08-confidence.html#i8-chapter" data-reference-type="ref" data-reference="i8-chapter">6</a>. The binomial log
+likelihood is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>ℓ</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>K</mi><mo>log</mo><mi>p</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>−</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\ell(p)=K\log p+(n-K)\log(1-p)</annotation></semantics></math></span>,
+up to an additive constant. For the point null
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><msub><mi>p</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">p=p_0</annotation></semantics></math></span>
+in the interior, the signed score and Wald statistics are
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Z</mi><mi>S</mi></msub><mo>=</mo><mfrac><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>−</mo><msub><mi>p</mi><mn>0</mn></msub></mrow><msqrt><mrow><msub><mi>p</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>n</mi></mrow></msqrt></mfrac><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>Z</mi><mi>W</mi></msub><mo>=</mo><mfrac><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>−</mo><msub><mi>p</mi><mn>0</mn></msub></mrow><msqrt><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>n</mi></mrow></msqrt></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">Z_S=\frac{\widehat p-p_0}{\sqrt{p_0(1-p_0)/n}},\qquad
+ Z_W=\frac{\widehat p-p_0}{\sqrt{\widehat p(1-\widehat p)/n}}.
+ \label{i9-score-wald}</annotation></semantics></math><span id="i9-score-wald" class="equation-anchor"></span><span class="equation-number">(7.12)</span></span> The score divides
+the score at the null by its null standard deviation; the displayed
+simplification uses the Bernoulli information. The Wald statistic
+instead standardizes the fitted estimate using a fitted variance. Both
+compare with a standard normal reference only under the regular
+large-sample conditions developed in Chapter <a href="08-confidence.html#i8-chapter" data-reference-type="ref" data-reference="i8-chapter">6</a>.
+They are not algebraically equal at a finite count.</p>
+<p>The unrestricted likelihood-ratio deviance is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>=</mo><mn>2</mn><mi>n</mi><mrow><mo stretchy="true" form="prefix">{</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>log</mo><mfrac><mover><mi>p</mi><mo accent="true">̂</mo></mover><msub><mi>p</mi><mn>0</mn></msub></mfrac><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>log</mo><mfrac><mrow><mn>1</mn><mo>−</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover></mrow><mrow><mn>1</mn><mo>−</mo><msub><mi>p</mi><mn>0</mn></msub></mrow></mfrac><mo stretchy="true" form="postfix">}</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">D=2n\left\{\widehat p\log\frac{\widehat p}{p_0}
+       +(1-\widehat p)\log\frac{1-\widehat p}{1-p_0}\right\},
+ \label{i9-deviance}</annotation></semantics></math><span id="i9-deviance" class="equation-anchor"></span><span class="equation-number">(7.13)</span></span> with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>log</mo><mn>0</mn><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">0\log0=0</annotation></semantics></math></span>.
+A signed-root version is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>=</mo><mo>sign</mo><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>−</mo><msub><mi>p</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><msqrt><mi>D</mi></msqrt></mrow><annotation encoding="application/x-tex">R=\operatorname{sign}(\widehat p-p_0)\sqrt D</annotation></semantics></math></span>.
+For a directional alternative, compare
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>R</mi><annotation encoding="application/x-tex">R</annotation></semantics></math></span>
+with a normal upper-tail critical value. The constrained
+likelihood-ratio statistic for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>≤</mo><msub><mi>p</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">p\le p_0</annotation></semantics></math></span>
+equals zero when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>≤</mo><msub><mi>p</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">\widehat p\le p_0</annotation></semantics></math></span>
+and equals
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>D</mi><annotation encoding="application/x-tex">D</annotation></semantics></math></span>
+above it. Its boundary-null limit is not an unrestricted two-sided
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>χ</mi><mn>1</mn><mn>2</mn></msubsup><annotation encoding="application/x-tex">\chi^2_1</annotation></semantics></math></span>
+law; the signed-root formulation here makes the direction explicit. We
+do not import a two-sided reference cutoff into a one-sided test.</p>
+<p>At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>6</mn></mrow><annotation encoding="application/x-tex">K=6</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Z</mi><mi>S</mi></msub><mo>=</mo><mn>1.87867287</mn></mrow><annotation encoding="application/x-tex">Z_S=1.87867287</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Z</mi><mi>W</mi></msub><mo>=</mo><mn>1.46385011</mn></mrow><annotation encoding="application/x-tex">Z_W=1.46385011</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>=</mo><mn>1.69746804</mn></mrow><annotation encoding="application/x-tex">R=1.69746804</annotation></semantics></math></span>.
+The corresponding normal upper-tail p-values are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.03014459</mn><annotation encoding="application/x-tex">0.03014459</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.07161745</mn><annotation encoding="application/x-tex">0.07161745</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.04480410</mn><annotation encoding="application/x-tex">0.04480410</annotation></semantics></math></span>.
+Two reject at nominal
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>
+and one does not. That disagreement is understandable: the numerator is
+the same for score and Wald, but at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>=</mo><mn>0.30</mn></mrow><annotation encoding="application/x-tex">\widehat p=0.30</annotation></semantics></math></span>
+the fitted variance is larger than the null variance. The deviance
+summarizes a likelihood decrease rather than a squared distance using
+either single denominator.</p>
+<div id="i9-size-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 7.1. Actual null rejection probabilities at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>20</mn><mo>,</mo><msub><mi>p</mi><mn>0</mn></msub><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">n=20,p_0=0.15</annotation></semantics></math></span>
+for nominal level
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>.
+Normal-reference rules use
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>&gt;</mo><msup><mi>Φ</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.95</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">Z&gt;\Phi^{-1}(0.95)</annotation></semantics></math></span>.
+Their probabilities are evaluated by exact binomial enumeration. Wald
+endpoint conventions are stated in the text and script.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Procedure</th>
+<th style="text-align: right;">Exact null rejection probability</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Exact nonrandomized</td>
+<td style="text-align: right;">0.02194</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Exact randomized</td>
+<td style="text-align: right;">0.05000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Score-normal</td>
+<td style="text-align: right;">0.06731</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Wald-normal</td>
+<td style="text-align: right;">0.02194</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Signed-root-LR-normal</td>
+<td style="text-align: right;">0.06731</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>The table is an audit, not a rule for selecting whichever method
+rejects. Score-normal and signed-root-LR-normal both reject at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>≥</mo><mn>6</mn></mrow><annotation encoding="application/x-tex">K\ge6</annotation></semantics></math></span>,
+giving actual size
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.06730797</mn><annotation encoding="application/x-tex">0.06730797</annotation></semantics></math></span>.
+Wald-normal rejects at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>≥</mo><mn>7</mn></mrow><annotation encoding="application/x-tex">K\ge7</annotation></semantics></math></span>,
+giving
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.02193510</mn><annotation encoding="application/x-tex">0.02193510</annotation></semantics></math></span>.
+Each displayed comparison rule rejects in an upper count tail, so
+coupling also identifies these values as its worst-case size over the
+composite null. Thus neither “the normal approximation is close” nor a
+familiar method name establishes level
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>
+here. We know which exact count outcomes produce the difference.
+Approximations can be useful in more complex settings, but their
+assumptions and empirical calibration deserve equally explicit
+attention.</p>
+<p>Exact continuous calibration is possible when the model supplies it.
+For independent normal observations with known variance,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><mi>n</mi></msqrt><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>Y</mi><mo accent="true">¯</mo></mover><mo>−</mo><msub><mi>μ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>σ</mi></mrow><annotation encoding="application/x-tex">\sqrt n(\overline Y-\mu_0)/\sigma</annotation></semantics></math></span>
+is standard normal at the null boundary at every sample size. <a href="#exercise-7-3">Exercise 7.3</a> derives its power and sample-size calculation. With
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>σ</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\sigma=1</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>μ</mi><mn>1</mn></msub><mo>−</mo><msub><mi>μ</mi><mn>0</mn></msub><mo>=</mo><mn>0.5</mn></mrow><annotation encoding="application/x-tex">\mu_1-\mu_0=0.5</annotation></semantics></math></span>,
+level
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>,
+and desired power
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.80</mn><annotation encoding="application/x-tex">0.80</annotation></semantics></math></span>,
+the smallest integer sample size is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>25</mn><annotation encoding="application/x-tex">25</annotation></semantics></math></span>.
+The script verifies power
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.80376494</mn><annotation encoding="application/x-tex">0.80376494</annotation></semantics></math></span>
+there and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.78948515</mn><annotation encoding="application/x-tex">0.78948515</annotation></semantics></math></span>
+at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>24</mn><annotation encoding="application/x-tex">24</annotation></semantics></math></span>.
+These exact normal calculations provide a useful contrast with the
+Bernoulli approximation audit; they do not establish that another
+statistic is normal because it has been standardized.</p>
+<p>At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\widehat p=0</annotation></semantics></math></span>
+or
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1</mn><annotation encoding="application/x-tex">1</annotation></semantics></math></span>,
+the Wald denominator vanishes. The script uses limiting signs to define
+a complete comparison rule at those endpoints; it does not call a zero
+standard error valid uncertainty. At the null boundary
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>0</mn></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">p_0=0</annotation></semantics></math></span>,
+a stronger failure occurs:
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">K=0</annotation></semantics></math></span>
+with certainty under the null, while any observed event is impossible
+under that model. The rule rejecting when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>≥</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">K\ge1</annotation></semantics></math></span>
+has size zero and power
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>n</mi></msup></mrow><annotation encoding="application/x-tex">1-(1-p)^n</annotation></semantics></math></span>.
+Normal score denominators and interior information arguments do not
+apply. Boundary problems need their own probability calculations.</p>
+<h2 id="from-a-tail-calculation-to-a-scientific-interpretation">7.7 From a
+tail calculation to a scientific interpretation</h2>
+<p>The calculations enumerate all count outcomes. A useful computational
+check compares the randomized rule’s power with other rejection vectors
+constrained to have null rejection probability at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>.
+The code below constructs such competitors and compares their power at
+several alternatives. It illustrates the optimization problem behind
+Neyman–Pearson; the inequality proved earlier establishes optimality for
+all competitors, including those omitted from a finite numerical
+comparison.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb5" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Monotone power; randomized threshold improves upon its conservative version.</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (nn <span class="cf">in</span> <span class="fu">c</span>(<span class="dv">20</span><span class="dt">L</span>,<span class="dv">40</span><span class="dt">L</span>,<span class="dv">80</span><span class="dt">L</span>)) <span class="cf">for</span> (aa <span class="cf">in</span> <span class="fu">c</span>(.<span class="dv">01</span>,.<span class="dv">05</span>,.<span class="dv">10</span>)) {</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  d <span class="ot">&lt;-</span> operating[operating<span class="sc">$</span>n <span class="sc">==</span> nn <span class="sc">&amp;</span> operating<span class="sc">$</span>alpha <span class="sc">==</span> aa, ]</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">all</span>(<span class="fu">diff</span>(d<span class="sc">$</span>conservative.power) <span class="sc">&gt;=</span> <span class="sc">-</span><span class="fl">1e-12</span>),</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">all</span>(<span class="fu">diff</span>(d<span class="sc">$</span>randomized.power) <span class="sc">&gt;=</span> <span class="sc">-</span><span class="fl">1e-12</span>),</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">all</span>(d<span class="sc">$</span>randomized.power <span class="sc">&gt;=</span> d<span class="sc">$</span>conservative.power <span class="sc">-</span> <span class="fl">1e-12</span>))</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co"># NP inequality checked against many arbitrary randomized tests with level &lt;=alpha.</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">602917</span>)</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (p1 <span class="cf">in</span> <span class="fu">c</span>(.<span class="dv">20</span>,.<span class="dv">30</span>,.<span class="dv">50</span>,.<span class="dv">80</span>)) {</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  alt <span class="ot">&lt;-</span> <span class="fu">dbinom</span>(k, n, p1)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="dv">1000</span><span class="dt">L</span>)) {</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    candidate <span class="ot">&lt;-</span> <span class="fu">runif</span>(n<span class="sc">+</span><span class="dv">1</span>)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    candidate <span class="ot">&lt;-</span> candidate<span class="sc">*</span><span class="fu">min</span>(<span class="dv">1</span>, alpha<span class="sc">/</span><span class="fu">sum</span>(null.mass<span class="sc">*</span>candidate))</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">stopifnot</span>(<span class="fu">sum</span>(alt<span class="sc">*</span>test<span class="sc">$</span>phi) <span class="sc">&gt;=</span> <span class="fu">sum</span>(alt<span class="sc">*</span>candidate)<span class="sc">-</span><span class="fl">1e-12</span>)</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>The observed proportion is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.30</mn><annotation encoding="application/x-tex">0.30</annotation></semantics></math></span>,
+but the score-normal tail calculation does not assign a probability to
+the hypothesis that
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>≤</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p\le0.15</annotation></semantics></math></span>.
+It describes a reference tail under the null model. We also cannot
+select a test merely because it gives the smaller p-value and then use
+that test’s original calibration without accounting for the selection.
+Here exact enumeration shows that using the null variance in a
+normal-reference score test does not give an exact five-percent
+test.</p>
+<p>To interpret the result, we state the prespecified direction and
+sampling model, calculate the exact count tail, and distinguish
+approximation from finite-sample guarantees. For this experiment, the
+exact nonrandomized
+level-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>
+upper-tail test does not reject at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>6</mn></mrow><annotation encoding="application/x-tex">K=6</annotation></semantics></math></span>;
+its p-value is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.0673</mn><annotation encoding="application/x-tex">0.0673</annotation></semantics></math></span>
+and its achieved size is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.0219</mn><annotation encoding="application/x-tex">0.0219</annotation></semantics></math></span>.
+The point estimate remains
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.30</mn><annotation encoding="application/x-tex">0.30</annotation></semantics></math></span>.
+That uncertainty matters to scientific interpretation, but no
+calculation here turns rejection into a treatment recommendation.
+Chapter <a href="03-decisions.html#i3-chapter" data-reference-type="ref" data-reference="i3-chapter">4</a> already showed why the loss
+of a scientific action must be specified separately from estimation
+quality. Here type I error control supplies another distinct procedural
+target.</p>
+<h2 id="exercises">7.8 Exercises</h2>
+<ol class="exercises" style='--chapter:"7."'><li id="exercise-7-1"><p><strong>A level bound and an achieved size.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>∼</mo><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>20</mn><mo>,</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">K\sim\operatorname{Binomial}(20,p)</annotation></semantics></math></span>
+and test
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mn>0</mn></msub><mo>:</mo><mi>p</mi><mo>≤</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">H_0:p\le0.15</annotation></semantics></math></span>
+against
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>&gt;</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p&gt;0.15</annotation></semantics></math></span>.
+Among upper-tail rules rejecting for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>≥</mo><mi>c</mi></mrow><annotation encoding="application/x-tex">K\ge c</annotation></semantics></math></span>,
+find the smallest integer
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>c</mi><annotation encoding="application/x-tex">c</annotation></semantics></math></span>
+with size at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>,
+its achieved size, and its power at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.30</mn></mrow><annotation encoding="application/x-tex">p=0.30</annotation></semantics></math></span>.
+Prove that the largest null rejection probability occurs at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>,
+rather than checking only that point numerically.</p>
+</li><li id="exercise-7-2"><p><strong>Use the remaining error allowance transparently.</strong> For the preceding binomial test, reject whenever
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>≥</mo><mn>7</mn></mrow><annotation encoding="application/x-tex">K\ge7</annotation></semantics></math></span>
+and reject at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>6</mn></mrow><annotation encoding="application/x-tex">K=6</annotation></semantics></math></span>
+with probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>γ</mi><annotation encoding="application/x-tex">\gamma</annotation></semantics></math></span>
+using a fresh independent uniform random variable; otherwise do not
+reject. Derive
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>γ</mi><annotation encoding="application/x-tex">\gamma</annotation></semantics></math></span>
+for composite-null size exactly
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>
+and calculate power at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.30</mn></mrow><annotation encoding="application/x-tex">p=0.30</annotation></semantics></math></span>.
+Compare with the nonrandomized rule at its actual size, and explain why
+independence of the randomization device matters.</p>
+</li><li id="exercise-7-3"><p><strong>An exact normal design calculation.</strong> Let independent
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mi>i</mi></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>,</mo><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">Y_i\sim N(\mu,\sigma^2)</annotation></semantics></math></span>,
+with known
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>σ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\sigma&gt;0</annotation></semantics></math></span>,
+and test
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>μ</mi><mo>≤</mo><msub><mi>μ</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">\mu\le\mu_0</annotation></semantics></math></span>
+against
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>μ</mi><mo>&gt;</mo><msub><mi>μ</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">\mu&gt;\mu_0</annotation></semantics></math></span>
+at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>α</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;\alpha&lt;1</annotation></semantics></math></span>.
+Derive the exact test and its power. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>μ</mi><mn>1</mn></msub><mo>&gt;</mo><msub><mi>μ</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">\mu_1&gt;\mu_0</annotation></semantics></math></span>
+and target power
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mi>b</mi><mo>&gt;</mo><mi>α</mi></mrow><annotation encoding="application/x-tex">1-b&gt;\alpha</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>b</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;b&lt;1</annotation></semantics></math></span>,
+derive the smallest positive integer sample size meeting that target.
+Explain which distributional fact makes this exact and why the same
+formula does not automatically give an exact binomial design.</p>
+</li><li id="exercise-7-4"><p><strong>A boundary null can have a level-zero test.</strong> For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>∼</mo><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>,</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">K\sim\operatorname{Binomial}(n,p)</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>≥</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">n\ge1</annotation></semantics></math></span>,
+test
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mn>0</mn></msub><mo>:</mo><mi>p</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">H_0:p=0</annotation></semantics></math></span>
+against
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∈</mo><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">p\in(0,1]</annotation></semantics></math></span>.
+Find a nonrandomized test with size zero and derive its power function.
+Explain why an interior normal-score calculation is unavailable and what
+rejecting this null does and does not establish scientifically.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="08-confidence.html">Previous: 6. Likelihood asymptotics and confidence sets</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="06-bayes.html">Next: 8. Bayesian inference and predictive uncertainty</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

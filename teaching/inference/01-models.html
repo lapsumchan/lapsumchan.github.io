@@ -1,0 +1,716 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Statistical Inference — Chapter 1: Probability models and statistical targets | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Probability models and statistical targets.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/inference/01-models.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Statistical Inference — Chapter 1: Probability models and statistical targets | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Probability models and statistical targets.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/inference/01-models.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Statistical Inference — Chapter 1: Probability models and statistical targets", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Statistical Inference", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/inference/01-models.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Statistical Inference</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Questions, probability models, and likelihood</p><ol class="contents-chapters"><li><a href="01-models.html" aria-current="page">1. Probability models and statistical targets</a></li><li><a href="02-likelihood.html">2. Likelihood, data reduction, and constructing estimators</a></li></ol><p class="contents-part">Part II: Conditional targets, regression, and loss</p><ol class="contents-chapters"><li><a href="conditional-regression.html">3. Regression and conditional targets</a></li><li><a href="03-decisions.html">4. Can a better estimate lead to a worse decision?</a></li></ol><p class="contents-part">Part III: Estimation, uncertainty, and testing</p><ol class="contents-chapters"><li><a href="07-limits.html">5. Sampling limits and asymptotic approximations</a></li><li><a href="08-confidence.html">6. Likelihood asymptotics and confidence sets</a></li><li><a href="09-testing.html">7. Hypothesis Testing as a Statistical Procedure</a></li><li><a href="06-bayes.html">8. Bayesian inference and predictive uncertainty</a></li></ol><p class="contents-part">Part IV: Shrinkage and regularized regression</p><ol class="contents-chapters"><li><a href="12-shrinkage.html">9. Empirical Bayes and the geometry of shrinkage</a></li><li><a href="regularization-association.html">10. Regularization, bias correction, and association inference</a></li></ol><p class="contents-part">Part V: Association claims and multiplicity</p><ol class="contents-chapters"><li><a href="14-multiplicity.html">11. Multiplicity, simultaneous claims, and false discoveries</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#the-question-comes-before-the-distribution">1.1 The question comes before the distribution</a></li><li><a href="#a-model-is-a-collection-of-possible-data-distributions">1.2 A model is a collection of possible data distributions</a></li><li><a href="#from-ordered-records-to-a-binomial-count">1.3 From ordered records to a binomial count</a></li><li><a href="#repeated-sampling-is-a-framework-not-a-request-to-rerun-a-study">1.4 Repeated sampling and the variability of an estimate</a></li><li><a href="#run-chapter-example">Run the chapter examples</a></li><li><a href="#conditioning-changes-the-denominator">1.5 Conditioning changes the denominator</a></li><li><a href="#the-population-link-is-a-substantive-assumption">1.6 The population link is a substantive assumption</a></li><li><a href="#a-working-discipline-for-the-next-chapters">1.7 Questions, models and assumptions</a></li><li><a href="#exercises">1.8 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Statistical Inference</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 1</span></p><div class="chapter-content"><h1 id="i1-chapter">Chapter 1. Probability models and statistical targets</h1>
+<span id="how-to-read-this-chapter"></span><p>A study reports two events among ten people. The fraction is easy to
+calculate; its scientific meaning is not. Two out of ten could refer to
+a one-year event in a defined cohort, a positive laboratory result among
+referred patients, or a genetic characteristic in an enriched sample.
+Those quantities have different denominators and different relationships
+to a population. Before estimating a parameter, we must decide what the
+observations represent and what question the parameter answers.</p>
+<p>We begin with ten completely followed people and a binary event. This
+small example lets us trace the assumptions behind a familiar
+proportion. We first define the event and its population probability,
+then derive the observed count’s distribution. A separate screening
+example shows how changing the conditioning event changes the question.
+Repeated sampling and computation then help us distinguish what the
+model implies from what the study design must establish.</p>
+<h2 id="the-question-comes-before-the-distribution">1.1 The question comes
+before the distribution</h2>
+<p>Consider a synthetic study of a binary event within one year of
+enrollment. Define a target population of eligible people at a specified
+place and period. Suppose every enrolled person has complete one-year
+follow-up, the event definition is applied consistently, and the ten
+records represent ten distinct people. Let
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>i</mi></msub><mo>=</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mrow><mtext mathvariant="normal">person </mtext><mspace width="0.333em"></mspace></mrow><mi>i</mi><mrow><mspace width="0.333em"></mspace><mtext mathvariant="normal"> experiences the event within one year</mtext></mrow><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="2.0em"></mspace><mi>i</mi><mo>=</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mi>n</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">X_i=\mathbf{1}\{\text{person }i\text{ experiences the event within one year}\},
+ \qquad i=1,\ldots,n.
+ \label{i1-outcome}</annotation></semantics></math><span id="i1-outcome" class="equation-anchor"></span><span class="equation-number">(1.1)</span></span> The indicator is one
+for an event and zero otherwise. It does not encode severity, timing
+within the year, or recurrent events. Choosing this outcome therefore
+determines what the analysis can answer. If follow-up were incomplete,
+replacing an unknown outcome by zero would change the observation
+problem; the model below would no longer be justified without additional
+work.</p>
+<p>Our initial scientific target is the event probability for a randomly
+selected member of the target population,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mtext mathvariant="normal">event within one year in the target population</mtext><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">p=\mathbb{P}(\text{event within one year in the target population}).
+ \label{i1-target}</annotation></semantics></math><span id="i1-target" class="equation-anchor"></span><span class="equation-number">(1.2)</span></span> This is a population
+quantity, not the observed fraction. It is also not automatically an
+individual-specific probability conditional on age, genotype, or
+clinical history. A marginal probability averages over the target
+population’s composition. Conditional probabilities answer more detailed
+questions and generally require more detailed data and models.</p>
+<p>A parameter labels a member of a statistical model. An estimand is
+the particular quantity we intend to learn. In this example they
+coincide because the model has one parameter and the target is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+They need not coincide elsewhere: if a model contains several regression
+coefficients, the scientific estimand may instead be a probability, a
+contrast between groups, or a transformation of those coefficients.
+Stating the estimand first prevents a convenient output from quietly
+replacing the intended question.</p>
+<h2 id="a-model-is-a-collection-of-possible-data-distributions">1.2 A model
+is a collection of possible data distributions</h2>
+<p>We assume initially that
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>X</mi><mi>n</mi></msub><mspace width="0.222em"></mspace><mtext mathvariant="normal">are independent</mtext><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>X</mi><mi>i</mi></msub><mo>∼</mo><mo>Bernoulli</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>p</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">X_1,\ldots,X_n \ \text{are independent}, \qquad
+ X_i\sim\operatorname{Bernoulli}(p), \qquad p\in[0,1].
+ \label{i1-bernoulli}</annotation></semantics></math><span id="i1-bernoulli" class="equation-anchor"></span><span class="equation-number">(1.3)</span></span> For one
+observation,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>p</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}_p(X_i=1)=p</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mo>−</mo><mi>p</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}_p(X_i=0)=1-p</annotation></semantics></math></span>.
+The subscript
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+reminds us that probabilities depend on which model member is being
+considered. The model contains a distribution for every allowed value of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>;
+it does not announce which value is true.</p>
+<p>There are several assumptions in this short display. The outcomes are
+binary. Their marginal event probabilities are equal. Their joint
+distribution factors because of independence. The sample size is treated
+as fixed. The event is measured without error, and the sampling
+population is linked to the stated target population. Some assumptions
+concern the probability model; others concern how that model is
+connected to the scientific study. Good algebra within the model does
+not establish that external connection.</p>
+<p>Identically distributed does not mean that the people are identical.
+It means that the variables have the same marginal distribution for this
+analysis. If independently sampled covariates differ between people, a
+marginal Bernoulli model can still be appropriate. In contrast,
+conditioning on fixed observed covariates with substantially different
+event probabilities generally leads to independent but nonidentically
+distributed Bernoulli variables. Their total is not generally binomial.
+For independent outcomes with probabilities
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>p</mi><mi>n</mi></msub></mrow><annotation encoding="application/x-tex">p_1,\ldots,p_n</annotation></semantics></math></span>,
+the sample proportion instead has
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mfrac><mn>1</mn><mi>n</mi></mfrac><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><msub><mi>p</mi><mi>i</mi></msub><mo>,</mo></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"><mo>Var</mo><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mfrac><mn>1</mn><msup><mi>n</mi><mn>2</mn></msup></mfrac><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><msub><mi>p</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+  \mathbb{E}(\widehat p)&amp;=\frac1n\sum_{i=1}^n p_i,\\
+  \operatorname{Var}(\widehat p)&amp;=\frac1{n^2}\sum_{i=1}^n p_i(1-p_i).
+ \end{aligned}
+ \label{i1-heterogeneous-moments}</annotation></semantics></math><span id="i1-heterogeneous-moments" class="equation-anchor"></span><span class="equation-number">(1.4)</span></span> These
+identities describe the average probability for that fixed collection of
+individuals. They do not turn that collection into a representative
+sample of another population. Even with the same average probability,
+its count distribution can differ from the binomial model: two
+independent probabilities
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.05</mn><annotation encoding="application/x-tex">0.05</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.25</mn><annotation encoding="application/x-tex">0.25</annotation></semantics></math></span>
+give probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.0125</mn><annotation encoding="application/x-tex">0.0125</annotation></semantics></math></span>
+of two events, whereas two common probabilities
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.15</mn><annotation encoding="application/x-tex">0.15</annotation></semantics></math></span>
+give
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.0225</mn><annotation encoding="application/x-tex">0.0225</annotation></semantics></math></span>.</p>
+<p>Write the random data set as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>D</mi><mi>n</mi></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>X</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">D_n=(X_1,\ldots,X_n)</annotation></semantics></math></span>,
+and its observed realization as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>n</mi></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>x</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">d_n=(x_1,\ldots,x_n)</annotation></semantics></math></span>.
+Capital letters identify quantities that vary across possible samples.
+Once a sample is observed, its lower-case values are fixed numbers. This
+distinction will matter when we ask how an estimator behaves before
+seeing the data, rather than merely describing its value afterward.</p>
+<h2 id="from-ordered-records-to-a-binomial-count">1.3 From ordered records
+to a binomial count</h2>
+<p>Define the total and the sample proportion,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><mspace width="2.0em"></mspace><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>=</mo><mfrac><mi>K</mi><mi>n</mi></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">K=\sum_{i=1}^{n}X_i,\qquad \widehat p=\frac{K}{n}.
+ \label{i1-count}</annotation></semantics></math><span id="i1-count" class="equation-anchor"></span><span class="equation-number">(1.5)</span></span> For a particular
+ordered sequence with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math></span>
+ones, independence gives probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>p</mi><mi>k</mi></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>n</mi><mo>−</mo><mi>k</mi></mrow></msup></mrow><annotation encoding="application/x-tex">p^k(1-p)^{n-k}</annotation></semantics></math></span>.
+There are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mi>n</mi><mi>k</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\binom nk</annotation></semantics></math></span>
+such sequences. Summing their probabilities gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>=</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mi>n</mi><mi>k</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>p</mi><mi>k</mi></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>n</mi><mo>−</mo><mi>k</mi></mrow></msup><mo>,</mo><mspace width="2.0em"></mspace><mi>k</mi><mo>=</mo><mn>0</mn><mo>,</mo><mi>…</mi><mo>,</mo><mi>n</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}_p(K=k)=\binom nk p^k(1-p)^{n-k},
+ \qquad k=0,\ldots,n.
+ \label{i1-binomial}</annotation></semantics></math><span id="i1-binomial" class="equation-anchor"></span><span class="equation-number">(1.6)</span></span> Thus
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math></span>
+has a binomial distribution. The combinatorial coefficient counts
+distinct data sequences; it is not an optional adjustment to the
+probability of the count.</p>
+<p>Take
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">n=10</annotation></semantics></math></span>.
+The ordered record
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mn>10</mn></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">d_{10}=(1,0,0,0,1,0,0,0,0,0)</annotation></semantics></math></span>
+contains two events. Its observed count is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">k=2</annotation></semantics></math></span>,
+and its observed proportion is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.2</mn><annotation encoding="application/x-tex">0.2</annotation></semantics></math></span>.
+There are 45 ordered sequences with the same count. At the illustrative
+model value
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>,
+their combined probability is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mn>0.15</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>=</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>45</mn><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.15</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.85</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>8</mn></msup><mo>≃</mo><mn>0.275897</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}_{0.15}(K=2)
+   =45(0.15)^2(0.85)^8
+   \simeq 0.275897.
+ \label{i1-observed-probability}</annotation></semantics></math><span id="i1-observed-probability" class="equation-anchor"></span><span class="equation-number">(1.7)</span></span> The
+value
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.15</mn><annotation encoding="application/x-tex">0.15</annotation></semantics></math></span>
+is a hypothetical model setting used to calculate a sampling
+distribution. Observing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">k=2</annotation></semantics></math></span>
+does not reveal that this setting is true. Conversely, the observed
+proportion
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.2</mn><annotation encoding="application/x-tex">0.2</annotation></semantics></math></span>
+does not make all other values of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+impossible.</p>
+<div id="i1-count-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 1.1. The complete sampling distribution for the count when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">n=10</annotation></semantics></math></span>
+and the illustrative generating probability is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>.
+These probabilities describe possible data under a fixed model
+value.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">Count
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math></span></th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mi>/</mi><mn>10</mn></mrow><annotation encoding="application/x-tex">k/10</annotation></semantics></math></span></th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mn>0.15</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>=</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">P_{0.15}(K=k)</annotation></semantics></math></span></th>
+<th style="text-align: right;">Cumulative</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.196874</td>
+<td style="text-align: right;">0.196874</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.347425</td>
+<td style="text-align: right;">0.544300</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">0.275897</td>
+<td style="text-align: right;">0.820196</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: right;">0.129834</td>
+<td style="text-align: right;">0.950030</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.040096</td>
+<td style="text-align: right;">0.990126</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0.008491</td>
+<td style="text-align: right;">0.998617</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">0.001249</td>
+<td style="text-align: right;">0.999865</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">0.000126</td>
+<td style="text-align: right;">0.999991</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">0.000008</td>
+<td style="text-align: right;">1.000000</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0.9</td>
+<td style="text-align: right;">0.000000</td>
+<td style="text-align: right;">1.000000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">1.0</td>
+<td style="text-align: right;">0.000000</td>
+<td style="text-align: right;">1.000000</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>The expectation and variance follow directly from the Bernoulli
+variables:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>p</mi><mo>,</mo><mspace width="2.0em"></mspace><msub><mo>Var</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>n</mi><mi>p</mi><mo>,</mo><mspace width="1.0em"></mspace><msub><mo>Var</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>n</mi><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}_p(X_i)=p,\qquad \operatorname{Var}_p(X_i)=p(1-p),
+ \qquad
+ \mathbb{E}_p(K)=np,\quad \operatorname{Var}_p(K)=np(1-p).
+ \label{i1-count-moments}</annotation></semantics></math><span id="i1-count-moments" class="equation-anchor"></span><span class="equation-number">(1.8)</span></span> Linearity of
+expectation requires no independence. The variance calculation does: the
+covariance terms vanish under the model. Dividing by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>p</mi><mo>,</mo><mspace width="2.0em"></mspace><msub><mo>Var</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mi>n</mi></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}_p(\widehat p)=p,\qquad
+ \operatorname{Var}_p(\widehat p)=\frac{p(1-p)}{n}.
+ \label{i1-proportion-moments}</annotation></semantics></math><span id="i1-proportion-moments" class="equation-anchor"></span><span class="equation-number">(1.9)</span></span> The first
+equality is an unbiasedness statement. It concerns an average across
+hypothetical repetitions, not exact recovery from each sample.</p>
+<h2 id="repeated-sampling-is-a-framework-not-a-request-to-rerun-a-study">1.4 Repeated
+sampling and the variability of an estimate</h2>
+<p>Imagine repeatedly drawing a fresh sample of ten people under the
+same model. Each repetition produces a new count and a new estimate. The
+parameter
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+remains fixed in this thought experiment. The distribution in Table <a href="#i1-count-table" data-reference-type="ref" data-reference="i1-count-table">1.1</a> tells us how frequently the
+possible estimates would occur under that model. We use the thought
+experiment to assess a method even when the actual study is conducted
+only once.</p>
+<p>Figure <a href="#i1-sampling-figure" data-reference-type="ref" data-reference="i1-sampling-figure">1.1</a> compares two sample sizes at
+the same generating probability. Larger samples put more probability
+near
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+although the realized estimate remains random. The vertical dashed line
+marks the generating value, not an estimated confidence limit. These are
+discrete probability masses: a line height gives the probability of a
+particular proportion, so changing the grid of possible proportions also
+changes the appearance of the distribution.</p>
+<figure id="i1-sampling-figure">
+<a href="../assets/inference/ch01-sampling.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch01-sampling.png" alt="Figure 1.1. Repeated-sampling distributions at
+p=0.15p=0.15.
+The horizontal scale is the observed proportion, allowing the two sample
+sizes to be compared. The displayed window is
+00
+to
+0.60.6;
+the table gives the complete
+n=10n=10
+distribution. No normal approximation is used.">
+</a><figcaption>Figure 1.1. Repeated-sampling distributions at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>.
+The horizontal scale is the observed proportion, allowing the two sample
+sizes to be compared. The displayed window is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0</mn><annotation encoding="application/x-tex">0</annotation></semantics></math></span>
+to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.6</mn><annotation encoding="application/x-tex">0.6</annotation></semantics></math></span>;
+the table gives the complete
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">n=10</annotation></semantics></math></span>
+distribution. No normal approximation is used.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch01-sampling.png">Open full-size figure</a></p></figure>
+<p>At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn><mo>,</mo><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">n=10,p=0.15</annotation></semantics></math></span>,
+the standard deviation of the sample proportion is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><mrow><mn>0.15</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.85</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mn>10</mn></mrow></msqrt><mo>≃</mo><mn>0.1129</mn></mrow><annotation encoding="application/x-tex">\sqrt{0.15(0.85)/10}\simeq0.1129</annotation></semantics></math></span>.
+This is the standard deviation across samples under a known hypothetical
+value of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+In an actual analysis
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+is unknown; replacing it by an estimate creates an estimated standard
+error, with its own limitations. In particular, plugging in zero after
+observing no events gives zero in this formula, but it does not
+establish that the population event probability is known without
+uncertainty.</p>
+<p>A simulation can approximate the same sampling distribution. It
+cannot test the assumption that the original ten people were independent
+or representative, because those assumptions were built into the
+simulation. Its immediate purpose here is narrower: verify that code
+reproduces a probability calculation and make the randomness of
+estimates visible.</p>
+<p>The block includes the model inputs and uses only base R, so it can
+run in a fresh session.</p>
+<section class="run-example" aria-labelledby="run-chapter-example"><h2 class="unnumbered" id="run-chapter-example">Run the chapter
+examples</h2>
+<p>Copy the block below into a fresh R session. It creates the synthetic
+data and prints the chapter calculations, with figures in the R graphics
+window. Only base R is needed.</p>
+<details class="complete-example"><summary>Complete R example</summary><div class="sourceCode" id="cb3" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"># probability models and statistical targets.
+# All examples are synthetic. Only base R is needed.
+set.seed(60201)
+n &lt;- 10L
+p &lt;- 0.15
+k &lt;- 0:n
+
+# Enumerate the count distribution under the specified Bernoulli model.
+mass &lt;- dbinom(k, size = n, prob = p)
+count.distribution &lt;- data.frame(
+  count = k, proportion = k / n,
+  probability = mass, cumulative = cumsum(mass)
+)
+stopifnot(abs(sum(mass) - 1) &lt; 1e-12,
+          abs(sum(k * mass) - n * p) &lt; 1e-12,
+          abs(sum((k - n * p)^2 * mass) - n * p * (1 - p)) &lt; 1e-12)
+print(count.distribution, row.names = FALSE)
+
+# Independent simulated studies check exact answers under this model.
+B &lt;- 200000L
+draws &lt;- rbinom(B, size = n, prob = p)
+q &lt;- cbind(proportion = draws / n,
+           count.two = as.numeric(draws == 2))
+mc &lt;- data.frame(
+  quantity = colnames(q), exact = c(p, dbinom(2, n, p)),
+  estimate = colMeans(q), MCSE = apply(q, 2, sd) / sqrt(B)
+)
+mc$error.over.MCSE &lt;- (mc$estimate - mc$exact) / mc$MCSE
+stopifnot(all(abs(mc$error.over.MCSE) &lt; 6))
+print(mc, row.names = FALSE)
+
+# Screening probabilities depend on prevalence as well as test accuracy.
+sensitivity &lt;- 0.90
+specificity &lt;- 0.95
+ppv &lt;- function(v) {
+  sensitivity * v / (sensitivity * v + (1 - specificity) * (1 - v))
+}
+prevalence &lt;- c(0.02, 0.20)
+screening &lt;- data.frame(
+  prevalence = prevalence,
+  true.positives = 10000 * sensitivity * prevalence,
+  false.positives = 10000 * (1 - specificity) * (1 - prevalence),
+  PPV = ppv(prevalence)
+)
+stopifnot(max(abs(screening$PPV - screening$true.positives /
+                 (screening$true.positives + screening$false.positives))) &lt; 1e-12)
+print(screening, row.names = FALSE)
+
+# Draw the sampling and screening figures in the R graphics window.
+local({
+  old &lt;- par(mfrow = c(1, 2), mar = c(4.2, 4.2, 2, 0.8), las = 1)
+  on.exit(par(old))
+  for (nn in c(10, 100)) {
+    xx &lt;- 0:nn
+    plot(xx / nn, dbinom(xx, nn, p), type = "h", lwd = 2,
+         col = "#002D72", xlim = c(0, 0.6),
+         xlab = "Observed proportion K/n", ylab = "Probability",
+         main = paste("n =", nn))
+    points(xx / nn, dbinom(xx, nn, p), pch = 16, cex = 0.5, col = "#002D72")
+    abline(v = p, lty = 2, col = "#666666")
+  }
+})
+local({
+  old &lt;- par(mar = c(4.2, 4.2, 1, 0.8), las = 1)
+  on.exit(par(old))
+  curve(ppv(x), 0, 0.5, lwd = 2, col = "#002D72", ylim = c(0, 1),
+        xlab = "Prevalence in the target population", ylab = "Positive predictive value")
+  points(prevalence, ppv(prevalence), pch = c(16, 17), cex = 1.2, col = "#002D72")
+})
+</code></pre></div></details>
+</section><p class="code-context">This excerpt shows a step inside the preceding <a href="#run-chapter-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"># probability models and statistical targets.
+# All examples are synthetic. Only base R is needed.
+set.seed(60201)
+n &lt;- 10L
+p &lt;- 0.15
+k &lt;- 0:n
+# Check exact answers under this model.
+B &lt;- 200000L
+draws &lt;- rbinom(B, size = n, prob = p)
+q &lt;- cbind(proportion = draws / n,
+           count.two = as.numeric(draws == 2))
+mc &lt;- data.frame(
+  quantity = colnames(q), exact = c(p, dbinom(2, n, p)),
+  estimate = colMeans(q), MCSE = apply(q, 2, sd) / sqrt(B)
+)
+mc$error.over.MCSE &lt;- (mc$estimate - mc$exact) / mc$MCSE
+stopifnot(all(abs(mc$error.over.MCSE) &lt; 6))
+print(mc, row.names = FALSE)
+</code></pre></div>
+<p>The Monte Carlo standard error measures uncertainty in a simulated
+average due to using finitely many simulated data sets. For independent
+simulated quantities
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>W</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>W</mi><mi>B</mi></msub></mrow><annotation encoding="application/x-tex">W_1,\ldots,W_B</annotation></semantics></math></span>,
+estimate it by
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mo>MCSE</mo><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>W</mi><mo accent="true">¯</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><msub><mi>s</mi><mi>W</mi></msub><msqrt><mi>B</mi></msqrt></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat{\operatorname{MCSE}}(\overline W)
+   =\frac{s_W}{\sqrt B}.
+ \label{i1-mcse}</annotation></semantics></math><span id="i1-mcse" class="equation-anchor"></span><span class="equation-number">(1.10)</span></span> It is not the standard
+error of the original study’s estimate. Increasing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>B</mi><annotation encoding="application/x-tex">B</annotation></semantics></math></span>
+improves numerical precision about the model; it does not add observed
+patients to that study.</p>
+<div id="i1-mc-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 1.2. A simulation with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>B</mi><mo>=</mo><mn>200</mn><mo>,</mo><mn>000</mn></mrow><annotation encoding="application/x-tex">B=200{,}000</annotation></semantics></math></span>
+independent data sets and seed 60201. Error/MCSE compares the simulation
+error with its estimated numerical uncertainty. The exact values remain
+the reference answers.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Quantity</th>
+<th style="text-align: right;">Exact</th>
+<th style="text-align: right;">Simulation</th>
+<th style="text-align: right;">MCSE</th>
+<th style="text-align: right;">Error/MCSE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">proportion</td>
+<td style="text-align: right;">0.150000</td>
+<td style="text-align: right;">0.149835</td>
+<td style="text-align: right;">0.000253</td>
+<td style="text-align: right;">-0.65</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">count two</td>
+<td style="text-align: right;">0.275897</td>
+<td style="text-align: right;">0.276030</td>
+<td style="text-align: right;">0.001000</td>
+<td style="text-align: right;">0.13</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<h2 id="conditioning-changes-the-denominator">1.5 Conditioning changes the
+denominator</h2>
+<p>So far, the event probability has referred to a randomly selected
+person in the target population. A positive screening result changes the
+information we condition on. To see the consequence, we now use a
+separate synthetic screening example: let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">D=1</annotation></semantics></math></span>
+denote the presence of a condition and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">A=1</annotation></semantics></math></span>
+a positive test. Suppose sensitivity is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>=</mo><mn>1</mn><mo>∣</mo><mi>D</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.90</mn></mrow><annotation encoding="application/x-tex">s=\mathbb{P}(A=1\mid D=1)=0.90</annotation></semantics></math></span>,
+specificity is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>=</mo><mn>0</mn><mo>∣</mo><mi>D</mi><mo>=</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.95</mn></mrow><annotation encoding="application/x-tex">c=\mathbb{P}(A=0\mid D=0)=0.95</annotation></semantics></math></span>,
+and prevalence is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>π</mi><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>D</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\pi=\mathbb{P}(D=1)</annotation></semantics></math></span>.
+These are illustrative inputs, not claims about a real diagnostic
+test.</p>
+<p>Sensitivity conditions on the condition being present. Positive
+predictive value conditions on the test being positive. Applying the
+multiplication rule and total probability gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>D</mi><mo>=</mo><mn>1</mn><mo>∣</mo><mi>A</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>s</mi><mi>π</mi></mrow><mrow><mi>s</mi><mi>π</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>π</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}(D=1\mid A=1)
+ =\frac{s\pi}{s\pi+(1-c)(1-\pi)}.
+ \label{i1-ppv}</annotation></semantics></math><span id="i1-ppv" class="equation-anchor"></span><span class="equation-number">(1.11)</span></span> The numerator is the
+joint probability of having the condition and testing positive. The
+denominator includes all positive results, including false positives.
+Reversing the conditional probability without changing the denominator
+is the central error to avoid.</p>
+<p>With prevalence
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.02</mn><annotation encoding="application/x-tex">0.02</annotation></semantics></math></span>,
+a hypothetical population of 10,000 produces 180 expected true positives
+and 490 expected false positives. The resulting positive predictive
+value is about
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.269</mn><annotation encoding="application/x-tex">0.269</annotation></semantics></math></span>,
+despite sensitivity
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.90</mn><annotation encoding="application/x-tex">0.90</annotation></semantics></math></span>.
+At prevalence
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.20</mn><annotation encoding="application/x-tex">0.20</annotation></semantics></math></span>,
+the corresponding expected counts are 1,800 and 400, giving predictive
+value about
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.818</mn><annotation encoding="application/x-tex">0.818</annotation></semantics></math></span>.
+These are expected counts from the probability model; an actual
+population need not realize those counts exactly. The R calculation
+mirrors the two contributions to the denominator: Only base R is needed;
+the screening inputs are defined in the block.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#run-chapter-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"># Base R; synthetic screening populations of 10,000 people.
+sensitivity &lt;- 0.90
+specificity &lt;- 0.95
+ppv &lt;- function(v) {
+  sensitivity * v / (sensitivity * v + (1 - specificity) * (1 - v))
+}
+prevalence &lt;- c(0.02, 0.20)
+screening &lt;- data.frame(
+  prevalence = prevalence,
+  true.positives = 10000 * sensitivity * prevalence,
+  false.positives = 10000 * (1 - specificity) * (1 - prevalence),
+  PPV = ppv(prevalence)
+)
+stopifnot(max(abs(screening$PPV - screening$true.positives /
+                 (screening$true.positives + screening$false.positives))) &lt; 1e-12)
+print(screening, row.names = FALSE)
+</code></pre></div>
+<p>The variable <code>prevalence</code> contains the two population
+prevalences. The columns <code>true.positives</code> and
+<code>false.positives</code> are expected counts, while <code>PPV</code>
+is the conditional probability computed from their ratio.</p>
+<div id="i1-ppv-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 1.3. Expected positive-test composition per 10,000 people at two
+prevalences, holding sensitivity and specificity fixed.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">Prevalence</th>
+<th style="text-align: right;">True positives</th>
+<th style="text-align: right;">False positives</th>
+<th style="text-align: right;">PPV</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.02</td>
+<td style="text-align: right;">180</td>
+<td style="text-align: right;">490</td>
+<td style="text-align: right;">0.268657</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0.20</td>
+<td style="text-align: right;">1800</td>
+<td style="text-align: right;">400</td>
+<td style="text-align: right;">0.818182</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<figure id="i1-ppv-figure">
+<a href="../assets/inference/ch01-ppv.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch01-ppv.png" alt="Figure 1.2. Positive predictive value changes with prevalence even when
+sensitivity and specificity are held fixed. Transporting a test result
+to another population requires attention to its composition and to
+whether the conditional test characteristics also change.">
+</a><figcaption>Figure 1.2. Positive predictive value changes with prevalence even when
+sensitivity and specificity are held fixed. Transporting a test result
+to another population requires attention to its composition and to
+whether the conditional test characteristics also change.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch01-ppv.png">Open full-size figure</a></p></figure>
+<p>This calculation uses Bayes’ rule as a probability identity. It does
+not require a Bayesian prior distribution for an unknown model
+parameter. Prevalence is a probability concerning a randomly selected
+person; a prior distribution would describe uncertainty over a parameter
+in an inferential model. The Bayesian inference chapter (Chapter <a href="06-bayes.html#i6-chapter" data-reference-type="ref" data-reference="i6-chapter">8</a>) develops a prior
+distribution for an unknown parameter and keeps that role distinct from
+the prevalence in this probability identity.</p>
+<h2 id="the-population-link-is-a-substantive-assumption">1.6 The population
+link is a substantive assumption</h2>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">R=1</annotation></semantics></math></span>
+indicate inclusion in the observed study. The sample may inform
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo>=</mo><mn>1</mn><mo>∣</mo><mi>R</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}(X=1\mid R=1)</annotation></semantics></math></span>,
+while the intended target is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}(X=1)</annotation></semantics></math></span>.
+These are equal only under suitable sampling and observation conditions.
+A large convenience sample does not establish their equality. The
+problem is not fixed by calculating its standard error more
+precisely.</p>
+<p>Population composition can make the distinction concrete. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math></span>
+identifies two subgroups, then
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo>=</mo><mn>1</mn><mo>∣</mo><mi>Z</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>Z</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo>=</mo><mn>1</mn><mo>∣</mo><mi>Z</mi><mo>=</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>Z</mi><mo>=</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}(X=1)=
+ \mathbb{P}(X=1\mid Z=1)\mathbb{P}(Z=1)
+ +\mathbb{P}(X=1\mid Z=0)\mathbb{P}(Z=0).
+ \label{i1-mixture}</annotation></semantics></math><span id="i1-mixture" class="equation-anchor"></span><span class="equation-number">(1.12)</span></span> Even if
+subgroup-specific probabilities remain stable, a change in subgroup
+proportions changes the marginal probability. This matters for any
+heterogeneous biomedical population, including one defined by genetic
+characteristics or patterns of clinical referral. The equation does not
+assert that subgroup differences are causal.</p>
+<p>Dependence is another distinct issue. If each of five independent
+Bernoulli outcomes is duplicated into two records, the ten records still
+have marginal mean
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+Their average remains unbiased for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+but its variance is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mn>5</mn></mrow><annotation encoding="application/x-tex">p(1-p)/5</annotation></semantics></math></span>,
+twice the variance obtained by pretending there are ten independent
+people. A correct marginal probability is not enough to justify a
+binomial joint distribution. Record linkage and the sampling design
+belong in the model assessment.</p>
+<p>Finally, measurement can obscure the target even with infinite data.
+If only a misclassified outcome
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>A</mi><annotation encoding="application/x-tex">A</annotation></semantics></math></span>
+is observed, then its positive probability is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>p</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">s p+(1-c)(1-p)</annotation></semantics></math></span>.
+Without information about sensitivity and specificity, the observed
+positive rate generally does not identify
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+If their values are known and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mo>+</mo><mi>c</mi><mo>≠</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">s+c\ne1</annotation></semantics></math></span>,
+the equation can instead be inverted to give
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>c</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">}</mo><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>s</mi><mo>+</mo><mi>c</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p=\{\mathbb{P}(A=1)+c-1\}/(s+c-1)</annotation></semantics></math></span>.
+When
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mo>+</mo><mi>c</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">s+c=1</annotation></semantics></math></span>,
+the test’s positive probability is the same whether the condition is
+present or absent, so even known accuracy parameters leave
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+unidentified from this test alone. Identifiability asks whether
+different allowed parameter settings can produce the same observable
+distribution. More precise estimation of that same observable
+distribution cannot resolve an unidentified decomposition.</p>
+<h2 id="a-working-discipline-for-the-next-chapters">1.7 Questions, models and
+assumptions</h2>
+<p>Throughout these notes, we will keep the observational unit, outcome
+definition, target population, estimand and probability model explicit.
+We will also say which randomness an expectation or variance averages
+over. These choices determine what a calculation means and which
+assumptions support it.</p>
+<p>For the original ten-person study, the count is two and the
+population probability remains unknown. The next chapter keeps the
+independent Bernoulli model and asks how strongly those observations
+favor one candidate value of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+over another. We will also ask why the count retains information about
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+within that model even though the individual records remain useful for
+checking its assumptions.</p>
+<h2 id="exercises">1.8 Exercises</h2>
+<ol class="exercises" style='--chapter:"1."'><li id="exercise-1-1"><p><strong>Selection and measurement.</strong> A clinic observes two positive tests among ten referred people. Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>A</mi><annotation encoding="application/x-tex">A</annotation></semantics></math></span>
+indicate a positive test,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>D</mi><annotation encoding="application/x-tex">D</annotation></semantics></math></span>
+the presence of a condition, and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>R</mi><annotation encoding="application/x-tex">R</annotation></semantics></math></span>
+referral and inclusion in the sample. Specify the observed fraction and
+the community target
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Pr</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>D</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\Pr(D=1)</annotation></semantics></math></span>
+for a defined place and period. Identify one sampling assumption and one
+measurement assumption that would be needed to use the fraction directly
+for that target. Explain why these are distinct assumptions.</p>
+</li><li id="exercise-1-2"><p><strong>The denominator of predictive value.</strong> In a population with condition prevalence
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>π</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">\pi\in[0,1]</annotation></semantics></math></span>,
+assume sensitivity
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Pr</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>=</mo><mn>1</mn><mo>∣</mo><mi>D</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.90</mn></mrow><annotation encoding="application/x-tex">\Pr(A=1\mid D=1)=0.90</annotation></semantics></math></span>
+and specificity
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Pr</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>A</mi><mo>=</mo><mn>0</mn><mo>∣</mo><mi>D</mi><mo>=</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.95</mn></mrow><annotation encoding="application/x-tex">\Pr(A=0\mid D=0)=0.95</annotation></semantics></math></span>
+apply to this population. Derive
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Pr</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>D</mi><mo>=</mo><mn>1</mn><mo>∣</mo><mi>A</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\Pr(D=1\mid A=1)</annotation></semantics></math></span>,
+solve for the prevalence giving positive predictive value
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">1/2</annotation></semantics></math></span>,
+and identify the joint-probability contributions to its denominator.</p>
+</li><li id="exercise-1-3"><p><strong>Independent people and duplicated records.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>V</mi><mn>5</mn></msub></mrow><annotation encoding="application/x-tex">V_1,\ldots,V_5</annotation></semantics></math></span>
+be independent
+Bernoulli<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(p)</annotation></semantics></math></span>
+variables,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">p\in[0,1]</annotation></semantics></math></span>,
+and define ten records by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mrow><mn>2</mn><mi>j</mi><mo>−</mo><mn>1</mn></mrow></msub><mo>=</mo><msub><mi>X</mi><mrow><mn>2</mn><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>V</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">X_{2j-1}=X_{2j}=V_j</annotation></semantics></math></span>.
+Derive the mean and variance of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>X</mi><mo accent="true">¯</mo></mover><mo>=</mo><msubsup><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>10</mn></msubsup><msub><mi>X</mi><mi>i</mi></msub><mi>/</mi><mn>10</mn></mrow><annotation encoding="application/x-tex">\overline X=\sum_{i=1}^{10}X_i/10</annotation></semantics></math></span>.
+Compare its count distribution with a
+binomial<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>10</mn><mo>,</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(10,p)</annotation></semantics></math></span>
+distribution and identify the failed assumption.</p>
+</li><li id="exercise-1-4"><p><strong>What a fallible measurement identifies.</strong> Suppose only independent test results are observed and their positive
+probability is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>0.10</mn></mrow><annotation encoding="application/x-tex">r=0.10</annotation></semantics></math></span>.
+The measurement model is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mi>s</mi><mi>p</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">r=sp+(1-c)(1-p)</annotation></semantics></math></span>,
+where prevalence
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+sensitivity
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math></span>,
+and specificity
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>c</mi><annotation encoding="application/x-tex">c</annotation></semantics></math></span>
+all belong to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0,1]</annotation></semantics></math></span>.
+Exhibit two admissible triples with different prevalences and this same
+observable distribution. When
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mo>,</mo><mi>c</mi></mrow><annotation encoding="application/x-tex">s,c</annotation></semantics></math></span>
+are known, derive the identifying formula for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+its feasibility condition, and the failure when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mo>+</mo><mi>c</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">s+c=1</annotation></semantics></math></span>.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="how-to-use.html">Previous: About these notes</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="02-likelihood.html">Next: 2. Likelihood, data reduction, and constructing estimators</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

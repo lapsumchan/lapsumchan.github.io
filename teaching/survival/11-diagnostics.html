@@ -1,0 +1,996 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Survival Analysis — Chapter 9: Diagnostics that answer model questions | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Diagnostics that answer model questions.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/survival/11-diagnostics.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Survival Analysis — Chapter 9: Diagnostics that answer model questions | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Diagnostics that answer model questions.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/survival/11-diagnostics.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Survival Analysis — Chapter 9: Diagnostics that answer model questions", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Survival Analysis", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/survival/11-diagnostics.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Survival Analysis</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Events, observation, and population functions</p><ol class="contents-chapters"><li><a href="01-observation.html">1. Events, clocks, and incomplete observation</a></li><li><a href="02-functions.html">2. Survival, risk, hazard, and lifetime summaries</a></li></ol><p class="contents-part">Part II: Risk sets and nonparametric estimation</p><ol class="contents-chapters"><li><a href="03-km.html">3. Estimating survival from incomplete follow-up</a></li><li><a href="04-nelson-aalen.html">4. Nelson--Aalen estimation and counting processes</a></li></ol><p class="contents-part">Part III: Likelihood and survival regression</p><ol class="contents-chapters"><li><a href="07-likelihood.html">5. Likelihood under incomplete observation</a></li><li><a href="08-parametric.html">6. Parametric survival regression</a></li><li><a href="09-cox.html">7. The Cox model: estimation and absolute risk</a></li><li><a href="10-strata-ties.html">8. Stratification and tied event times</a></li><li><a href="11-diagnostics.html" aria-current="page">9. Diagnostics that answer model questions</a></li></ol><p class="contents-part">Part IV: Competing events</p><ol class="contents-chapters"><li><a href="15-competing-risks.html">10. Competing risks and first-event probabilities</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#a-fitted-coefficient-is-the-beginning-of-a-check">9.1 A fitted coefficient is the beginning of a check</a></li><li><a href="#observed-minus-fitted-event-accumulation">9.2 Observed minus fitted event accumulation</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#functional-form-look-for-systematic-discrepancies">9.3 Functional form: look for systematic discrepancies</a></li><li><a href="#deviance-residuals-transform-the-scale-keep-the-limits">9.4 Deviance residuals: transform the scale, keep the limits</a></li><li><a href="#schoenfeld-residuals-connect-events-to-the-score">9.5 Schoenfeld residuals connect events to the score</a></li><li><a href="#a-time-interaction-score-test-from-first-principles">9.6 A time-interaction score test from first principles</a></li><li><a href="#influence-would-one-record-move-the-conclusion">9.7 Influence: would one record move the conclusion?</a></li><li><a href="#what-a-residual-plot-cannot-certify">9.8 What a residual plot cannot certify</a></li><li><a href="#exercises">9.9 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Survival Analysis</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 9</span></p><div class="chapter-content"><h1 id="s11-chapter">Chapter 9. Diagnostics that answer model questions</h1>
+<h2 id="a-fitted-coefficient-is-the-beginning-of-a-check">9.1 A fitted
+coefficient is the beginning of a check</h2>
+<p>The likelihood arguments in Chapters <a href="08-parametric.html#s8-chapter" data-reference-type="ref" data-reference="s8-chapter">6</a>–<a href="10-strata-ties.html#s10-chapter" data-reference-type="ref" data-reference="s10-chapter">8</a>
+explain how to estimate a model. They do not establish that its
+restrictions describe a new data set. A Cox fit can converge, yield
+finite standard errors, and still impose the wrong covariate shape or a
+constant effect where an association changes with time. Conversely, an
+unusual observation does not automatically imply a defective model.</p>
+<p>A useful diagnostic begins with a question: does a straight-line age
+term represent the association adequately, is the group hazard ratio
+reasonably constant over time, or does one record disproportionately
+determine a coefficient? Each asks for a different comparison. We derive
+the residuals from event intensity and partial likelihood so that their
+mathematical form tells us what pattern would challenge the fitted
+model.</p>
+<p>We retain independent subjects, noninformative censoring conditional
+on the modeled information, adequate support, and a correctly defined
+event and time origin. Diagnostics can reveal tension with a fitted
+event model; they do not recover an unobserved event history or prove
+independent censoring. The first calculations use the exact 600-person
+cohort and Cox fit from Chapters <a href="08-parametric.html#s8-chapter" data-reference-type="ref" data-reference="s8-chapter">6</a>
+and <a href="09-cox.html#s9-chapter" data-reference-type="ref" data-reference="s9-chapter">7</a>. The nonlinear-age
+experiment below will reuse its baseline profiles but generate different
+outcomes.</p>
+<h2 id="observed-minus-fitted-event-accumulation">9.2 Observed minus fitted
+event accumulation</h2>
+<p>For a time-fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>-dimensional
+covariate column vector
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>z</mi><mi>i</mi></msub><annotation encoding="application/x-tex">z_i</annotation></semantics></math></span>
+and matching coefficient vector
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>,
+the true intensity under the Cox model is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>λ</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">Y_i(t)\exp(\beta^Tz_i)\lambda_0(t).</annotation></semantics></math></span>
+Chapter <a href="04-nelson-aalen.html#s4-chapter" data-reference-type="ref" data-reference="s4-chapter">4</a> defined a martingale as the
+observed count minus its true compensator. Its fitted analogue is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>M</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>N</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msubsup><mo>∫</mo><mn>0</mn><mi>t</mi></msubsup><msub><mi>Y</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat M_i(t)=N_i(t)-
+ \int_0^tY_i(u)\exp(\widehat\beta^Tz_i)\,d\widehat H_0(u).
+ \label{s11-martingale-process}</annotation></semantics></math><span id="s11-martingale-process" class="equation-anchor"></span><span class="equation-number">(9.1)</span></span> With
+everyone entering at zero and only a first event, its terminal value is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>M</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo>=</mo><msub><mi>Δ</mi><mi>i</mi></msub><mo>−</mo><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>Δ</mi><mi>i</mi></msub><mo>−</mo><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat M_i=\Delta_i-\widehat H_0(X_i)\exp(\widehat\beta^Tz_i)
+             =\Delta_i-\widehat H_i.
+ \label{s11-martingale}</annotation></semantics></math><span id="s11-martingale" class="equation-anchor"></span><span class="equation-number">(9.2)</span></span> Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mi>i</mi></msub><annotation encoding="application/x-tex">X_i</annotation></semantics></math></span>
+is observed follow-up time, and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><annotation encoding="application/x-tex">\widehat H_i</annotation></semantics></math></span>
+is fitted cumulative hazard accumulated during that observed time. We
+compare it with the observed event count; we are not imputing an event
+after censoring.</p>
+<p>The distinction between a true martingale and a fitted residual
+matters. Estimating
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>H</mi><mn>0</mn></msub><annotation encoding="application/x-tex">H_0</annotation></semantics></math></span>
+from the same observations couples the residuals. They are not
+independent, identically distributed errors with a normal reference law.
+Their shape is also asymmetric:
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>M</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo>≤</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\widehat M_i\leq1</annotation></semantics></math></span>,
+while negative values have no finite lower bound. Censoring records have
+nonpositive residuals because their observed event count is zero.</p>
+<p>For the Breslow baseline with the matching risk sets,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munder><mo>∑</mo><mi>i</mi></munder><msub><mover><mi>M</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo>=</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\sum_i\widehat M_i=0.
+ \label{s11-zero-sum}</annotation></semantics></math><span id="s11-zero-sum" class="equation-anchor"></span><span class="equation-number">(9.3)</span></span> To see why,
+interchange the person and event-time sums in the fitted compensators.
+At every event time the total fitted event increment is the observed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mi>j</mi></msub><annotation encoding="application/x-tex">d_j</annotation></semantics></math></span>:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>ℛ</mi><mi>j</mi></msub></mrow></munder><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mfrac><msub><mi>d</mi><mi>j</mi></msub><mrow><munder><mo>∑</mo><mrow><mi>k</mi><mo>∈</mo><msub><mi>ℛ</mi><mi>j</mi></msub></mrow></munder><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>T</mi></msup><msub><mi>z</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>=</mo><msub><mi>d</mi><mi>j</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">\sum_{i\in\mathcal R_j}
+ \exp(\widehat\beta^Tz_i)
+ \frac{d_j}{\sum_{k\in\mathcal R_j}\exp(\widehat\beta^Tz_k)}=d_j.</annotation></semantics></math></span>
+Thus fitted observed-minus-expected counts sum to zero by construction.
+A zero sum is not independent evidence that the model is correct.
+Changing the baseline estimator, tie convention, or entry mechanism
+requires corresponding changes to this identity.</p>
+<h3 id="from-first-principles">9.2.1 From first principles</h3>
+<p>A base-R calculation uses the parametric-regression cohort (months)
+and the fitted Cox coefficients in group/age order. Everyone enters at
+zero; event times are distinct. Here <code>expected</code> is fitted
+cumulative hazard through observed exit.</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R, survival. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+
+biomedical.cohort &lt;- function(n, seed) {
+  old.seed &lt;- if (exists(".Random.seed", envir=.GlobalEnv)) get(".Random.seed", envir=.GlobalEnv) else NULL
+  on.exit(if (is.null(old.seed)) {if (exists(".Random.seed", envir=.GlobalEnv)) rm(".Random.seed",envir=.GlobalEnv)} else assign(".Random.seed",old.seed,envir=.GlobalEnv))
+  set.seed(seed)
+  z &lt;- rbinom(n,1,.45); age &lt;- runif(n,35,70); age10 &lt;- (age-50)/10
+  eta &lt;- log(9)-.35*z-.20*age10
+  event.time &lt;- exp(eta)*(-log(runif(n)))^(1/1.6)
+  censor.time &lt;- pmin(rexp(n,.035),10)
+  data.frame(id=seq_len(n),z=z,age=age,age10=age10,
+    time=pmin(event.time,censor.time),status=as.integer(event.time&lt;=censor.time),
+    event.time=event.time,censor.time=censor.time)
+}
+
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# Cox diagnostic calculations and examples.
+options(stringsAsFactors=FALSE,digits=10)
+library(survival)
+dir.create('results',showWarnings=FALSE);dir.create('figures',showWarnings=FALSE)
+dat&lt;-biomedical.cohort(600L,675408)
+# Fitted event accumulation for the first two participants.
+beta &lt;- data.frame(coefficient=unname(stats::coef(survival::coxph(survival::Surv(time,status)~z+age10,data=biomedical.cohort(600L,675408),ties="breslow"))))$coefficient
+Z &lt;- as.matrix(dat[c("z", "age10")])
+weight &lt;- exp(drop(Z %*% beta))
+times &lt;- sort(dat$time[dat$status == 1])
+stopifnot(length(beta)==2, all(diff(times)&gt;0))
+jump &lt;- vapply(times, function(t) 1 / sum(weight[dat$time &gt;= t]), 0.0)
+expected &lt;- weight * c(0, cumsum(jump))[findInterval(dat$time, times) + 1L]
+martingale &lt;- dat$status - expected
+stopifnot(abs(sum(martingale))&lt;1e-8)
+reader.example &lt;- round(cbind(id=dat$id,expected,martingale)[1:2,],6)
+capture.output(reader.example,sum(martingale),
+               file="results/ch11-worked-example.txt")
+fit&lt;-survival::coxph(survival::Surv(time,status)~z+age10,
+                     data=dat,ties='breslow',x=TRUE)
+# Event-level means/variances, fitted compensators, and subject score integrals.
+manual.diagnostics&lt;-function(fit,dat) {
+ Z&lt;-fit$x;b&lt;-coef(fit);eta&lt;-drop(Z%*%b);w&lt;-exp(eta)
+ event&lt;-which(dat$status==1);event&lt;-event[order(dat$time[event])]
+ p&lt;-ncol(Z);m&lt;-length(event);bar&lt;-matrix(0,m,p);V&lt;-array(0,c(p,p,m))
+ jump&lt;-numeric(m);r&lt;-matrix(0,m,p);scores&lt;-matrix(0,nrow(dat),p)
+ for(j in seq_len(m)) {
+  i&lt;-event[j];rr&lt;-which(dat$time&gt;=dat$time[i]);P&lt;-w[rr]/sum(w[rr])
+  bar[j,]&lt;-colSums(Z[rr,,drop=FALSE]*P)
+  centered&lt;-sweep(Z[rr,,drop=FALSE],2,bar[j,],'-')
+  V[,,j]&lt;-crossprod(centered,centered*P)
+  jump[j]&lt;-1/sum(w[rr]);r[j,]&lt;-Z[i,]-bar[j,]
+  scores[i,]&lt;-scores[i,]+r[j,]
+  scores[rr,]&lt;-scores[rr,,drop=FALSE]-centered*P
+ }
+ H0&lt;-cumsum(jump);H&lt;-w*c(0,H0)[findInterval(dat$time,dat$time[event])+1L]
+ M&lt;-dat$status-H
+ D&lt;-sign(M)*sqrt(pmax(0,-2*(M+ifelse(dat$status==1,log(pmax(H,.Machine$double.eps)),0))))
+ info&lt;-apply(V,c(1,2),sum)
+ influence&lt;-scores%*%solve(info)
+ list(event=event,time=dat$time[event],bar=bar,V=V,r=r,H=H,M=M,D=D,
+      scores=scores,info=info,dfbeta=influence)
+}
+d&lt;-manual.diagnostics(fit,dat)
+stopifnot(max(abs(martingale-d$M))&lt;1e-6)
+stopifnot(max(abs(d$M-residuals(fit,type='martingale')))&lt;1e-9,
+          max(abs(d$D-residuals(fit,type='deviance')))&lt;1e-8,
+          max(abs(d$r-unname(residuals(fit,type='schoenfeld'))))&lt;1e-8,
+          max(abs(d$scores-unname(residuals(fit,type='score'))))&lt;1e-8,
+          max(abs(d$dfbeta-unname(residuals(fit,type='dfbeta'))))&lt;1e-8,
+          max(abs(solve(d$info)-vcov(fit)))&lt;1e-9,
+          abs(sum(d$M))&lt;1e-8,max(abs(colSums(d$r)))&lt;1e-5)
+# The routine API preserves the same fitted model, records and time conventions.
+package.M &lt;- residuals(fit,type='martingale')
+package.D &lt;- residuals(fit,type='deviance')
+package.S &lt;- unname(residuals(fit,type='schoenfeld'))
+route.comparison &lt;- data.frame(
+ residual=c('Martingale','Deviance','Schoenfeld'),
+ units=c('Subjects','Subjects','Events'),
+ number=c(length(package.M),length(package.D),nrow(package.S)),
+ max.abs.difference=c(max(abs(d$M-package.M)),max(abs(d$D-package.D)),
+                      max(abs(d$r-package.S))))
+write.csv(route.comparison,'results/ch11-computational-routes.csv',row.names=FALSE)
+writeLines(c('\\begin{tabular}{llrr}\\toprule',
+ 'Residual &amp; Indexed by &amp; Records &amp; Maximum difference\\\\\\midrule',
+ vapply(seq_len(nrow(route.comparison)),function(i)sprintf('%s &amp; %s &amp; %d &amp; %.2e\\\\',
+   route.comparison$residual[i],route.comparison$units[i],route.comparison$number[i],
+   route.comparison$max.abs.difference[i]),''),'\\bottomrule\\end{tabular}'),
+ 'results/ch11-computational-routes.tex')
+write.csv(data.frame(id=dat$id[1:2],status=dat$status[1:2],H=d$H[1:2],
+ manual.M=d$M[1:2],package.M=package.M[1:2],
+ manual.D=d$D[1:2],package.D=package.D[1:2]),
+ 'results/ch11-workflow-example.csv',row.names=FALSE)
+write.csv(data.frame(package=c('R','survival'),
+ version=c(as.character(getRversion()),as.character(packageVersion('survival')))),
+ 'results/ch11-package-versions.csv',row.names=FALSE)
+# Independent small arithmetic checks used in the instructor exercises.
+event.D &lt;- sqrt(-2*(.75+log(.25)))
+censor.D &lt;- -sqrt(2*2)
+stopifnot(abs(event.D-1.128091)&lt;1e-6, censor.D==-2)
+residuals.table&lt;-data.frame(id=dat$id,time=dat$time,status=dat$status,z=dat$z,age10=dat$age10,
+                          H=d$H,martingale=d$M,deviance=d$D,
+                          dfbeta.z=d$dfbeta[,1],dfbeta.age=d$dfbeta[,2])
+write.csv(residuals.table,'results/ch11-subject-diagnostics.csv',row.names=FALSE)
+write.csv(data.frame(time=d$time,sch.z=d$r[,1],sch.age=d$r[,2],
+                    cumulative.z=cumsum(d$r[,1]),cumulative.age=cumsum(d$r[,2])),
+          'results/ch11-event-diagnostics.csv',row.names=FALSE)
+# First-principles score test for beta(t)=beta+gamma*g(t), with nuisance beta adjusted.
+g&lt;-log1p(d$time);g&lt;-g-mean(g)
+Ugamma&lt;-colSums(d$r*g)
+Ibb&lt;-d$info
+Igb&lt;-apply(sweep(d$V,3,g,'*'),c(1,2),sum)
+Igg&lt;-apply(sweep(d$V,3,g^2,'*'),c(1,2),sum)
+Ieff&lt;-Igg-Igb%*%solve(Ibb)%*%t(Igb)
+Qglobal&lt;-drop(t(Ugamma)%*%solve(Ieff)%*%Ugamma)
+zph&lt;-survival::cox.zph(fit,transform=function(t)log1p(t/1),
+                       terms=TRUE,singledf=FALSE,global=TRUE)
+# The default KM time transform tests a different time-interaction direction.
+zph.km&lt;-survival::cox.zph(fit,transform='km')
+stopifnot(abs(Qglobal-zph$table['GLOBAL','chisq'])&lt;1e-5)
+ph&lt;-data.frame(quantity=c('Ugamma.z','Ugamma.age','global.score.chisq','global.score.p'),
+               value=c(Ugamma,Qglobal,pchisq(Qglobal,2,lower.tail=FALSE)))
+write.csv(ph,'results/ch11-ph-score.csv',row.names=FALSE)
+write.csv(data.frame(term=rownames(zph$table),zph$table),
+          'results/ch11-cox-zph.csv',row.names=FALSE)
+ph.routes&lt;-data.frame(route=c('Manual log(1+t)','Package log(1+t)','Package KM transform'),
+ chisq=c(Qglobal,zph$table['GLOBAL','chisq'],zph.km$table['GLOBAL','chisq']),
+ df=2,p=c(pchisq(Qglobal,2,lower.tail=FALSE),zph$table['GLOBAL','p'],zph.km$table['GLOBAL','p']))
+write.csv(ph.routes,'results/ch11-ph-workflows.csv',row.names=FALSE)
+writeLines(c('\\begin{tabular}{lrrr}\\toprule',
+ 'Time-interaction calculation &amp; Statistic &amp; df &amp; p-value\\\\\\midrule',
+ vapply(seq_len(nrow(ph.routes)),function(i)sprintf('%s &amp; %.6f &amp; %d &amp; %.6f\\\\',
+ ph.routes$route[i],ph.routes$chisq[i],ph.routes$df[i],ph.routes$p[i]),''),
+ '\\bottomrule\\end{tabular}'),'results/ch11-ph-workflows.tex')
+# One-step case deletion is an approximation; compare actual refits for the largest cases.
+standardized&lt;-sweep(d$dfbeta,2,sqrt(diag(vcov(fit))),'/')
+ranked&lt;-order(apply(abs(standardized),1,max),decreasing=TRUE)[1:5]
+deletion&lt;-do.call(rbind,lapply(ranked,function(i) {
+ deleted&lt;-coxph(Surv(time,status)~z+age10,data=dat[-i,],ties='breslow')
+ exact&lt;-coef(fit)-coef(deleted)
+ data.frame(id=dat$id[i],time=dat$time[i],status=dat$status[i],
+            approx.z=d$dfbeta[i,1],exact.z=exact[1],
+            approx.age=d$dfbeta[i,2],exact.age=exact[2])
+}))
+write.csv(deletion,'results/ch11-deletion-refits.csv',row.names=FALSE)
+# Same baseline profiles, separate new outcomes with a prespecified quadratic age effect.
+set.seed(675411)
+a&lt;-dat$age10
+eta.true&lt;-.56*dat$z+.32*a+.60*a^2
+T&lt;-9*(rexp(nrow(dat))/exp(eta.true))^(1/1.6)
+C&lt;-pmin(rexp(nrow(dat),.035),10)
+nonlinear&lt;-data.frame(id=dat$id,z=dat$z,age10=a,time=pmin(T,C),status=as.integer(T&lt;=C))
+linear&lt;-coxph(Surv(time,status)~z+age10,data=nonlinear,ties='breslow',x=TRUE)
+quadratic&lt;-coxph(Surv(time,status)~z+age10+I(age10^2),data=nonlinear,ties='breslow',x=TRUE)
+dl&lt;-manual.diagnostics(linear,nonlinear);dq&lt;-manual.diagnostics(quadratic,nonlinear)
+LR&lt;-2*(quadratic$loglik[2]-linear$loglik[2]);LRp&lt;-pchisq(LR,1,lower.tail=FALSE)
+stopifnot(LR&gt;=0,all(is.finite(dl$M)),all(is.finite(dq$M)))
+write.csv(nonlinear,'results/ch11-nonlinear-cohort.csv',row.names=FALSE)
+write.csv(data.frame(id=nonlinear$id,age10=a,M.linear=dl$M,M.quadratic=dq$M),
+          'results/ch11-functional-form-residuals.csv',row.names=FALSE)
+coefs&lt;-data.frame(term=names(coef(quadratic)),truth=c(.56,.32,.60),
+                  linear=c(coef(linear),NA),quadratic=coef(quadratic))
+write.csv(coefs,'results/ch11-functional-form-coefficients.csv',row.names=FALSE)
+summary&lt;-data.frame(quantity=c('original.events','sum.martingale','max.manual.residual.error',
+                             'global.logtime.ph.p','quadratic.events','quadratic.lr','quadratic.lr.p'),
+                    value=c(sum(dat$status),sum(d$M),
+                            max(abs(d$M-residuals(fit,type='martingale'))),
+                            pchisq(Qglobal,2,lower.tail=FALSE),sum(nonlinear$status),LR,LRp))
+write.csv(summary,'results/ch11-summary.csv',row.names=FALSE)
+tab&lt;-c('\\begin{tabular}{lrrr}\\toprule','Term &amp; Generating value &amp; Linear fit &amp; Quadratic fit\\\\\\midrule',
+       vapply(seq_len(nrow(coefs)),function(i)sprintf('%s &amp; %.3f &amp; %s &amp; %.4f\\\\',
+          c('Group $z$','Age $a$','Age $a^2$')[i],coefs$truth[i],
+          ifelse(is.na(coefs$linear[i]),'--',sprintf('%.4f',coefs$linear[i])),coefs$quadratic[i]),''),
+       '\\bottomrule\\end{tabular}')
+writeLines(tab,'results/ch11-functional-form-table.tex')
+save.plot&lt;-function(stem,draw,width=7.6,height=4.2) {
+ cairo_pdf(paste0('figures/',stem,'.pdf'),width,height,family='serif');draw();dev.off()
+ png(paste0('figures/',stem,'.png'),width*180,height*180,res=180);draw();dev.off()
+}
+save.plot('ch11-functional-form',function(){
+ par(mfrow=c(1,2),mar=c(4.3,4.5,2,1))
+ for(j in 1:2) {
+  M&lt;-if(j==1)dl$M else dq$M
+  plot(a,M,col=adjustcolor('gray40',alpha.f=.35),pch=16,cex=.6,
+       xlab='Age, decades from 50',ylab='Fitted martingale residual',
+       main=c('Linear age term','Quadratic age term')[j])
+  abline(h=0,lty=2,col='gray45');lines(lowess(a,M,f=.65),lwd=2,col='#002D72')
+ }
+})
+save.plot('ch11-residuals',function(){
+ par(mfrow=c(1,2),mar=c(4.3,4.5,1,1))
+ lp&lt;-drop(fit$x%*%coef(fit))
+ plot(lp,d$D,pch=16,cex=.55,col=adjustcolor('gray40',.4),
+      xlab='Fitted linear predictor',ylab='Deviance residual')
+ abline(h=0,lty=2,col='gray45')
+ plot(d$time,cumsum(d$r[,1]),type='s',lwd=2,col='#002D72',
+      xlab='Event time (months)',ylab='Cumulative group Schoenfeld score')
+ abline(h=0,lty=2,col='gray45')
+})
+save.plot('ch11-ph-workflow',function(){
+ par(mfrow=c(1,2),mar=c(4.3,4.5,2,1))
+ plot(d$time,cumsum(d$r[,1]),type='s',lwd=2,col='#002D72',
+      xlab='Event time (months)',ylab='Cumulative raw Schoenfeld score',
+      main='From first principles')
+ abline(h=0,lty=2,col='gray45')
+ plot(zph,var='z',df=4,resid=TRUE,se=TRUE,pch=16,cex=.35,
+      col=c('#002D72','gray50'),lwd=c(2,1),
+      xlab='Event time (months)',ylab='Estimated group log hazard ratio',
+      main='Standard R workflow')
+ abline(h=coef(fit)['z'],lty=3,col='gray35')
+})
+save.plot('ch11-influence',function(){
+ par(mfrow=c(1,2),mar=c(4.3,4.5,1,1))
+ matplot(dat$id,standardized,pch=c(1,3),col=c('#002D72','gray50'),
+         xlab='Subject identifier',ylab='DFBETA / full-fit standard error')
+ legend('topright',c('Group coefficient','Age coefficient'),pch=c(1,3),
+        col=c('#002D72','gray50'),bty='o',bg='white',box.col='white',cex=.8)
+ rng&lt;-range(c(deletion$approx.z,deletion$exact.z,deletion$approx.age,deletion$exact.age))
+ plot(deletion$approx.z,deletion$exact.z,pch=16,col='#002D72',xlim=rng,ylim=rng,
+      xlab='One-step deletion change',ylab='Actual deletion change')
+ points(deletion$approx.age,deletion$exact.age,pch=3,col='gray35')
+ abline(0,1,lty=2,col='gray40')
+})
+capture.output(sessionInfo(),file='results/ch11-sessionInfo.txt')
+
+print(summary);print(coefs);print(deletion);print(zph$table)
+print(route.comparison);print(ph.routes)
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r">dat &lt;- biomedical.cohort(600L,675408)
+beta &lt;- data.frame(coefficient=unname(stats::coef(survival::coxph(survival::Surv(time,status)~z+age10,data=biomedical.cohort(600L,675408),ties="breslow"))))$coefficient
+Z &lt;- as.matrix(dat[c("z", "age10")])
+weight &lt;- exp(drop(Z %*% beta))
+times &lt;- sort(dat$time[dat$status == 1])
+jump &lt;- vapply(times, function(t) 1 / sum(weight[dat$time &gt;= t]), 0.0)
+expected &lt;- weight * c(0, cumsum(jump))[findInterval(dat$time, times) + 1L]
+martingale &lt;- dat$status - expected
+round(cbind(id = dat$id, expected, martingale)[1:2, ], 6)
+sum(martingale)</code></pre></div>
+<p>Subject 1’s event gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mn>1</mn></msub><mo>=</mo><mn>0.501627</mn></mrow><annotation encoding="application/x-tex">\widehat H_1=0.501627</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>M</mi><mo accent="true">̂</mo></mover><mn>1</mn></msub><mo>=</mo><mn>0.498373</mn></mrow><annotation encoding="application/x-tex">\widehat M_1=0.498373</annotation></semantics></math></span>;
+censored subject 2 gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mn>2</mn></msub><mo>=</mo><mn>1.436414</mn></mrow><annotation encoding="application/x-tex">\widehat H_2=1.436414</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>M</mi><mo accent="true">̂</mo></mover><mn>2</mn></msub><mo>=</mo><mo>−</mo><mn>1.436414</mn></mrow><annotation encoding="application/x-tex">\widehat M_2=-1.436414</annotation></semantics></math></span>.
+The numerical zero sum checks Equation <a href="#s11-zero-sum" data-reference-type="eqref" data-reference="s11-zero-sum">(9.3)</a>’s construction; model
+validity requires separate assessment.</p>
+<h3 id="standard-r-workflow">9.2.2 Standard R workflow</h3>
+<p>Fit the same Cox model and ask explicitly for the residual whose
+statistical question is relevant <span class="citation" data-cites="R-survival-residuals-coxph"><a class="collection-citation" href="references.html#ref-R-survival-residuals-coxph" role="doc-biblioref" aria-label="Reference 9">[9]</a></span>.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>fit <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">coxph</span>(survival<span class="sc">::</span><span class="fu">Surv</span>(time,status) <span class="sc">~</span> z <span class="sc">+</span> age10,</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>                       <span class="at">data=</span>dat, <span class="at">ties=</span><span class="st">"breslow"</span>, <span class="at">x=</span><span class="cn">TRUE</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>M <span class="ot">&lt;-</span> <span class="fu">residuals</span>(fit, <span class="at">type=</span><span class="st">"martingale"</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>D <span class="ot">&lt;-</span> <span class="fu">residuals</span>(fit, <span class="at">type=</span><span class="st">"deviance"</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>S <span class="ot">&lt;-</span> <span class="fu">residuals</span>(fit, <span class="at">type=</span><span class="st">"schoenfeld"</span>)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">cbind</span>(M, D)[<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>, ], <span class="dv">6</span>)</span></code></pre></div>
+<p>The two displayed rows are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.498373</mn><mo>,</mo><mn>0.618912</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0.498373,0.618912)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><mn>1.436414</mn><mo>,</mo><mo>−</mo><mn>1.694942</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(-1.436414,-1.694942)</annotation></semantics></math></span>
+for martingale and deviance residuals. We next derive the deviance
+transformation and the event-level Schoenfeld residual. Comparing each
+formula with its package calculation gives:</p>
+<div class="center">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Residual</th>
+<th style="text-align: left;">Indexed by</th>
+<th style="text-align: right;">Records</th>
+<th style="text-align: right;">Maximum difference</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Martingale</td>
+<td style="text-align: left;">Subjects</td>
+<td style="text-align: right;">600</td>
+<td style="text-align: right;">1.11e-15</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Deviance</td>
+<td style="text-align: left;">Subjects</td>
+<td style="text-align: right;">600</td>
+<td style="text-align: right;">6.22e-15</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Schoenfeld</td>
+<td style="text-align: left;">Events</td>
+<td style="text-align: right;">385</td>
+<td style="text-align: right;">6.66e-16</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>Martingale and deviance residuals have one entry per subject here;
+Schoenfeld residuals have one row per event. Align records and event
+order before a comparison. Breslow tie handling is explicit, although
+this cohort has distinct event times and hence no tie approximation to
+reconcile. For tied times, weighted records, delayed entry, or multiple
+intervals per person, the corresponding manual risk-set construction
+must change as well. The <code>x=TRUE</code> option retains the model
+matrix for the subsequent time-pattern diagnostic; it does not alter the
+target coefficient.</p>
+<h2 id="functional-form-look-for-systematic-discrepancies">9.3 Functional
+form: look for systematic discrepancies</h2>
+<p>A continuous covariate can enter as a straight line, a prespecified
+transformation, or a spline basis. Each choice says how conditional log
+hazard varies with that covariate. Plotting fitted martingale residuals
+against age can reveal systematic shape left after the chosen
+representation. A smoother is an aid to seeing a pattern, not a new
+inferential guarantee.</p>
+<p>The residual is an omnibus observed-minus-expected count, not an
+estimate of the age-response function itself. If age has already entered
+the fit, its coefficient score has imposed an aggregate constraint,
+while the smoother can still reveal a shape that the chosen linear term
+misses. A persisting trend motivates comparison of plausible forms; it
+does not identify a unique correction from the plot alone.</p>
+<p>The scatter will remain asymmetric even for an appropriate model.
+Expecting a symmetric cloud like linear-regression errors is the wrong
+criterion. The relevant question is whether a persistent trend suggests
+a missing component of the event model. Censoring, sparse covariate
+extremes, omitted correlated variables, and the smoother’s tuning also
+affect what can be seen. A diagnostic should state which covariates were
+already adjusted for, rather than attributing every residual trend to
+one omitted transformation.</p>
+<p>For a controlled experiment, the complete R example retains the
+parametric-regression cohort’s 600 baseline profiles but generates
+separate outcomes from
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo>,</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>λ</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mn>0.56</mn><mi>z</mi><mo>+</mo><mn>0.32</mn><mi>a</mi><mo>+</mo><mn>0.60</mn><msup><mi>a</mi><mn>2</mn></msup><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="2.0em"></mspace><mi>a</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mrow><mi mathvariant="normal">a</mi><mi mathvariant="normal">g</mi><mi mathvariant="normal">e</mi></mrow><mo>−</mo><mn>50</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mn>10</mn><mo>,</mo></mrow><annotation encoding="application/x-tex">\lambda(t\mid z,a)=\lambda_0(t)
+ \exp\{0.56z+0.32a+0.60a^2\},\qquad a=(\mathrm{age}-50)/10,
+ \label{s11-nonlinear-truth}</annotation></semantics></math><span id="s11-nonlinear-truth" class="equation-anchor"></span><span class="equation-number">(9.4)</span></span> with
+Weibull baseline shape 1.6 and scale 9. Independent censoring and
+month-10 administrative closure are retained. The quadratic term is
+specified before generating the experiment; it is not selected by trying
+many shapes on an unknown data set.</p>
+<div class="center">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Term</th>
+<th style="text-align: right;">Generating value</th>
+<th style="text-align: right;">Linear fit</th>
+<th style="text-align: right;">Quadratic fit</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Group
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>z</mi><annotation encoding="application/x-tex">z</annotation></semantics></math></span></td>
+<td style="text-align: right;">0.560</td>
+<td style="text-align: right;">0.5364</td>
+<td style="text-align: right;">0.5465</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Age
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math></span></td>
+<td style="text-align: right;">0.320</td>
+<td style="text-align: right;">0.5844</td>
+<td style="text-align: right;">0.3510</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Age
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>a</mi><mn>2</mn></msup><annotation encoding="application/x-tex">a^2</annotation></semantics></math></span></td>
+<td style="text-align: right;">0.600</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">0.6418</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>There are 468 events. Omitting the square gives an age coefficient
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.5844</mn><annotation encoding="application/x-tex">0.5844</annotation></semantics></math></span>,
+compared with its generating linear component
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.32</mn><annotation encoding="application/x-tex">0.32</annotation></semantics></math></span>.
+Including the prespecified square gives linear and quadratic estimates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.3510</mn><annotation encoding="application/x-tex">0.3510</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.6418</mn><annotation encoding="application/x-tex">0.6418</annotation></semantics></math></span>.
+Those coefficients describe a curve together; the linear term alone is
+not a constant age effect when the square is present. A change from
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math></span>
+to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>+</mo><mi>δ</mi></mrow><annotation encoding="application/x-tex">a+\delta</annotation></semantics></math></span>
+has log hazard ratio
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>β</mi><mi>a</mi></msub><mi>δ</mi><mo>+</mo><msub><mi>β</mi><msup><mi>a</mi><mn>2</mn></msup></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mi>a</mi><mi>δ</mi><mo>+</mo><msup><mi>δ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\beta_a\delta+\beta_{a^2}(2a\delta+\delta^2)</annotation></semantics></math></span>.</p>
+<figure id="s11-functional-figure">
+<a href="../assets/survival/ch11-functional-form.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch11-functional-form.png" alt="Figure 9.1. Martingale residuals against age in the controlled nonlinear
+experiment. Blue smoothers summarize the same records under a linear and
+a quadratic representation. The individual residual distribution is
+asymmetric; a smooth trend concerns functional form, not
+normality.">
+</a><figcaption>Figure 9.1. Martingale residuals against age in the controlled nonlinear
+experiment. Blue smoothers summarize the same records under a linear and
+a quadratic representation. The individual residual distribution is
+asymmetric; a smooth trend concerns functional form, not
+normality.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch11-functional-form.png">Open full-size figure</a></p></figure>
+<p>The nested partial-likelihood comparison gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mrow><mo stretchy="true" form="prefix">(</mo><msub><mo>ℓ</mo><mrow><mi mathvariant="normal">q</mi><mi mathvariant="normal">u</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">d</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">c</mi></mrow></msub><mo>−</mo><msub><mo>ℓ</mo><mrow><mi mathvariant="normal">l</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">n</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>128.2373</mn></mrow><annotation encoding="application/x-tex">2(\ell_{\mathrm{quadratic}}-\ell_{\mathrm{linear}})=128.2373</annotation></semantics></math></span>,
+with one additional coefficient and approximate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>9.96</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>30</mn></mrow></msup></mrow><annotation encoding="application/x-tex">p=9.96\times10^{-30}</annotation></semantics></math></span>.
+This is evidence for the added term in this specified experiment. In a
+real exploratory analysis, selecting knots, transformations, and
+covariates after inspecting these same plots changes the procedure.
+Report that exploration and use suitable validation or prespecified
+confirmation; a final selected-model probability does not account for an
+entire search.</p>
+<h2 id="deviance-residuals-transform-the-scale-keep-the-limits">9.4 Deviance
+residuals: transform the scale, keep the limits</h2>
+<p>Martingale residuals retain the observed-minus-fitted count
+calculation, but their long negative tail can make records difficult to
+compare visually. We keep that information and transform its scale
+through the deviance residual:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>D</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo>=</mo><mo>sign</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>M</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><msqrt><mrow><mo>−</mo><mn>2</mn><mo stretchy="false" form="prefix">{</mo><msub><mover><mi>M</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo>+</mo><msub><mi>Δ</mi><mi>i</mi></msub><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>Δ</mi><mi>i</mi></msub><mo>−</mo><msub><mover><mi>M</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow></msqrt><mo>,</mo></mrow><annotation encoding="application/x-tex">\widehat D_i=\operatorname{sign}(\widehat M_i)
+ \sqrt{-2\{\widehat M_i+\Delta_i\log(\Delta_i-\widehat M_i)\}},
+ \label{s11-deviance}</annotation></semantics></math><span id="s11-deviance" class="equation-anchor"></span><span class="equation-number">(9.5)</span></span> where the product
+involving
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Δ</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\Delta_i=0</annotation></semantics></math></span>
+is defined as zero. Since
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Δ</mi><mi>i</mi></msub><mo>−</mo><msub><mover><mi>M</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo>=</mo><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\Delta_i-\widehat M_i=\widehat H_i</annotation></semantics></math></span>,
+an event term uses the log fitted cumulative hazard. At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>M</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\widehat M_i=0</annotation></semantics></math></span>,
+define the residual as zero, including any removable limit.</p>
+<p>For an event, the expression inside the square root is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo>−</mo><mn>1</mn><mo>−</mo><mo>log</mo><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">2(\widehat H_i-1-\log\widehat H_i)</annotation></semantics></math></span>,
+nonnegative by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>log</mo><mi>x</mi><mo>≤</mo><mi>x</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\log x\leq x-1</annotation></semantics></math></span>.
+For censoring it is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">2\widehat H_i</annotation></semantics></math></span>.
+These relations check both the formula and numerical implementation.
+They also explain the sign: a positive event residual means the event
+arrived with less fitted hazard accumulated than one, while a negative
+value means more accumulated hazard. A censored subject’s negative value
+reports an event-free observation longer than its fitted hazard scale
+might suggest; it does not assign an event at the censoring time.</p>
+<h3 id="from-first-principles-1">9.4.1 From first principles</h3>
+<p>The transformation can be calculated directly from the same fitted
+cumulative hazards used for the martingale residuals:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb3" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>H <span class="ot">&lt;-</span> expected</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>M <span class="ot">&lt;-</span> dat<span class="sc">$</span>status<span class="sc">-</span>H</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>inside <span class="ot">&lt;-</span> <span class="dv">2</span><span class="sc">*</span>H</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>event <span class="ot">&lt;-</span> dat<span class="sc">$</span>status <span class="sc">==</span> <span class="dv">1</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>inside[event] <span class="ot">&lt;-</span> <span class="dv">2</span><span class="sc">*</span>(H[event]<span class="sc">-</span><span class="dv">1</span><span class="sc">-</span><span class="fu">log</span>(H[event]))</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>deviance <span class="ot">&lt;-</span> <span class="fu">sign</span>(M)<span class="sc">*</span><span class="fu">sqrt</span>(<span class="fu">pmax</span>(inside, <span class="dv">0</span>))</span></code></pre></div>
+<p>The nonnegative truncation protects against a small negative roundoff
+value near
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">H=1</annotation></semantics></math></span>;
+it is not a way to repair a materially negative expression. An event
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">H=1</annotation></semantics></math></span>
+has both residuals zero. At a censoring exit with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">H=0</annotation></semantics></math></span>,
+define the residual by its zero limit without evaluating a
+logarithm.</p>
+<h3 id="standard-r-workflow-1">9.4.2 Standard R workflow</h3>
+<p><code>residuals(fit, type="deviance")</code> applies the same
+transformation to the fitted martingale residuals. It supplies a
+convenient observation-scale diagnostic, not a new error distribution.
+For this cohort, the manual and package values agree to floating-point
+accuracy; the contrast is between transparent arithmetic and a
+maintained implementation of that arithmetic.</p>
+<p>The transformation makes a residual plot less severely skewed. It
+does not establish normality, equal variance, independence, or a
+universally valid cutoff at two standard deviations. Outlying residuals
+deserve investigation of timing, endpoint ascertainment, units, and
+model structure. Valid observations can be extreme under a correct
+distribution. Deleting them merely because they make a plot
+uncomfortable changes the population and the analysis.</p>
+<h2 id="schoenfeld-residuals-connect-events-to-the-score">9.5 Schoenfeld
+residuals connect events to the score</h2>
+<p>The preceding residuals summarize a person’s accumulated follow-up.
+To examine whether an association changes over time, we instead return
+to the covariate comparison at each event. At a distinct event time
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mi>j</mi></msub><annotation encoding="application/x-tex">t_j</annotation></semantics></math></span>,
+let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>i</mi><mi>j</mi></msub><annotation encoding="application/x-tex">i_j</annotation></semantics></math></span>
+be the subject who fails. The event-level Schoenfeld residual vector is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mi>j</mi></msub><mo>=</mo><msub><mi>z</mi><msub><mi>i</mi><mi>j</mi></msub></msub><mo>−</mo><msub><mover><mi>z</mi><mo accent="true">¯</mo></mover><mi>j</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mover><mi>z</mi><mo accent="true">¯</mo></mover><mi>j</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>ℛ</mi><mi>j</mi></msub></mrow></munder><msub><mi>z</mi><mi>i</mi></msub><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>ℛ</mi><mi>j</mi></msub></mrow></munder><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">r_j=z_{i_j}-\overline z_j(\widehat\beta),\qquad
+ \overline z_j(\beta)=
+ \frac{\sum_{i\in\mathcal R_j}z_i\exp(\beta^Tz_i)}
+      {\sum_{i\in\mathcal R_j}\exp(\beta^Tz_i)}.
+ \label{s11-schoenfeld}</annotation></semantics></math><span id="s11-schoenfeld" class="equation-anchor"></span><span class="equation-number">(9.6)</span></span> It is observed
+event covariate minus its model-weighted risk-set expectation. There is
+one vector per event, not one ordinary residual per censored person. The
+cumulative score process is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mrow><msub><mi>t</mi><mi>j</mi></msub><mo>≤</mo><mi>t</mi></mrow></munder><msub><mi>r</mi><mi>j</mi></msub><mo>,</mo><mspace width="2.0em"></mspace><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>U</mi><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>≈</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">R(t)=\sum_{t_j\leq t}r_j,\qquad R(\tau)=U(\widehat\beta)\approx0.
+ \label{s11-cumulative}</annotation></semantics></math><span id="s11-cumulative" class="equation-anchor"></span><span class="equation-number">(9.7)</span></span> The cumulative
+representation lets us see whether early and late score contributions
+move systematically in opposite directions. Its endpoint is zero because
+we fitted the score equation; the path leading there can still reveal a
+time pattern.</p>
+<p>Under a correctly specified constant coefficient,
+observed-minus-expected event contributions have the appropriate
+conditional mean-zero structure. A trend in event-level residuals, or in
+their suitably scaled version, can suggest a changing association. Their
+information varies with the risk set, so plotting unscaled points is
+exploratory rather than a complete test. End-of-follow-up behavior is
+particularly unstable when only a few covariate profiles remain. Correct
+interpretation combines event-time support, a stated time
+transformation, and an appropriate variance calculation.</p>
+<p>The script calculates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>r</mi><mi>j</mi></msub><annotation encoding="application/x-tex">r_j</annotation></semantics></math></span>
+and the weighted risk-set covariance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mi>j</mi></msub><annotation encoding="application/x-tex">V_j</annotation></semantics></math></span>
+explicitly. Their sum agrees with the fitted score and information. The
+complete R example calculates each event-level residual and its
+cumulative path, so we can connect the plotted pattern to the risk-set
+calculation.</p>
+<h2 id="a-time-interaction-score-test-from-first-principles">9.6 A
+time-interaction score test from first principles</h2>
+<p>For a chosen scalar function
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">g(t)</annotation></semantics></math></span>,
+consider the local alternative
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>β</mi><mo>+</mo><mi>γ</mi><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\beta(t)=\beta+\gamma g(t).
+ \label{s11-time-alternative}</annotation></semantics></math><span id="s11-time-alternative" class="equation-anchor"></span><span class="equation-number">(9.8)</span></span> Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>γ</mi><annotation encoding="application/x-tex">\gamma</annotation></semantics></math></span>
+is a vector of the same dimension as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>.
+At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>γ</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\gamma=0</annotation></semantics></math></span>,
+differentiating each event factor gives the score
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>U</mi><mi>γ</mi></msub><mo>=</mo><munder><mo>∑</mo><mi>j</mi></munder><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>r</mi><mi>j</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">U_\gamma=\sum_jg(t_j)r_j.</annotation></semantics></math></span>
+The information blocks are
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><msub><mi>I</mi><mrow><mi>β</mi><mi>β</mi></mrow></msub></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>V</mi><mi>j</mi></msub><mo>,</mo></mtd><mtd columnalign="right" style="text-align: right"><msub><mi>I</mi><mrow><mi>γ</mi><mi>β</mi></mrow></msub></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><munder><mo>∑</mo><mi>j</mi></munder><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>V</mi><mi>j</mi></msub><mo>,</mo></mtd><mtd columnalign="right" style="text-align: right"><msub><mi>I</mi><mrow><mi>γ</mi><mi>γ</mi></mrow></msub></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><munder><mo>∑</mo><mi>j</mi></munder><mi>g</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><msub><mi>V</mi><mi>j</mi></msub><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+ I_{\beta\beta}&amp;=\sum_jV_j,&amp;
+ I_{\gamma\beta}&amp;=\sum_jg(t_j)V_j,&amp;
+ I_{\gamma\gamma}&amp;=\sum_jg(t_j)^2V_j.
+ \label{s11-information-blocks}
+\end{aligned}</annotation></semantics></math><span id="s11-information-blocks" class="equation-anchor"></span><span class="equation-number">(9.9)</span></span> Because
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>
+is estimated rather than known, the relevant efficient information is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>J</mi><mi>γ</mi></msub><mo>=</mo><msub><mi>I</mi><mrow><mi>γ</mi><mi>γ</mi></mrow></msub><mo>−</mo><msub><mi>I</mi><mrow><mi>γ</mi><mi>β</mi></mrow></msub><msubsup><mi>I</mi><mrow><mi>β</mi><mi>β</mi></mrow><mrow><mo>−</mo><mn>1</mn></mrow></msubsup><msub><mi>I</mi><mrow><mi>β</mi><mi>γ</mi></mrow></msub><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>Q</mi><mi>γ</mi></msub><mo>=</mo><msubsup><mi>U</mi><mi>γ</mi><mi>T</mi></msubsup><msubsup><mi>J</mi><mi>γ</mi><mrow><mo>−</mo><mn>1</mn></mrow></msubsup><msub><mi>U</mi><mi>γ</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">J_\gamma=I_{\gamma\gamma}
+ -I_{\gamma\beta}I_{\beta\beta}^{-1}I_{\beta\gamma},
+ \qquad
+ Q_\gamma=U_\gamma^TJ_\gamma^{-1}U_\gamma.
+ \label{s11-efficient}</annotation></semantics></math><span id="s11-efficient" class="equation-anchor"></span><span class="equation-number">(9.10)</span></span> With the usual
+model and information regularity, the global statistic is approximately
+chi-squared with dimension equal to that of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>γ</mi><annotation encoding="application/x-tex">\gamma</annotation></semantics></math></span>.
+A singular information matrix indicates that the selected interaction is
+not supported; inversion is not a substitute for identifiable
+variation.</p>
+<p>This nuisance adjustment is the same statistical principle
+encountered in likelihood inference: changing a parameter can be partly
+mimicked by refitting other parameters. Subtracting the
+cross-information term removes that component. Replacing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>g</mi><annotation encoding="application/x-tex">g</annotation></semantics></math></span>
+by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo>−</mo><mi>c</mi></mrow><annotation encoding="application/x-tex">g-c</annotation></semantics></math></span>
+changes the interpretation of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>
+but not the fitted model family; the efficient statistic is unchanged.
+The R implementation centers the chosen transformation for arithmetic
+stability.</p>
+<p>For one coefficient, let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>v</mi><mi>j</mi></msub><annotation encoding="application/x-tex">v_j</annotation></semantics></math></span>
+be its risk-set variance. The same Schur complement has the especially
+transparent form
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>J</mi><mi>γ</mi></msub><mo>=</mo><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>v</mi><mi>j</mi></msub><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo>−</mo><msub><mover><mi>g</mi><mo accent="true">¯</mo></mover><mi>v</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>,</mo><mspace width="2.0em"></mspace><msub><mover><mi>g</mi><mo accent="true">¯</mo></mover><mi>v</mi></msub><mo>=</mo><mfrac><mrow><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>v</mi><mi>j</mi></msub><msub><mi>g</mi><mi>j</mi></msub></mrow><mrow><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>v</mi><mi>j</mi></msub></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">J_\gamma=\sum_jv_j(g_j-\overline g_v)^2,\qquad
+ \overline g_v=\frac{\sum_jv_jg_j}{\sum_jv_j}.</annotation></semantics></math></span>
+The information concerns time variation that cannot be absorbed by one
+constant coefficient. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>g</mi><annotation encoding="application/x-tex">g</annotation></semantics></math></span>
+is constant at all informative event times,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>J</mi><mi>γ</mi></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">J_\gamma=0</annotation></semantics></math></span>
+and the proposed new coefficient is not identifiable. More events alone
+do not repair this absence of time contrast. In the multi-covariate
+calculation below, the matrix Schur complement plays the same role and
+also accounts for correlations among the coefficients.</p>
+<h3 id="from-first-principles-2">9.6.1 From first principles</h3>
+<p>For the original parametric-regression cohort, choose
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>t</mi><mi>/</mi><msub><mi>t</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">g(t)=\log(1+t/t_0)</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>t</mi><mn>0</mn></msub><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">t_0=1</annotation></semantics></math></span>
+month. The global test has statistic
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>3.5426</mn><annotation encoding="application/x-tex">3.5426</annotation></semantics></math></span>
+on two degrees of freedom and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.1701</mn></mrow><annotation encoding="application/x-tex">p=0.1701</annotation></semantics></math></span>.
+Manual risk-set information agrees with <code>cox.zph</code> using the
+same transformation. The generating model has constant coefficients, but
+that
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>-value
+does not establish proportional hazards. This test targets this
+particular time-interaction direction and can have limited power.
+Selecting
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>g</mi><annotation encoding="application/x-tex">g</annotation></semantics></math></span>
+after seeing which transformation rejects most strongly would require
+accounting for that selection.</p>
+<p>We can implement this matrix calculation using the event-level
+residuals <code>d$r</code> and risk-set covariance array
+<code>d$V</code>:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb4" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>g <span class="ot">&lt;-</span> <span class="fu">log1p</span>(d<span class="sc">$</span>time<span class="sc">/</span><span class="dv">1</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>g <span class="ot">&lt;-</span> g<span class="sc">-</span><span class="fu">mean</span>(g)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>U <span class="ot">&lt;-</span> <span class="fu">colSums</span>(d<span class="sc">$</span>r<span class="sc">*</span>g)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>Ibb <span class="ot">&lt;-</span> <span class="fu">apply</span>(d<span class="sc">$</span>V, <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>), sum)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>Igb <span class="ot">&lt;-</span> <span class="fu">apply</span>(<span class="fu">sweep</span>(d<span class="sc">$</span>V, <span class="dv">3</span>, g, <span class="st">"*"</span>), <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>), sum)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>Igg <span class="ot">&lt;-</span> <span class="fu">apply</span>(<span class="fu">sweep</span>(d<span class="sc">$</span>V, <span class="dv">3</span>, g<span class="sc">^</span><span class="dv">2</span>, <span class="st">"*"</span>), <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>), sum)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>Jeff <span class="ot">&lt;-</span> Igg<span class="sc">-</span>Igb <span class="sc">%*%</span> <span class="fu">solve</span>(Ibb) <span class="sc">%*%</span> <span class="fu">t</span>(Igb)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>Q <span class="ot">&lt;-</span> <span class="fu">drop</span>(<span class="fu">t</span>(U) <span class="sc">%*%</span> <span class="fu">solve</span>(Jeff) <span class="sc">%*%</span> U)</span></code></pre></div>
+<p>This code computes a score statistic for the specified time
+interaction; it does not fit an unrestricted time-varying coefficient
+curve.</p>
+<h3 id="standard-r-workflow-2">9.6.2 Standard R workflow</h3>
+<p>Use the same transformation in <code>survival::cox.zph()</code> to
+compare the same statistical calculation <span class="citation" data-cites="R-survival-cox-zph"><a class="collection-citation" href="references.html#ref-R-survival-cox-zph" role="doc-biblioref" aria-label="Reference 10">[10]</a></span>.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb5" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>ph <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">cox.zph</span>(fit, <span class="at">transform=</span><span class="cf">function</span>(t) <span class="fu">log1p</span>(t<span class="sc">/</span><span class="dv">1</span>),</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>                        <span class="at">terms=</span><span class="cn">TRUE</span>, <span class="at">singledf=</span><span class="cn">FALSE</span>, <span class="at">global=</span><span class="cn">TRUE</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>ph<span class="sc">$</span>table</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ph, <span class="at">var=</span><span class="st">"z"</span>, <span class="at">df=</span><span class="dv">4</span>, <span class="at">resid=</span><span class="cn">TRUE</span>, <span class="at">se=</span><span class="cn">TRUE</span>)</span></code></pre></div>
+<div class="center">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Time-interaction calculation</th>
+<th style="text-align: right;">Statistic</th>
+<th style="text-align: right;">df</th>
+<th style="text-align: right;">p-value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Manual log(1+t)</td>
+<td style="text-align: right;">3.542603</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.170111</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Package log(1+t)</td>
+<td style="text-align: right;">3.542603</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.170111</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Package KM transform</td>
+<td style="text-align: right;">4.276805</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.117843</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>The first two rows agree because their data, fitted null model, and
+time transformation agree. The last row uses the package default
+<code>transform="km"</code>. It tests variation along a different
+transformed time direction, so its different statistic is expected.
+Choose and report the transformation as part of the diagnostic question
+rather than selecting one because it gives a preferred probability. The
+displayed global test has two interaction coefficients; a multi-level
+factor would require attention to term-wise versus coefficient-wise
+degrees of freedom.</p>
+<figure id="s11-ph-workflow-figure">
+<a href="../assets/survival/ch11-ph-workflow.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch11-ph-workflow.png" alt="Figure 9.2. Two views of event-level evidence for the group coefficient.
+The manual cumulative raw score path is tied down by fitting. The
+package plot smooths scaled Schoenfeld residuals to describe a
+time-varying log hazard ratio, using four spline degrees of freedom and
+approximate two-SE limits. A dotted horizontal line marks the fitted
+constant log hazard ratio. The vertical scales are different statistical
+objects.">
+</a><figcaption>Figure 9.2. Two views of event-level evidence for the group coefficient.
+The manual cumulative raw score path is tied down by fitting. The
+package plot smooths scaled Schoenfeld residuals to describe a
+time-varying log hazard ratio, using four spline degrees of freedom and
+approximate two-SE limits. A dotted horizontal line marks the fitted
+constant log hazard ratio. The vertical scales are different statistical
+objects.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch11-ph-workflow.png">Open full-size figure</a></p></figure>
+<p>Under proportional hazards, the package curve should be reasonably
+horizontal, not centered at zero: it estimates the coefficient’s time
+pattern. Its approximate limits are pointwise descriptive uncertainty
+for the smoother, not a simultaneous model-acceptance band. A smooth
+curve can differ from the score test because the display uses a spline
+while the test uses the selected one-dimensional time transformation.
+Read both in regions where the event and risk-set information support
+the comparison.</p>
+<h2 id="influence-would-one-record-move-the-conclusion">9.7 Influence: would
+one record move the conclusion?</h2>
+<p>A large residual and a large influence are different. An observation
+can fit poorly but contribute little information about a coefficient;
+another can have moderate residual size and considerable leverage
+because its covariate is rare in informative risk sets.</p>
+<p>For matching Breslow and distinct-event conventions, a subject-level
+score contribution can be written
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>u</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>τ</mi></msubsup><mo stretchy="false" form="prefix">{</mo><msub><mi>z</mi><mi>i</mi></msub><mo>−</mo><mover><mi>z</mi><mo accent="true">¯</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>;</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mspace width="0.167em"></mspace><mi>d</mi><msub><mover><mi>M</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat u_i=\int_0^\tau
+       \{z_i-\overline z(t;\widehat\beta)\}\,d\widehat M_i(t).
+ \label{s11-subject-score}</annotation></semantics></math><span id="s11-subject-score" class="equation-anchor"></span><span class="equation-number">(9.11)</span></span> This includes
+both the observed event contribution, if any, and the person’s exposure
+to every earlier weighted risk set. A censored person can therefore
+influence a coefficient. Assigning all influence to observed events
+would miss part of the likelihood.</p>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></msub><annotation encoding="application/x-tex">\widehat\beta_{(-i)}</annotation></semantics></math></span>
+be the estimate after removing subject
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math></span>.
+To see the linearization, perturb subject
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math></span>’s
+case weight from one to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mi>ε</mi></mrow><annotation encoding="application/x-tex">1-\varepsilon</annotation></semantics></math></span>.
+Both their event contribution and their presence in every risk
+denominator change. The first-order score change at the full fit is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mi>ε</mi><msub><mover><mi>u</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">-\varepsilon\widehat u_i</annotation></semantics></math></span>,
+whereas a coefficient change
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math></span>
+changes the score by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mi>I</mi><mi>h</mi></mrow><annotation encoding="application/x-tex">-Ih</annotation></semantics></math></span>.
+Solving
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>≈</mo><mo>−</mo><mi>ε</mi><msub><mover><mi>u</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo>−</mo><mi>I</mi><mi>h</mi></mrow><annotation encoding="application/x-tex">0\approx-\varepsilon\widehat u_i-Ih</annotation></semantics></math></span>
+gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi><mo>≈</mo><mo>−</mo><mi>ε</mi><msup><mi>I</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><msub><mover><mi>u</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">h\approx-\varepsilon I^{-1}\widehat u_i</annotation></semantics></math></span>.
+Setting
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ε</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\varepsilon=1</annotation></semantics></math></span>
+yields the one-step deletion approximation
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo>−</mo><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></msub><mo>≈</mo><mi>I</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo>−</mo><mn>1</mn></mrow></msup><msub><mover><mi>u</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat\beta-\widehat\beta_{(-i)}
+ \approx I(\widehat\beta)^{-1}\widehat u_i.
+ \label{s11-dfbeta}</annotation></semantics></math><span id="s11-dfbeta" class="equation-anchor"></span><span class="equation-number">(9.12)</span></span> The sign convention
+matters. A negative component means the full-data coefficient is smaller
+than its approximate deletion estimate. Dividing a component by the
+full-fit standard error makes its scale easier to compare, but does not
+make it a hypothesis-test statistic.</p>
+<p>In the recurring cohort, subject 182 is one of the largest
+standardized influences even though its record is censored at month 10.
+Its approximate group-coefficient deletion change is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>0.015858</mn></mrow><annotation encoding="application/x-tex">-0.015858</annotation></semantics></math></span>;
+actual refitting gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>0.016273</mn></mrow><annotation encoding="application/x-tex">-0.016273</annotation></semantics></math></span>.
+The age changes are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>0.009735</mn></mrow><annotation encoding="application/x-tex">-0.009735</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>0.009986</mn></mrow><annotation encoding="application/x-tex">-0.009986</annotation></semantics></math></span>.
+The script refits the five largest cases and exports both calculations.
+Their disagreement is visible and expected: the one-step expression is
+an approximation, not an exact deletion identity for a nonlinear
+estimator.</p>
+<figure id="s11-influence-figure">
+<a href="../assets/survival/ch11-influence.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch11-influence.png" alt="Figure 9.3. Standardized one-step influences and comparisons with actual
+deletion refits for the five largest cases. A censored record can
+influence the estimate through its risk-set participation. The diagonal
+represents equality of approximate and actual changes.">
+</a><figcaption>Figure 9.3. Standardized one-step influences and comparisons with actual
+deletion refits for the five largest cases. A censored record can
+influence the estimate through its risk-set participation. The diagonal
+represents equality of approximate and actual changes.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch11-influence.png">Open full-size figure</a></p></figure>
+<p>If one person is represented by several follow-up intervals, deletion
+and influence assessment should concern that person, not arbitrarily one
+row. Dependence within families, centers, or repeated-event
+histories can also require cluster-level diagnostics and suitable
+covariance calculations.</p><h3 id="order-the-checks-by-the-question-they-can-answer">9.7.1 Order the
+checks by the question they can answer</h3>
+<p>Begin by checking the records that define the risk sets: event codes,
+time units, impossible negative durations, duplicate subjects, and
+whether delayed entry was encoded. A model fitted to the wrong clock can
+have internally consistent residual calculations. For example, changing
+from time since enrollment to attained age requires age at entry as well
+as age at exit; it is not achieved by relabeling one column.</p>
+<p>Next examine the covariate representation and support before
+interpreting a time-pattern test. A missing nonlinear age term can
+produce apparent changing effects as the risk-set age distribution
+evolves. Conversely, a correct covariate shape cannot repair a truly
+changing group association. Compare scientifically motivated
+alternatives and state which restrictions each relaxes. Avoid a sequence
+whose only stopping rule is that every diagnostic probability exceeds a
+chosen cutoff.</p>
+<p>Finally separate record-level influence from model-level adequacy.
+Refit influential valid cases as a sensitivity analysis, showing whether
+the scientific conclusion depends on them. If a timing or coding error
+is documented, correct it and preserve an audit of the correction. If no
+error is found, keep the observation and describe the sensitivity. These
+checks connect a diagnostic pattern to a model restriction or a recorded
+observation. A collection of plausible plots cannot replace that
+argument.</p>
+<h2 id="what-a-residual-plot-cannot-certify">9.8 What a residual plot cannot
+certify</h2>
+<p>Cox–Snell residuals transform an observed time by its fitted
+cumulative hazard. If a continuous true event model were known,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">H(T\mid z)</annotation></semantics></math></span>
+would be unit exponential conditional on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>z</mi><annotation encoding="application/x-tex">z</annotation></semantics></math></span>.
+The observed residual is censored at the transformed censoring time, so
+its status must be retained when comparing its estimated cumulative
+hazard with a diagonal line. Treating every transformed censoring exit
+as a complete exponential observation would repeat the original
+censoring error.</p>
+<p>When coefficients and a flexible baseline are estimated from the same
+data, agreement of this plot is partly encouraged by fitting. We use it
+to ask whether the fitted event-time distribution leaves systematic
+departures on the cumulative-hazard scale. A quiet pooled graph can
+still conceal an inadequate covariate effect, and it cannot establish
+independent censoring. Those questions require the separate checks
+developed above.</p>
+<figure id="s11-residual-figure">
+<a href="../assets/survival/ch11-residuals.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch11-residuals.png" alt="Figure 9.4. Deviance residuals against fitted predictor and a cumulative
+group Schoenfeld path for the recurring cohort. Neither a visually quiet
+scatter nor a score path ending at zero establishes all model
+assumptions.">
+</a><figcaption>Figure 9.4. Deviance residuals against fitted predictor and a cumulative
+group Schoenfeld path for the recurring cohort. Neither a visually quiet
+scatter nor a score path ending at zero establishes all model
+assumptions.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch11-residuals.png">Open full-size figure</a></p></figure>
+<p>A diagnostic becomes useful when it changes a specific part of the
+analysis: correcting a unit error, comparing a plausible covariate
+representation, examining a prespecified time interaction, or reporting
+a sensitivity refit. Preserve valid records in the primary analysis
+unless an independently defensible eligibility or data-quality rule
+excludes them. Explain what changed and why. A favorable plot obtained
+by deleting inconvenient observations is not the same evidence as a
+robust model fitted to the intended population.</p>
+<h2 id="exercises">9.9 Exercises</h2>
+<ol class="exercises" style='--chapter:"9."'><li id="exercise-9-1"><p><strong>A zero imposed by fitting.</strong> For independent right-censored fixed-covariate Cox records, use
+fitted Breslow increments
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>d</mi><mi>j</mi></msub><mi>/</mi><msub><mo>∑</mo><mrow><mi>k</mi><mo>∈</mo><msub><mi>ℛ</mi><mi>j</mi></msub></mrow></msub><msup><mi>e</mi><mrow><msup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>T</mi></msup><msub><mi>z</mi><mi>k</mi></msub></mrow></msup></mrow><annotation encoding="application/x-tex">d\widehat H_0(t_j)=d_j/\sum_{k\in\mathcal R_j}e^{\widehat\beta^Tz_k}</annotation></semantics></math></span>
+and fitted cumulative hazards
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo>=</mo><msub><mo>∑</mo><mrow><msub><mi>t</mi><mi>j</mi></msub><mo>≤</mo><msub><mi>X</mi><mi>i</mi></msub></mrow></msub><msup><mi>e</mi><mrow><msup><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub></mrow></msup><mi>d</mi><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\widehat H_i=\sum_{t_j\leq X_i}e^{\widehat\beta^Tz_i}d\widehat H_0(t_j)</annotation></semantics></math></span>.
+Prove
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>Δ</mi><mi>i</mi></msub><mo>−</mo><msub><mover><mi>H</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\sum_i(\Delta_i-\widehat H_i)=0</annotation></semantics></math></span>
+under this matching event-first convention. Explain why the identity
+does not prove correct covariate effects or independent censoring, and
+why fitted residuals are not independent true martingale errors.</p>
+</li><li id="exercise-9-2"><p><strong>Interpret a nonlinear age association.</strong> Suppose the PH linear predictor includes group,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>β</mi><mi>a</mi></msub><mi>a</mi></mrow><annotation encoding="application/x-tex">\beta_a a</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>β</mi><msup><mi>a</mi><mn>2</mn></msup></msub><msup><mi>a</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">\beta_{a^2}a^2</annotation></semantics></math></span>,
+where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math></span>
+is a declared centered/scaled age measurement. Derive the log hazard
+ratio for changing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math></span>
+to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>+</mo><mi>δ</mi></mrow><annotation encoding="application/x-tex">a+\delta</annotation></semantics></math></span>
+while holding group fixed. In the chapter’s prespecified quadratic-age
+experiment, fitted linear and square components are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.351027</mn><annotation encoding="application/x-tex">0.351027</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.641801</mn><annotation encoding="application/x-tex">0.641801</annotation></semantics></math></span>
+and the partial-likelihood-ratio statistic against the linear-age model
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>128.237333</mn><annotation encoding="application/x-tex">128.237333</annotation></semantics></math></span>.
+State the null and asymptotic degrees of freedom, then explain why
+choosing the quadratic form after searching many alternatives changes
+interpretation of that test.</p>
+</li><li id="exercise-9-3"><p><strong>A score path can end at zero and still move.</strong> For distinct event times, define Schoenfeld residuals
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mi>j</mi></msub><mo>=</mo><msub><mi>z</mi><msub><mi>i</mi><mi>j</mi></msub></msub><mo>−</mo><msub><mover><mi>z</mi><mo accent="true">¯</mo></mover><mi>j</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">r_j=z_{i_j}-\overline z_j(\widehat\beta)</annotation></semantics></math></span>.
+Derive their sum from the partial-likelihood score at an interior fitted
+optimum. Construct a scalar residual sequence with terminal sum zero but
+a nonzero earlier cumulative sum. Explain why the fitted endpoint
+neither proves proportional hazards nor makes the intervening time
+pattern irrelevant; include the role of censored people and risk-set
+information.</p>
+</li><li id="exercise-9-4"><p><strong>Adjust the time-interaction score for the fitted slope.</strong> For the Cox local model
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>β</mi><mo>+</mo><mi>γ</mi><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\beta(t)=\beta+\gamma g(t)</annotation></semantics></math></span>
+with fixed scalar transformation
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>g</mi><annotation encoding="application/x-tex">g</annotation></semantics></math></span>,
+both
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>γ</mi><annotation encoding="application/x-tex">\gamma</annotation></semantics></math></span>
+are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>-columns.
+At the fitted constant-effect null, let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>r</mi><mi>j</mi></msub><annotation encoding="application/x-tex">r_j</annotation></semantics></math></span>
+be event scores and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mi>j</mi></msub><annotation encoding="application/x-tex">V_j</annotation></semantics></math></span>
+their weighted risk-set covariance matrices. Derive the score
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>U</mi><mi>γ</mi></msub><annotation encoding="application/x-tex">U_\gamma</annotation></semantics></math></span>,
+information blocks and nuisance-adjusted Schur complement for testing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>γ</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\gamma=0</annotation></semantics></math></span>.
+Assuming nonsingular identifiable information, prove that replacing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>g</mi><annotation encoding="application/x-tex">g</annotation></semantics></math></span>
+by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo>−</mo><mi>c</mi></mrow><annotation encoding="application/x-tex">g-c</annotation></semantics></math></span>
+leaves the efficient statistic unchanged. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">p=1</annotation></semantics></math></span>,
+show that the efficient information equals
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>v</mi><mi>j</mi></msub><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo>−</mo><msub><mover><mi>g</mi><mo accent="true">¯</mo></mover><mi>v</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">\sum_jv_j(g_j-\overline g_v)^2</annotation></semantics></math></span>
+and explain the
+constant-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>g</mi><annotation encoding="application/x-tex">g</annotation></semantics></math></span>
+boundary.</p>
+</li><li id="exercise-9-5"><p><strong>Censored observations can influence slopes.</strong> Under the same fixed-covariate model, derive both the event and
+fitted-intensity terms in a subject’s score contribution. Explain why a
+censored person can affect the coefficients. Use the chapter’s
+subject-182 comparison: full fit minus deletion fit is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><mn>0.0158580</mn><mo>,</mo><mo>−</mo><mn>0.0097354</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(-0.0158580,-0.0097354)</annotation></semantics></math></span>
+in the one-step approximation and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><mn>0.0162732</mn><mo>,</mo><mo>−</mo><mn>0.0099860</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(-0.0162732,-0.0099860)</annotation></semantics></math></span>
+after refitting, in group/age order. Interpret the signs and
+discrepancy. Specify what records or eligibility facts you would
+investigate before exclusion and how to report sensitivity for an
+influential valid record.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="10-strata-ties.html">Previous: 8. Stratification and tied event times</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="15-competing-risks.html">Next: 10. Competing risks and first-event probabilities</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

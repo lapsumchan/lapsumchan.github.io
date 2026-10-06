@@ -1,0 +1,1021 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Statistical Inference — Chapter 6: Likelihood asymptotics and confidence sets | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Likelihood asymptotics and confidence sets.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/inference/08-confidence.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Statistical Inference — Chapter 6: Likelihood asymptotics and confidence sets | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Likelihood asymptotics and confidence sets.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/inference/08-confidence.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Statistical Inference — Chapter 6: Likelihood asymptotics and confidence sets", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Statistical Inference", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/inference/08-confidence.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Statistical Inference</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Questions, probability models, and likelihood</p><ol class="contents-chapters"><li><a href="01-models.html">1. Probability models and statistical targets</a></li><li><a href="02-likelihood.html">2. Likelihood, data reduction, and constructing estimators</a></li></ol><p class="contents-part">Part II: Conditional targets, regression, and loss</p><ol class="contents-chapters"><li><a href="conditional-regression.html">3. Regression and conditional targets</a></li><li><a href="03-decisions.html">4. Can a better estimate lead to a worse decision?</a></li></ol><p class="contents-part">Part III: Estimation, uncertainty, and testing</p><ol class="contents-chapters"><li><a href="07-limits.html">5. Sampling limits and asymptotic approximations</a></li><li><a href="08-confidence.html" aria-current="page">6. Likelihood asymptotics and confidence sets</a></li><li><a href="09-testing.html">7. Hypothesis Testing as a Statistical Procedure</a></li><li><a href="06-bayes.html">8. Bayesian inference and predictive uncertainty</a></li></ol><p class="contents-part">Part IV: Shrinkage and regularized regression</p><ol class="contents-chapters"><li><a href="12-shrinkage.html">9. Empirical Bayes and the geometry of shrinkage</a></li><li><a href="regularization-association.html">10. Regularization, bias correction, and association inference</a></li></ol><p class="contents-part">Part V: Association claims and multiplicity</p><ol class="contents-chapters"><li><a href="14-multiplicity.html">11. Multiplicity, simultaneous claims, and false discoveries</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#a-confidence-set-is-a-rule-before-it-is-an-interval">6.1 A confidence set is a rule before it is an interval</a></li><li><a href="#from-the-score-to-a-regular-maximum-likelihood-limit">6.2 From the score to a regular maximum-likelihood limit</a></li><li><a href="#three-related-ways-to-measure-departure">6.3 Three related ways to measure departure</a></li><li><a href="#the-binary-model-makes-the-curvature-explicit">6.4 The binary model makes the curvature explicit</a></li><li><a href="#invert-the-score-and-obtain-a-wilson-interval">6.5 Invert the score and obtain a Wilson interval</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#an-exact-finite-sample-construction">6.6 An exact finite-sample construction</a></li><li><a href="#execute-the-procedure-over-every-possible-sample">6.7 Execute the procedure over every possible sample</a></li><li><a href="#precision-width-and-a-planning-calculation">6.8 Precision, width, and a planning calculation</a></li><li><a href="#nuisance-parameters-and-changing-support-advanced-extensions">6.9 Nuisance parameters and changing support: advanced extensions</a></li><li><a href="#interpretation-and-a-transition-to-testing">6.10 Interpretation and a transition to testing</a></li><li><a href="#coverage-title">Explore: a confidence procedure across repeated samples</a></li><li><a href="#exercises">6.11 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Statistical Inference</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 6</span></p><div class="chapter-content"><h1 id="i8-chapter">Chapter 6. Likelihood asymptotics and confidence sets</h1>
+<p>An estimate of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.20</mn><annotation encoding="application/x-tex">0.20</annotation></semantics></math></span>
+means little without the experiment that produced it. Two events among
+ten people and forty events among two hundred people yield the same
+proportion, but their sampling uncertainty is different. Chapter <a href="07-limits.html#i7-chapter" data-reference-type="ref" data-reference="i7-chapter">5</a> explained concentration and
+scaled error. We now use those arguments to construct sets of parameter
+values compatible with a specified procedure, and then ask whether the
+sets perform as promised when the study is repeated.</p>
+<p>The recurring binary model deliberately makes this question
+computable. We can derive several interval constructions, enumerate all
+possible counts, and evaluate their coverage under a fixed population
+probability. We can then distinguish the limiting theorem from its
+numerical implementation and from the interpretation of an observed
+interval. We will compare the actual coverage with the claimed coverage
+rather than infer reliability from the word “confidence.”</p>
+<p>Core material includes likelihood curvature, regular likelihood
+approximations, coverage, score inversion, and exact binomial intervals.
+Profile likelihood and support-dependent limits are advanced extensions.
+The binomial example connects those results to the approximations in
+Chapter <a href="07-limits.html#i7-chapter" data-reference-type="ref" data-reference="i7-chapter">5</a> and lets us compare their
+finite-sample behavior directly.</p>
+<h2 id="a-confidence-set-is-a-rule-before-it-is-an-interval">6.1 A
+confidence set is a rule before it is an interval</h2>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">C(D_n)</annotation></semantics></math></span>
+be a set-valued function of the random data. Its coverage at parameter
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>Cov</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>C</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>ℙ</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">{</mo><mi>p</mi><mo>∈</mo><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\operatorname{Cov}_p(C)=\mathbb{P}_p\{p\in C(D_n)\}.
+ \label{i8-coverage}</annotation></semantics></math><span id="i8-coverage" class="equation-anchor"></span><span class="equation-number">(6.1)</span></span> The parameter is
+fixed in this probability; the set varies across hypothetical samples. A
+finite-sample confidence procedure with level
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mi>α</mi></mrow><annotation encoding="application/x-tex">1-\alpha</annotation></semantics></math></span>
+satisfies
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>Cov</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>C</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≥</mo><mn>1</mn><mo>−</mo><mi>α</mi></mrow><annotation encoding="application/x-tex">\operatorname{Cov}_p(C)\geq1-\alpha</annotation></semantics></math></span>
+for every allowed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+A procedure can have coverage strictly larger than its nominal level,
+particularly when the sample space is discrete. An asymptotic procedure
+may instead satisfy
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>Cov</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>C</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>→</mo><mn>1</mn><mo>−</mo><mi>α</mi></mrow><annotation encoding="application/x-tex">\operatorname{Cov}_p(C_n)\to1-\alpha</annotation></semantics></math></span>
+for each fixed interior
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+under specified conditions. This pointwise assertion does not supply a
+uniform guarantee over sequences of parameters approaching a
+boundary.</p>
+<p>Once the observations are realized,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">C(d_n)</annotation></semantics></math></span>
+is fixed too. The frequentist statement does not assign a
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.95</mn><annotation encoding="application/x-tex">0.95</annotation></semantics></math></span>
+probability to the particular fixed parameter lying in this fixed set.
+The posterior credible set in Bayesian inference (Chapter <a href="06-bayes.html#i6-chapter" data-reference-type="ref" data-reference="i6-chapter">8</a>) uses a different
+probability, conditional on the observed data and a prior. Neither
+vocabulary should be substituted for the other. Both can be valuable,
+but their construction and evaluation answer different questions.</p>
+<p>Coverage alone is also an incomplete quality criterion. The entire
+parameter space has coverage one and provides little information. Useful
+evaluation includes width, shape, parameter constraints, and the
+scientific consequences of excluded values. A narrow interval that
+undercovers can be misleading; a conservative interval may be reliable
+but inefficient. A choice among them must specify what reliability and
+informativeness mean in the intended application.</p>
+<p>For a fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+binomial coverage is exactly
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>Cov</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>C</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munderover><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow><mi>n</mi></munderover><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>p</mi><mo>∈</mo><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mi>n</mi><mi>k</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>p</mi><mi>k</mi></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>n</mi><mo>−</mo><mi>k</mi></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\operatorname{Cov}_p(C)=\sum_{k=0}^{n}
+  \mathbf{1}\{p\in C(k)\}\binom nkp^k(1-p)^{n-k}.
+ \label{i8-enumeration}</annotation></semantics></math><span id="i8-enumeration" class="equation-anchor"></span><span class="equation-number">(6.2)</span></span> This finite sum
+is not a simulation. It evaluates the complete procedure, including how
+endpoints change with the count. Plugging the observed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">k=2</annotation></semantics></math></span>
+into one formula cannot establish coverage; it describes only one
+possible interval.</p>
+<h2 id="from-the-score-to-a-regular-maximum-likelihood-limit">6.2 From the
+score to a regular maximum-likelihood limit</h2>
+<p>To choose interval endpoints, we need the estimator’s sampling
+behavior. The preceding chapter gave a normal limit for the sample
+proportion directly. We now derive a corresponding limit from a regular
+likelihood, making explicit the conditions that let curvature measure
+precision. Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>X</mi><mi>n</mi></msub></mrow><annotation encoding="application/x-tex">X_1,\ldots,X_n</annotation></semantics></math></span>
+be independent and identically distributed with density
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>f</mi><mi>θ</mi></msub><annotation encoding="application/x-tex">f_\theta</annotation></semantics></math></span>
+relative to a common measure, and let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>ℓ</mo><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msubsup><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></msubsup><mo>log</mo><msub><mi>f</mi><mi>θ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\ell_n(\theta)=\sum_{i=1}^{n}\log f_\theta(X_i)</annotation></semantics></math></span>
+for a scalar parameter. Write the score
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>U</mi><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mo>ℓ</mo><mi>n</mi></msub><mi>′</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">U_n(\theta)=\ell_n'(\theta)</annotation></semantics></math></span>
+and observed information
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>J</mi><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>−</mo><msub><mo>ℓ</mo><mi>n</mi></msub><mi>″</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">J_n(\theta)=-\ell_n''(\theta)</annotation></semantics></math></span>.
+The expected information per observation is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>I</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>𝔼</mi><mi>θ</mi></msub><mo stretchy="false" form="prefix">{</mo><msup><mrow><mo stretchy="true" form="prefix">[</mo><msub><mi>∂</mi><mi>θ</mi></msub><mo>log</mo><msub><mi>f</mi><mi>θ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mn>2</mn></msup><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">I(\theta)=\mathbb{E}_\theta\{[\partial_\theta\log f_\theta(X)]^2\}.
+ \label{i8-information}</annotation></semantics></math><span id="i8-information" class="equation-anchor"></span><span class="equation-number">(6.3)</span></span> To identify this
+with minus the expected second derivative, we need parameter-independent
+support and enough regularity to differentiate the normalized density
+under the integral. Moving support can invalidate that argument, so we
+retain those qualifications here.</p>
+<p>A sufficient framework for the argument is an identifiable model with
+locally fixed support, a true parameter
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>θ</mi><mn>0</mn></msub><annotation encoding="application/x-tex">\theta_0</annotation></semantics></math></span>
+interior to an open parameter space, a consistent interior
+maximum-likelihood estimator, and enough differentiability and
+integrability for the score to have mean zero and finite positive
+variance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>I</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">I(\theta_0)</annotation></semantics></math></span>.
+We also require normalized curvature to converge uniformly in a
+neighborhood of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>θ</mi><mn>0</mn></msub><annotation encoding="application/x-tex">\theta_0</annotation></semantics></math></span>
+to a continuous information function. That local uniformity lets us
+evaluate curvature at a random intermediate value approaching
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>θ</mi><mn>0</mn></msub><annotation encoding="application/x-tex">\theta_0</annotation></semantics></math></span>.
+Consistency is assumed here; the score equation alone does not prove
+it.</p>
+<p>For an interior maximizer,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>U</mi><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">U_n(\widehat\theta)=0</annotation></semantics></math></span>.
+Taylor expansion at the true value gives, for an intermediate value
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>θ</mi><mo accent="true">̃</mo></mover><annotation encoding="application/x-tex">\widetilde\theta</annotation></semantics></math></span>,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>=</mo><msub><mi>U</mi><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msub><mi>J</mi><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>θ</mi><mo accent="true">̃</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mo>−</mo><msub><mi>θ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msqrt><mi>n</mi></msqrt><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mo>−</mo><msub><mi>θ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><msub><mi>U</mi><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><msqrt><mi>n</mi></msqrt></mrow><mrow><msub><mi>J</mi><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>θ</mi><mo accent="true">̃</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>n</mi></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">0=U_n(\theta_0)-J_n(\widetilde\theta)(\widehat\theta-\theta_0),
+ \qquad
+ \sqrt n(\widehat\theta-\theta_0)
+ =\frac{U_n(\theta_0)/\sqrt n}{J_n(\widetilde\theta)/n}.
+ \label{i8-score-expansion}</annotation></semantics></math><span id="i8-score-expansion" class="equation-anchor"></span><span class="equation-number">(6.4)</span></span> The score
+central limit theorem gives a numerator limit
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mi>I</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">N\{0,I(\theta_0)\}</annotation></semantics></math></span>.
+Consistency and the local curvature condition give a denominator limit
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>I</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">I(\theta_0)</annotation></semantics></math></span>.
+Slutsky’s theorem therefore yields
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><mi>n</mi></msqrt><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mo>−</mo><msub><mi>θ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mover><mo>→</mo><mi>d</mi></mover><mi>N</mi><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mi>I</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\sqrt n(\widehat\theta-\theta_0)
+ \xrightarrow{d}N\{0,I(\theta_0)^{-1}\}.
+ \label{i8-mle-limit}</annotation></semantics></math><span id="i8-mle-limit" class="equation-anchor"></span><span class="equation-number">(6.5)</span></span> The variance is
+per-observation inverse information for the scaled error, or
+approximately
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mo stretchy="false" form="prefix">{</mo><mi>n</mi><mi>I</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">1/\{nI(\theta_0)\}</annotation></semantics></math></span>
+for the unscaled estimator. Confusing these two conventions introduces a
+factor-of-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+error.</p>
+<h2 id="three-related-ways-to-measure-departure">6.3 Three related ways to
+measure departure</h2>
+<p>For a candidate value
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>,
+likelihood theory supplies three regular, first-order measures of
+discrepancy:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mi>n</mi><mi>I</mi><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mo>−</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>,</mo></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mfrac><mrow><msub><mi>U</mi><mi>n</mi></msub><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><mrow><mi>n</mi><mi>I</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>,</mo></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mn>2</mn><mo stretchy="false" form="prefix">{</mo><msub><mo>ℓ</mo><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msub><mo>ℓ</mo><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+ W(\theta)&amp;=nI(\widehat\theta)(\widehat\theta-\theta)^2,
+       \label{i8-wald-statistic}\\
+ S(\theta)&amp;=\frac{U_n(\theta)^2}{nI(\theta)},
+       \label{i8-score-statistic}\\
+ R(\theta)&amp;=2\{\ell_n(\widehat\theta)-\ell_n(\theta)\}.
+       \label{i8-lr-statistic}
+\end{aligned}</annotation></semantics></math><span id="i8-wald-statistic" class="equation-anchor"></span><span id="i8-score-statistic" class="equation-anchor"></span><span id="i8-lr-statistic" class="equation-anchor"></span><span class="equation-number">(6.6, 6.7, 6.8)</span></span> The Wald measure uses the
+estimate and its estimated precision. The score measure asks whether the
+slope at the candidate value is unusually large under that candidate.
+The likelihood-ratio measure compares the candidate’s likelihood with
+the best fit. Each involves the same observations, but they use
+different finite-sample features of the likelihood.</p>
+<p>Under the regular conditions above, when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>θ</mi><mo>=</mo><msub><mi>θ</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">\theta=\theta_0</annotation></semantics></math></span>,
+all three converge in distribution to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>χ</mi><mn>1</mn><mn>2</mn></msubsup><annotation encoding="application/x-tex">\chi^2_1</annotation></semantics></math></span>.
+For the likelihood ratio, expand
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>ℓ</mo><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\ell_n(\theta_0)</annotation></semantics></math></span>
+about the interior maximizer. The linear term vanishes, giving
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>J</mi><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>θ</mi><mo>*</mo></msup><mo stretchy="true" form="postfix">)</mo></mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mo>−</mo><msub><mi>θ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">R(\theta_0)=J_n(\theta^*)(\widehat\theta-\theta_0)^2</annotation></semantics></math></span>
+plus a negligible remainder when a more general Taylor form is needed.
+Normalized curvature tends to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>I</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">I(\theta_0)</annotation></semantics></math></span>,
+and equation <a href="#i8-mle-limit" data-reference-type="eqref" data-reference="i8-mle-limit">(6.5)</a> makes the product
+approach the square of a standard normal variable. This is the scalar
+regular form of Wilks’s approximation.</p>
+<p>The equality of limits does not establish equality of finite-sample
+procedures. It also does not establish invariance of Wald intervals: a
+normal interval constructed on one parameter scale can differ from
+transforming an interval constructed on another scale. The likelihood
+ratio itself is unchanged under a one-to-one reparameterization because
+the likelihood maxima refer to the same distributions. Its numerical
+interval still depends on a critical-value approximation and the
+specified parameter domain.</p>
+<h2 id="the-binary-model-makes-the-curvature-explicit">6.4 The binary model
+makes the curvature explicit</h2>
+<p>For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>p</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;p&lt;1</annotation></semantics></math></span>,
+ignoring a constant that cancels in likelihood ratios,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>ℓ</mo><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>K</mi><mo>log</mo><mi>p</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>−</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="1.0em"></mspace><msub><mi>U</mi><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>K</mi><mo>−</mo><mi>n</mi><mi>p</mi></mrow><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>,</mo><mspace width="1.0em"></mspace><mi>I</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mn>1</mn><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\ell_n(p)=K\log p+(n-K)\log(1-p),\quad
+ U_n(p)=\frac{K-np}{p(1-p)},\quad
+ I(p)=\frac1{p(1-p)}.
+ \label{i8-binomial-score}</annotation></semantics></math><span id="i8-binomial-score" class="equation-anchor"></span><span class="equation-number">(6.9)</span></span> The MLE on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0,1]</annotation></semantics></math></span>
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>=</mo><mi>K</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">\widehat p=K/n</annotation></semantics></math></span>.
+At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">K=0</annotation></semantics></math></span>
+or
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">K=n</annotation></semantics></math></span>
+it is a boundary maximizer, not an interior score root. For a fixed
+interior generating
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+those boundary samples become improbable with increasing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>,
+but their finite-sample intervals still require deliberate
+definitions.</p>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><msub><mi>z</mi><mrow><mn>1</mn><mo>−</mo><mi>α</mi><mi>/</mi><mn>2</mn></mrow></msub></mrow><annotation encoding="application/x-tex">z=z_{1-\alpha/2}</annotation></semantics></math></span>,
+the standard-normal quantile. Direct use of equation <a href="#i8-mle-limit" data-reference-type="eqref" data-reference="i8-mle-limit">(6.5)</a> produces the Wald
+interval
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>C</mi><mi>W</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">[</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>−</mo><mi>z</mi><msqrt><mfrac><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mi>n</mi></mfrac></msqrt><mo>,</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>+</mo><mi>z</mi><msqrt><mfrac><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mi>n</mi></mfrac></msqrt><mo stretchy="true" form="postfix">]</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">C_W(K)=\left[\widehat p-z\sqrt{\frac{\widehat p(1-\widehat p)}n},
+                 \widehat p+z\sqrt{\frac{\widehat p(1-\widehat p)}n}\right].
+ \label{i8-wald-interval}</annotation></semantics></math><span id="i8-wald-interval" class="equation-anchor"></span><span class="equation-number">(6.10)</span></span> At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn><mo>,</mo><mi>k</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">n=10,k=2</annotation></semantics></math></span>,
+this 95% interval is approximately
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mo>−</mo><mn>0.047918</mn><mo>,</mo><mn>0.447918</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[-0.047918,0.447918]</annotation></semantics></math></span>.
+The negative endpoint is outside the parameter space. Clipping it to
+zero makes the display admissible but does not improve coverage for a
+true
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">p\in[0,1]</annotation></semantics></math></span>:
+intersecting a set with the parameter space cannot change whether an
+allowed parameter belongs to it.</p>
+<p>A more serious problem occurs at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">K=0</annotation></semantics></math></span>.
+Equation <a href="#i8-wald-interval" data-reference-type="eqref" data-reference="i8-wald-interval">(6.10)</a> gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0,0]</annotation></semantics></math></span>,
+asserting no uncertainty despite an event probability that may be small
+and positive. At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">K=n</annotation></semantics></math></span>
+it similarly gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[1,1]</annotation></semantics></math></span>.
+These failures are features of this plug-in construction. They are not
+evidence that no frequentist uncertainty set can be useful for boundary
+samples.</p>
+<h2 id="invert-the-score-and-obtain-a-wilson-interval">6.5 Invert the score
+and obtain a Wilson interval</h2>
+<p>A candidate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+passes the two-sided score criterion when
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mi>n</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>≤</mo><msup><mi>z</mi><mn>2</mn></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{n(\widehat p-p)^2}{p(1-p)}\leq z^2.
+ \label{i8-score-inversion}</annotation></semantics></math><span id="i8-score-inversion" class="equation-anchor"></span><span class="equation-number">(6.11)</span></span> Moving the
+denominator to the other side and collecting powers of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>+</mo><msup><mi>z</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>p</mi><mn>2</mn></msup><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mi>n</mi><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>+</mo><msup><mi>z</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow><mi>p</mi><mo>+</mo><mi>n</mi><msup><mover><mi>p</mi><mo accent="true">̂</mo></mover><mn>2</mn></msup><mo>≤</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">(n+z^2)p^2-(2n\widehat p+z^2)p+n\widehat p^2\leq0.
+ \label{i8-score-quadratic}</annotation></semantics></math><span id="i8-score-quadratic" class="equation-anchor"></span><span class="equation-number">(6.12)</span></span> The two
+roots delimit the Wilson score interval:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>C</mi><mi>S</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>+</mo><msup><mi>z</mi><mn>2</mn></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mn>1</mn><mo>+</mo><msup><mi>z</mi><mn>2</mn></msup><mi>/</mi><mi>n</mi></mrow></mfrac><mspace width="0.222em"></mspace><mo>±</mo><mspace width="0.222em"></mspace><mfrac><mrow><mi>z</mi><msqrt><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>n</mi><mo>+</mo><msup><mi>z</mi><mn>2</mn></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>4</mn><msup><mi>n</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msqrt></mrow><mrow><mn>1</mn><mo>+</mo><msup><mi>z</mi><mn>2</mn></msup><mi>/</mi><mi>n</mi></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">C_S(K)=\frac{\widehat p+z^2/(2n)}{1+z^2/n}
+ \ \pm\
+ \frac{z\sqrt{\widehat p(1-\widehat p)/n+z^2/(4n^2)}}{1+z^2/n}.
+ \label{i8-wilson}</annotation></semantics></math><span id="i8-wilson" class="equation-anchor"></span><span class="equation-number">(6.13)</span></span> Here the denominator
+under the candidate criterion uses
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+not
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>p</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat p</annotation></semantics></math></span>.
+That change is exactly what must be preserved during inversion. The
+resulting endpoints lie in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0,1]</annotation></semantics></math></span>,
+and at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">K=0</annotation></semantics></math></span>
+the upper endpoint is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>z</mi><mn>2</mn></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>+</mo><msup><mi>z</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">z^2/(n+z^2)&gt;0</annotation></semantics></math></span>.
+We include the appropriate endpoint 0 or 1 by continuity.</p>
+<p>At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn><mo>,</mo><mi>k</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">n=10,k=2</annotation></semantics></math></span>,
+the interval is approximately
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0.056682</mn><mo>,</mo><mn>0.509838</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0.056682,0.509838]</annotation></semantics></math></span>.
+It is asymmetric around
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.2</mn><annotation encoding="application/x-tex">0.2</annotation></semantics></math></span>
+because the candidate variance changes with the candidate probability.
+This asymmetry reflects the procedure’s algebra rather than a cosmetic
+correction. The score interval often improves on the Wald interval, but
+its use of a normal critical value still gives approximate rather than
+guaranteed finite-sample coverage.</p>
+<p>The R counterpart evaluates the same center and half-width for all
+possible counts. The explicit endpoint assignments implement the
+parameter-domain convention after the algebra, and guard against tiny
+floating-point discrepancies at zero and one.</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# interval construction and exact repeated-sampling coverage.
+out &lt;- "generated"; out.dir &lt;- out
+dir.create(out,recursive=TRUE,showWarnings=FALSE)
+alpha &lt;- .05
+z &lt;- qnorm(1-alpha/2)
+critical &lt;- qchisq(1-alpha,1)
+intervals &lt;- function(n) {
+  k &lt;- 0:n; q &lt;- k/n
+  se &lt;- sqrt(q*(1-q)/n)
+  wald.l &lt;- q-z*se; wald.u &lt;- q+z*se
+  center &lt;- (q+z^2/(2*n))/(1+z^2/n)
+  half &lt;- z*sqrt(q*(1-q)/n+z^2/(4*n^2))/(1+z^2/n)
+  score.l &lt;- center-half; score.u &lt;- center+half
+  score.l[1] &lt;- 0; score.u[n+1] &lt;- 1
+  ll &lt;- function(p,k) dbinom(k,n,p,log=TRUE)
+  lr &lt;- t(vapply(k,function(kk) {
+    qq &lt;- kk/n
+    if(kk==0L) return(c(0,1-exp(-critical/(2*n))))
+    if(kk==n) return(c(exp(-critical/(2*n)),1))
+    objective &lt;- function(p) 2*(ll(qq,kk)-ll(p,kk))-critical
+    c(uniroot(objective,c(1e-14,qq),tol=1e-12)$root,
+      uniroot(objective,c(qq,1-1e-14),tol=1e-12)$root)
+  },numeric(2)))
+  exact.l &lt;- ifelse(k==0,0,qbeta(alpha/2,k,n-k+1))
+  exact.u &lt;- ifelse(k==n,1,qbeta(1-alpha/2,k+1,n-k))
+  data.frame(n=n,k=k,estimate=q,wald.l=wald.l,wald.u=wald.u,
+    score.l=score.l,score.u=score.u,lr.l=lr[,1],lr.u=lr[,2],
+    exact.l=exact.l,exact.u=exact.u)
+}
+coverage &lt;- function(tab,p,method) {
+  lo &lt;- tab[[paste0(method,".l")]]; hi &lt;- tab[[paste0(method,".u")]]
+  sum(dbinom(tab$k,tab$n[1],p)*(lo&lt;=p &amp; p&lt;=hi))
+}
+methods &lt;- c("wald","score","lr","exact")
+all.intervals &lt;- do.call(rbind,lapply(c(10L,50L,200L),intervals))
+write.csv(all.intervals,file.path(out,"ch08-intervals.csv"),row.names=FALSE)
+observed &lt;- intervals(10L)[3,]
+write.csv(observed,file.path(out,"ch08-observed.csv"),row.names=FALSE)
+settings &lt;- expand.grid(n=c(10L,50L,200L),p=c(.01,.15,.5))
+checked &lt;- do.call(rbind,lapply(seq_len(nrow(settings)),function(i) {
+  n &lt;- settings$n[i]; p &lt;- settings$p[i]; tab &lt;- intervals(n)
+  data.frame(n=n,p=p,t(vapply(methods,function(m) coverage(tab,p,m),numeric(1))))
+}))
+write.csv(checked,file.path(out,"ch08-selected-coverage.csv"),row.names=FALSE)
+reader &lt;- do.call(rbind,lapply(c(10L,50L,200L),function(n) {
+  tab &lt;- intervals(n); p &lt;- seq(.001,.999,by=.001)
+  data.frame(n=n,p=p,t(vapply(p,function(pp)
+    vapply(methods,function(m) coverage(tab,pp,m),numeric(1)),numeric(4))))
+}))
+write.csv(reader,file.path(out,"ch08-reader-coverage.csv"),row.names=FALSE)
+stopifnot(all(reader$exact&gt;=1-alpha-1e-12))
+stopifnot(all(all.intervals$score.l&gt;=-1e-12),all(all.intervals$score.u&lt;=1+1e-12))
+stopifnot(all(all.intervals$lr.l&gt;=0),all(all.intervals$lr.u&lt;=1))
+stopifnot(abs(observed$score.l-.05668215)&lt;1e-7)
+stopifnot(all(vapply(methods,function(m)
+  coverage(intervals(10L),0,m)==1 &amp;&amp; coverage(intervals(10L),1,m)==1,logical(1))))
+# Direct likelihood-ratio checks at computed interior endpoints.
+for(n in c(10L,50L,200L)) {
+  tab &lt;- intervals(n)
+  for(j in 2:n) {
+    kk &lt;- tab$k[j]; qq &lt;- kk/n
+    rr &lt;- 2*(dbinom(kk,n,qq,log=TRUE)-dbinom(kk,n,c(tab$lr.l[j],tab$lr.u[j]),log=TRUE))
+    stopifnot(max(abs(rr-critical))&lt;1e-6)
+  }
+}
+set.seed(602808)
+b &lt;- 100000L
+mc &lt;- do.call(rbind,lapply(c(10L,50L,200L),function(n) {
+  tab &lt;- intervals(n); p &lt;- .15; counts &lt;- rbinom(b,n,p)
+  data.frame(n=n,method=methods,exact=vapply(methods,function(m) coverage(tab,p,m),numeric(1)),
+    simulated=vapply(methods,function(m) mean(tab[[paste0(m,".l")]][counts+1]&lt;=p &amp;
+      p&lt;=tab[[paste0(m,".u")]][counts+1]),numeric(1)))
+}))
+mc$mcse &lt;- sqrt(mc$simulated*(1-mc$simulated)/b)
+write.csv(mc,file.path(out,"ch08-simulation.csv"),row.names=FALSE)
+
+# Expected widths evaluate informativeness under the same sampling law.
+widths &lt;- do.call(rbind,lapply(c(10L,50L,200L),function(n) {
+  tab &lt;- intervals(n); p &lt;- .15
+  data.frame(n=n,method=methods,expected.width=vapply(methods,function(m) {
+    # Raw Wald endpoints are clipped only for this parameter-space width.
+    lo &lt;- pmax(0,tab[[paste0(m,".l")]])
+    hi &lt;- pmin(1,tab[[paste0(m,".u")]])
+    sum(dbinom(tab$k,n,p)*(hi-lo))
+  },numeric(1)))
+}))
+write.csv(widths,file.path(out,"ch08-widths.csv"),row.names=FALSE)
+
+tex.observed &lt;- data.frame(method=c("Wald","Score (Wilson)","Likelihood ratio","Equal-tailed exact"),
+  lower=as.numeric(unlist(observed[c("wald.l","score.l","lr.l","exact.l")])),
+  upper=as.numeric(unlist(observed[c("wald.u","score.u","lr.u","exact.u")])))
+lines &lt;- c("\\begin{tabular}{lrr}\\toprule","Method &amp; Lower &amp; Upper \\\\ \\midrule")
+for(i in 1:4) lines &lt;- c(lines,paste0(tex.observed$method[i]," &amp; ",
+  sprintf("%.6f",tex.observed$lower[i])," &amp; ",sprintf("%.6f",tex.observed$upper[i])," \\\\"))
+writeLines(c(lines,"\\bottomrule\\end{tabular}"),file.path(out,"ch08-observed.tex"))
+lines &lt;- c("\\begin{tabular}{rrrrrr}\\toprule","$n$ &amp; $p$ &amp; Wald &amp; Score &amp; LR &amp; Exact \\\\ \\midrule")
+for(i in seq_len(nrow(checked))) lines &lt;- c(lines,paste0(paste(formatC(as.numeric(unlist(checked[i,])),format="f",digits=4),collapse=" &amp; ")," \\\\"))
+writeLines(c(lines,"\\bottomrule\\end{tabular}"),file.path(out,"ch08-selected-coverage.tex"))
+plot.coverage &lt;- function() {
+  par(mfrow=c(1,2),mar=c(4,4,2,1))
+  for(n in c(10L,200L)) {
+    dat &lt;- reader[reader$n==n,]
+    matplot(dat$p,dat[,methods],type="l",lty=c(1,2,3,4),
+      col=c("#777777","#002D72","#418FDE","#111111"),ylim=c(.65,1),
+      xlab="Generating probability p",ylab="Exact coverage",main=paste("n =",n))
+    abline(h=.95,col="grey60",lty=2)
+    legend("bottom",c("Wald","Score","LR","Exact"),col=c("#777777","#002D72","#418FDE","#111111"),
+      lty=c(1,2,3,4),bty="n",cex=.75)
+  }
+}
+cairo_pdf(file.path(out,"ch08-coverage.pdf"),width=7,height=3.5);plot.coverage();dev.off()
+png(file.path(out,"ch08-coverage.png"),width=1400,height=700,res=180);plot.coverage();dev.off()
+capture.output(sessionInfo(),file=file.path(out,"ch08-session-info.txt"))
+print(tex.observed);print(checked);print(mc)
+
+# Mean-difference precision with an estimated versus known baseline mean.
+sigma2 &lt;- 4; n.pair &lt;- 20
+I.pair &lt;- matrix(c(1,1,1,2),2,2)/sigma2
+I.effective &lt;- I.pair[1,1]-I.pair[1,2]^2/I.pair[2,2]
+nuisance.example &lt;- data.frame(n=n.pair,sigma2=sigma2,
+  information=I.effective,variance.profile=1/(n.pair*I.effective),
+  variance.joint=solve(I.pair)[1,1]/n.pair,variance.known=sigma2/n.pair)
+stopifnot(abs(nuisance.example$variance.profile-.4)&lt;1e-12,
+  abs(nuisance.example$variance.joint-.4)&lt;1e-12,
+  abs(nuisance.example$variance.known-.2)&lt;1e-12)
+write.csv(nuisance.example,file.path(out,"ch08-nuisance-example.csv"),row.names=FALSE)
+print(nuisance.example)
+
+
+# Computational counterparts: the same fixed binomial experiment.
+# From first principles: tail inversion through beta quantiles.
+k.obs &lt;- 2L; n.obs &lt;- 10L; alpha.obs &lt;- .05
+cp.direct &lt;- c(qbeta(alpha.obs/2, k.obs, n.obs-k.obs+1),
+               qbeta(1-alpha.obs/2, k.obs+1, n.obs-k.obs))
+
+# Standard R workflow: make the interval and correction choices explicit.
+cp.fit &lt;- stats::binom.test(k.obs, n.obs, alternative="two.sided",
+                            conf.level=1-alpha.obs)
+score.fit &lt;- suppressWarnings(stats::prop.test(k.obs, n.obs,
+  alternative="two.sided", conf.level=1-alpha.obs, correct=FALSE))
+corrected.fit &lt;- suppressWarnings(stats::prop.test(k.obs, n.obs,
+  alternative="two.sided", conf.level=1-alpha.obs, correct=TRUE))
+c(lower=cp.fit$conf.int[1], upper=cp.fit$conf.int[2])
+c(lower=score.fit$conf.int[1], upper=score.fit$conf.int[2])
+
+workflow.ci &lt;- data.frame(
+  procedure=c("Equal-tailed exact", "Score: no continuity correction",
+              "Score: continuity correction"),
+  lower=c(cp.fit$conf.int[1], score.fit$conf.int[1], corrected.fit$conf.int[1]),
+  upper=c(cp.fit$conf.int[2], score.fit$conf.int[2], corrected.fit$conf.int[2]))
+stopifnot(abs(pbinom(k.obs-1,n.obs,cp.direct[1],lower.tail=FALSE)-alpha.obs/2)&lt;1e-12,
+  abs(pbinom(k.obs,n.obs,cp.direct[2])-alpha.obs/2)&lt;1e-12,
+  max(abs(cp.direct-as.numeric(cp.fit$conf.int)))&lt;1e-12,
+  max(abs(c(observed$score.l,observed$score.u)-
+          as.numeric(score.fit$conf.int)))&lt;1e-12)
+# Audit endpoint conventions and equivalence for every observed count.
+for(nn in c(1L,10L,50L)) {
+  direct &lt;- intervals(nn)
+  for(kk in 0:nn) {
+    cp &lt;- stats::binom.test(kk,nn,conf.level=1-alpha)$conf.int
+    score &lt;- suppressWarnings(stats::prop.test(kk,nn,
+      conf.level=1-alpha,correct=FALSE))$conf.int
+    stopifnot(max(abs(as.numeric(cp)-c(direct$exact.l[kk+1],
+                  direct$exact.u[kk+1])))&lt;1e-12,
+      max(abs(as.numeric(score)-c(direct$score.l[kk+1],
+                  direct$score.u[kk+1])))&lt;1e-10)
+  }
+}
+write.csv(workflow.ci,file.path(out,"ch08-r-workflow.csv"),row.names=FALSE)
+capture.output(print(workflow.ci,digits=8),
+  file=file.path(out,"ch08-r-workflow-output.txt"))
+print(workflow.ci,digits=8)
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>k <span class="ot">&lt;-</span> <span class="dv">0</span><span class="sc">:</span>n; q <span class="ot">&lt;-</span> k<span class="sc">/</span>n</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  se <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(q<span class="sc">*</span>(<span class="dv">1</span><span class="sc">-</span>q)<span class="sc">/</span>n)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  wald.l <span class="ot">&lt;-</span> q<span class="sc">-</span>z<span class="sc">*</span>se; wald.u <span class="ot">&lt;-</span> q<span class="sc">+</span>z<span class="sc">*</span>se</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  center <span class="ot">&lt;-</span> (q<span class="sc">+</span>z<span class="sc">^</span><span class="dv">2</span><span class="sc">/</span>(<span class="dv">2</span><span class="sc">*</span>n))<span class="sc">/</span>(<span class="dv">1</span><span class="sc">+</span>z<span class="sc">^</span><span class="dv">2</span><span class="sc">/</span>n)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  half <span class="ot">&lt;-</span> z<span class="sc">*</span><span class="fu">sqrt</span>(q<span class="sc">*</span>(<span class="dv">1</span><span class="sc">-</span>q)<span class="sc">/</span>n<span class="sc">+</span>z<span class="sc">^</span><span class="dv">2</span><span class="sc">/</span>(<span class="dv">4</span><span class="sc">*</span>n<span class="sc">^</span><span class="dv">2</span>))<span class="sc">/</span>(<span class="dv">1</span><span class="sc">+</span>z<span class="sc">^</span><span class="dv">2</span><span class="sc">/</span>n)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  score.l <span class="ot">&lt;-</span> center<span class="sc">-</span>half; score.u <span class="ot">&lt;-</span> center<span class="sc">+</span>half</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  score.l[<span class="dv">1</span>] <span class="ot">&lt;-</span> <span class="dv">0</span>; score.u[n<span class="sc">+</span><span class="dv">1</span>] <span class="ot">&lt;-</span> <span class="dv">1</span></span></code></pre></div>
+<p>The likelihood-ratio set is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>C</mi><mi>R</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mi>p</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><mo>:</mo><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><msubsup><mi>χ</mi><mrow><mn>1</mn><mo>,</mo><mn>1</mn><mo>−</mo><mi>α</mi></mrow><mn>2</mn></msubsup><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">C_R(K)=\{p\in[0,1]:R(p)\leq\chi^2_{1,1-\alpha}\}.
+ \label{i8-lr-set}</annotation></semantics></math><span id="i8-lr-set" class="equation-anchor"></span><span class="equation-number">(6.14)</span></span> For an interior
+count, the script solves one endpoint on each side of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">K/n</annotation></semantics></math></span>.
+At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">K=0</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>−</mo><mn>2</mn><mi>n</mi><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">R(p)=-2n\log(1-p)</annotation></semantics></math></span>,
+so the upper endpoint is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><msubsup><mi>χ</mi><mrow><mn>1</mn><mo>,</mo><mn>1</mn><mo>−</mo><mi>α</mi></mrow><mn>2</mn></msubsup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">1-\exp\{-\chi^2_{1,1-\alpha}/(2n)\}</annotation></semantics></math></span>.
+Thus it too remains nondegenerate after observing no events. A
+meaningful likelihood at a boundary does not make the chi-square
+calibration exact there.</p>
+<h2 id="an-exact-finite-sample-construction">6.6 An exact finite-sample
+construction</h2>
+<p>The score and likelihood-ratio intervals use limiting reference
+distributions even when we solve their endpoint equations exactly. For
+the binomial model, we can instead calibrate the procedure with the
+finite sampling law. Inverting two one-sided tests at level
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">\alpha/2</annotation></semantics></math></span>
+gives an equal-tailed interval. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>k</mi><mo>&lt;</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">0&lt;k&lt;n</annotation></semantics></math></span>,
+its lower and upper endpoints solve
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mi>L</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>≥</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>α</mi><mi>/</mi><mn>2</mn><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>ℙ</mi><mi>U</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>≤</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>α</mi><mi>/</mi><mn>2</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}_{L}(K\geq k)=\alpha/2,\qquad
+ \mathbb{P}_{U}(K\leq k)=\alpha/2.
+ \label{i8-exact-inversion}</annotation></semantics></math><span id="i8-exact-inversion" class="equation-anchor"></span><span class="equation-number">(6.15)</span></span> At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">k=0</annotation></semantics></math></span>
+take
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">L=0</annotation></semantics></math></span>;
+at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">k=n</annotation></semantics></math></span>
+take
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>U</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">U=1</annotation></semantics></math></span>.
+Binomial-tail/beta-distribution identities yield the convenient
+implementation
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mo>=</mo><msub><mi>Q</mi><mrow><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo>,</mo><mi>n</mi><mo>−</mo><mi>k</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>α</mi><mi>/</mi><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="1.0em"></mspace><mi>U</mi><mo>=</mo><msub><mi>Q</mi><mrow><mo>Beta</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo>+</mo><mn>1</mn><mo>,</mo><mi>n</mi><mo>−</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>α</mi><mi>/</mi><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">L=Q_{\operatorname{Beta}(k,n-k+1)}(\alpha/2),\quad
+ U=Q_{\operatorname{Beta}(k+1,n-k)}(1-\alpha/2),
+ \label{i8-clopper-pearson}</annotation></semantics></math><span id="i8-clopper-pearson" class="equation-anchor"></span><span class="equation-number">(6.16)</span></span> with the
+stated endpoint exceptions. These are the equal-tailed Clopper–Pearson
+bounds. The beta quantiles arise from tail inversion, not from quietly
+introducing a prior.</p>
+<h3 class="unnumbered" id="from-first-principles">From first
+principles</h3>
+<p>The equations specify a short calculation for the same observed count
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">k=2</annotation></semantics></math></span>
+out of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">n=10</annotation></semantics></math></span>.
+Evaluate the two beta quantiles separately; their different shape
+parameters implement the two tail equations, not a posterior
+distribution:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>k.obs <span class="ot">&lt;-</span> <span class="dv">2</span><span class="dt">L</span>; n.obs <span class="ot">&lt;-</span> <span class="dv">10</span><span class="dt">L</span>; alpha.obs <span class="ot">&lt;-</span> .<span class="dv">05</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>cp.direct <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">qbeta</span>(alpha.obs<span class="sc">/</span><span class="dv">2</span>, k.obs, n.obs<span class="sc">-</span>k.obs<span class="sc">+</span><span class="dv">1</span>),</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>               <span class="fu">qbeta</span>(<span class="dv">1</span><span class="sc">-</span>alpha.obs<span class="sc">/</span><span class="dv">2</span>, k.obs<span class="sc">+</span><span class="dv">1</span>, n.obs<span class="sc">-</span>k.obs))</span></code></pre></div>
+<p>The result is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0.02521073</mn><mo>,</mo><mn>0.55609546</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0.02521073,0.55609546]</annotation></semantics></math></span>.
+Substitution into the binomial tails verifies the endpoint equations
+before any interval label is attached.</p>
+<h3 class="unnumbered" id="standard-r-workflow">Standard R workflow</h3>
+<p><code>stats::binom.test()</code> returns the same equal-tailed exact
+interval. For the score interval, <code>stats::prop.test()</code> must
+be called with <code>correct=FALSE</code> to match equation <a href="#i8-wilson" data-reference-type="eqref" data-reference="i8-wilson">(6.13)</a>; its default continuity
+correction describes a different construction <span class="citation" data-cites="R-stats-binom-test R-stats-prop-test"><a class="collection-citation" href="references.html#ref-R-stats-binom-test" role="doc-biblioref" aria-label="Reference 3">[3]</a>, <a class="collection-citation" href="references.html#ref-R-stats-prop-test" role="doc-biblioref" aria-label="Reference 4">[4]</a></span>:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb3" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>cp.fit <span class="ot">&lt;-</span> stats<span class="sc">::</span><span class="fu">binom.test</span>(k.obs, n.obs, <span class="at">alternative=</span><span class="st">"two.sided"</span>,</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>                            <span class="at">conf.level=</span><span class="dv">1</span><span class="sc">-</span>alpha.obs)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>score.fit <span class="ot">&lt;-</span> <span class="fu">suppressWarnings</span>(stats<span class="sc">::</span><span class="fu">prop.test</span>(k.obs, n.obs,</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">alternative=</span><span class="st">"two.sided"</span>, <span class="at">conf.level=</span><span class="dv">1</span><span class="sc">-</span>alpha.obs, <span class="at">correct=</span><span class="cn">FALSE</span>))</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>corrected.fit <span class="ot">&lt;-</span> <span class="fu">suppressWarnings</span>(stats<span class="sc">::</span><span class="fu">prop.test</span>(k.obs, n.obs,</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">alternative=</span><span class="st">"two.sided"</span>, <span class="at">conf.level=</span><span class="dv">1</span><span class="sc">-</span>alpha.obs, <span class="at">correct=</span><span class="cn">TRUE</span>))</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">lower=</span>cp.fit<span class="sc">$</span>conf.int[<span class="dv">1</span>], <span class="at">upper=</span>cp.fit<span class="sc">$</span>conf.int[<span class="dv">2</span>])</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">lower=</span>score.fit<span class="sc">$</span>conf.int[<span class="dv">1</span>], <span class="at">upper=</span>score.fit<span class="sc">$</span>conf.int[<span class="dv">2</span>])</span></code></pre></div>
+<p>The exact endpoints agree with the direct calculation to numerical
+precision. The uncorrected score endpoints are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0.05668215</mn><mo>,</mo><mn>0.50983753</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0.05668215,0.50983753]</annotation></semantics></math></span>;
+enabling the continuity correction gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0.03542694</mn><mo>,</mo><mn>0.55781858</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0.03542694,0.55781858]</annotation></semantics></math></span>.
+That difference is a change of procedure, not a failed implementation.
+The complete R example checks exact and uncorrected score bounds for
+every count at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>1</mn><mo>,</mo><mn>10</mn><mo>,</mo><mn>50</mn></mrow><annotation encoding="application/x-tex">n=1,10,50</annotation></semantics></math></span>,
+including zero and all-event samples. The printed confidence level
+records the chosen rule; it does not diagnose independence, common
+probability, or complete outcome observation.</p>
+<p>Why is coverage at least
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mi>α</mi></mrow><annotation encoding="application/x-tex">1-\alpha</annotation></semantics></math></span>?
+The event that the lower bound exceeds the true
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+corresponds to a count unusually large under that
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>;
+by the one-sided test construction, its probability is at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">\alpha/2</annotation></semantics></math></span>.
+The event that the upper bound is below
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+has probability at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">\alpha/2</annotation></semantics></math></span>
+too. The union bound gives noncoverage at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></span>.
+Discreteness generally prevents exact equality for every
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+so “exact” refers to calibration using the finite sampling law, not to a
+constant coverage of exactly 0.95.</p>
+<div id="i8-observed-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 6.1. Four 95% constructions for the recurring observed data
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn><mo>,</mo><mi>k</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">n=10,k=2</annotation></semantics></math></span>.
+The raw Wald interval is shown before intersection with the parameter
+space.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Method</th>
+<th style="text-align: right;">Lower</th>
+<th style="text-align: right;">Upper</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Wald</td>
+<td style="text-align: right;">-0.047918</td>
+<td style="text-align: right;">0.447918</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Score (Wilson)</td>
+<td style="text-align: right;">0.056682</td>
+<td style="text-align: right;">0.509838</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Likelihood ratio</td>
+<td style="text-align: right;">0.036363</td>
+<td style="text-align: right;">0.499440</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Equal-tailed exact</td>
+<td style="text-align: right;">0.025211</td>
+<td style="text-align: right;">0.556095</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>The observed endpoints are four different answers to a procedural
+question, not four competing truths about the same fixed parameter. They
+can be compared by exact coverage, expected width, computational
+behavior, and interpretation. The accepted level alone does not choose
+among them.</p>
+<h2 id="execute-the-procedure-over-every-possible-sample">6.7 Execute the
+procedure over every possible sample</h2>
+<p>The R function constructs the endpoints for all counts, then
+equation <a href="#i8-enumeration" data-reference-type="eqref" data-reference="i8-enumeration">(6.2)</a> weights their
+coverage indicators by binomial probabilities. Its likelihood-ratio
+endpoints are checked by substituting them back into the likelihood
+equation. Its exact-interval coverage is checked on 999 interior
+generating probabilities at each of three sample sizes, alongside the
+theoretical argument above. Grid verification is a numerical audit, not
+a proof for unexamined parameter values.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb4" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>coverage <span class="ot">&lt;-</span> <span class="cf">function</span>(tab,p,method) {</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  lo <span class="ot">&lt;-</span> tab[[<span class="fu">paste0</span>(method,<span class="st">".l"</span>)]]; hi <span class="ot">&lt;-</span> tab[[<span class="fu">paste0</span>(method,<span class="st">".u"</span>)]]</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(<span class="fu">dbinom</span>(tab<span class="sc">$</span>k,tab<span class="sc">$</span>n[<span class="dv">1</span>],p)<span class="sc">*</span>(lo<span class="sc">&lt;=</span>p <span class="sc">&amp;</span> p<span class="sc">&lt;=</span>hi))</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<div id="i8-coverage-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 6.2. Exact repeated-sampling coverage of four nominal 95% interval
+procedures at selected model settings. LR denotes likelihood-ratio
+inversion with a chi-square critical value.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span></th>
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span></th>
+<th style="text-align: right;">Wald</th>
+<th style="text-align: right;">Score</th>
+<th style="text-align: right;">LR</th>
+<th style="text-align: right;">Exact</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">10.0000</td>
+<td style="text-align: right;">0.0100</td>
+<td style="text-align: right;">0.0955</td>
+<td style="text-align: right;">0.9044</td>
+<td style="text-align: right;">0.9957</td>
+<td style="text-align: right;">0.9957</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">50.0000</td>
+<td style="text-align: right;">0.0100</td>
+<td style="text-align: right;">0.3948</td>
+<td style="text-align: right;">0.9106</td>
+<td style="text-align: right;">0.9862</td>
+<td style="text-align: right;">0.9862</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">200.0000</td>
+<td style="text-align: right;">0.0100</td>
+<td style="text-align: right;">0.8650</td>
+<td style="text-align: right;">0.9483</td>
+<td style="text-align: right;">0.8500</td>
+<td style="text-align: right;">0.9840</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">10.0000</td>
+<td style="text-align: right;">0.1500</td>
+<td style="text-align: right;">0.7933</td>
+<td style="text-align: right;">0.9500</td>
+<td style="text-align: right;">0.9901</td>
+<td style="text-align: right;">0.9901</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">50.0000</td>
+<td style="text-align: right;">0.1500</td>
+<td style="text-align: right;">0.9408</td>
+<td style="text-align: right;">0.9558</td>
+<td style="text-align: right;">0.9239</td>
+<td style="text-align: right;">0.9726</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">200.0000</td>
+<td style="text-align: right;">0.1500</td>
+<td style="text-align: right;">0.9445</td>
+<td style="text-align: right;">0.9410</td>
+<td style="text-align: right;">0.9525</td>
+<td style="text-align: right;">0.9631</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">10.0000</td>
+<td style="text-align: right;">0.5000</td>
+<td style="text-align: right;">0.8906</td>
+<td style="text-align: right;">0.9785</td>
+<td style="text-align: right;">0.8906</td>
+<td style="text-align: right;">0.9785</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">50.0000</td>
+<td style="text-align: right;">0.5000</td>
+<td style="text-align: right;">0.9351</td>
+<td style="text-align: right;">0.9351</td>
+<td style="text-align: right;">0.9351</td>
+<td style="text-align: right;">0.9672</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">200.0000</td>
+<td style="text-align: right;">0.5000</td>
+<td style="text-align: right;">0.9440</td>
+<td style="text-align: right;">0.9440</td>
+<td style="text-align: right;">0.9440</td>
+<td style="text-align: right;">0.9600</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<figure id="i8-coverage-figure">
+<a href="../assets/inference/ch08-coverage.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch08-coverage.png" alt="Figure 6.1. Finite-binomial coverage curves. Abrupt changes occur when a
+fixed parameter crosses an interval endpoint for a possible count. The
+displayed vertical range is restricted to 0.65–1; the complete R example
+calculates coverage over the full range.">
+</a><figcaption>Figure 6.1. Finite-binomial coverage curves. Abrupt changes occur when a
+fixed parameter crosses an interval endpoint for a possible count. The
+displayed vertical range is restricted to 0.65–1; the complete R example
+calculates coverage over the full range.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch08-coverage.png">Open full-size figure</a></p></figure>
+<p>The saw-toothed curves are not Monte Carlo noise. As
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+changes, the probability weights change smoothly, but membership of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+in a particular count’s interval can switch abruptly. The nominal
+horizontal line is a design target. The exact interval’s curve stays at
+or above it; the approximate methods need not. Independent simulation of
+100,000 counts per selected sample size then checks the enumeration,
+with a separately reported Monte Carlo standard error.</p>
+<p>A reader interaction can change the generating probability and sample
+size, predict coverage, and then reveal the four exact sums. Its static
+counterpart is the table and figure. The pedagogical point is that
+coverage belongs to a rule applied across possible samples. Moving the
+observed interval alone cannot reveal that property.</p>
+<h2 id="precision-width-and-a-planning-calculation">6.8 Precision, width,
+and a planning calculation</h2>
+<p>Coverage protects a probability statement about the procedure; width
+describes how much the realized set narrows the possible parameter
+values. In the finite-binomial experiment the expected parameter-space
+width is another exact sum:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">{</mo><mrow><mo stretchy="true" form="prefix">|</mo><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>∩</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><mo stretchy="true" form="postfix">|</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>=</mo><munderover><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow><mi>n</mi></munderover><mrow><mo stretchy="true" form="prefix">|</mo><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>∩</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><mo stretchy="true" form="postfix">|</mo></mrow><msub><mi>ℙ</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>=</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}_p\{|C(K)\cap[0,1]|\}
+ =\sum_{k=0}^{n}|C(k)\cap[0,1]|\mathbb{P}_p(K=k).
+ \label{i8-expected-width}</annotation></semantics></math><span id="i8-expected-width" class="equation-anchor"></span><span class="equation-number">(6.17)</span></span> The complete
+R example evaluates this at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>
+for the same sample sizes and methods as the coverage table.
+Intersecting a raw Wald interval with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0,1]</annotation></semantics></math></span>
+changes this width even though it leaves coverage unchanged. Thus a
+cosmetic-looking endpoint adjustment can affect one performance
+criterion and not another. The calculation uses the stated endpoint
+rule, so the displayed widths compare the specified procedures rather
+than mix raw and clipped intervals.</p>
+<p>A first planning approximation sets a desired half-width
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math></span>
+and solves
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><msqrt><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>n</mi></mrow></msqrt><mo>≤</mo><mi>d</mi></mrow><annotation encoding="application/x-tex">z\sqrt{p(1-p)/n}\leq d</annotation></semantics></math></span>,
+giving
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>≥</mo><msup><mi>z</mi><mn>2</mn></msup><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><msup><mi>d</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">n\geq z^2p(1-p)/d^2</annotation></semantics></math></span>.
+If no defensible planning probability is available, the worst-case
+variance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><mn>1</mn><mi>/</mi><mn>4</mn></mrow><annotation encoding="application/x-tex">p(1-p)\leq1/4</annotation></semantics></math></span>
+gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>≥</mo><msup><mi>z</mi><mn>2</mn></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>4</mn><msup><mi>d</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">n\geq z^2/(4d^2)</annotation></semantics></math></span>.
+This is an approximate precision calculation, not a guarantee that every
+future interval will have that width or attain nominal coverage. The
+future count is random; exact or likelihood-based endpoints also need
+not be symmetric.</p>
+<p>In a biomedical study, precision can additionally be limited by
+clustering, outcome ascertainment, incomplete follow-up, or an
+unrepresentative sampling frame. Increasing the planned number of
+independent observations reduces sampling variation within the model. It
+does not reduce a systematic error simply because a standard error
+becomes small. The survival book’s observation chapter explains why a
+binary event cannot be treated as fully observed when follow-up is
+incomplete. The sampling unit and the observation process must be
+resolved before the planning formula is applied.</p>
+<p>The comparison should therefore be reported in two stages: first ask
+whether coverage is adequate for the intended parameter settings, then
+compare informativeness among procedures that meet that requirement.
+Expected width alone could reward a procedure that too often omits the
+truth. Coverage alone could reward a set so broad that it cannot support
+any scientific distinction. The statistical target, the reliability
+requirement, and the desired resolution jointly determine what counts as
+useful uncertainty quantification.</p>
+<h2 id="nuisance-parameters-and-changing-support-advanced-extensions">6.9 Nuisance
+parameters and changing support: advanced extensions</h2>
+<p>When
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>θ</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>ψ</mi><mo>,</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\theta=(\psi,\lambda)</annotation></semantics></math></span>
+contains a target parameter
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ψ</mi><annotation encoding="application/x-tex">\psi</annotation></semantics></math></span>
+and nuisance parameter
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math></span>,
+estimate both or profile over
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math></span>
+for each fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ψ</mi><annotation encoding="application/x-tex">\psi</annotation></semantics></math></span>.
+With an interior regular model, define the profile log likelihood by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>ℓ</mo><mrow><mi mathvariant="normal">p</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">f</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>ψ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mo>sup</mo><mi>λ</mi></msub><mo>ℓ</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>ψ</mi><mo>,</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\ell_{\mathrm{prof}}(\psi)=\sup_\lambda\ell(\psi,\lambda)</annotation></semantics></math></span>.
+A candidate target is compared with its own best-fitting nuisance value,
+rather than with a nuisance estimate held fixed from another fit. In a
+regular model with nonsingular per-observation information partitioned
+into blocks, the effective information for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ψ</mi><annotation encoding="application/x-tex">\psi</annotation></semantics></math></span>
+is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mrow><mi>ψ</mi><mo>⋅</mo><mi>λ</mi></mrow></msub><mo>=</mo><msub><mi>I</mi><mrow><mi>ψ</mi><mi>ψ</mi></mrow></msub><mo>−</mo><msub><mi>I</mi><mrow><mi>ψ</mi><mi>λ</mi></mrow></msub><msubsup><mi>I</mi><mrow><mi>λ</mi><mi>λ</mi></mrow><mrow><mo>−</mo><mn>1</mn></mrow></msubsup><msub><mi>I</mi><mrow><mi>λ</mi><mi>ψ</mi></mrow></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">I_{\psi\cdot\lambda}=I_{\psi\psi}
+       -I_{\psi\lambda}I_{\lambda\lambda}^{-1}I_{\lambda\psi}.
+ \label{i8-efficient-information}</annotation></semantics></math><span id="i8-efficient-information" class="equation-anchor"></span><span class="equation-number">(6.18)</span></span> This
+is a Schur complement. To see why it appears, write the target and
+nuisance score vectors for one observation as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>U</mi><mi>ψ</mi></msub><mo>,</mo><msub><mi>U</mi><mi>λ</mi></msub></mrow><annotation encoding="application/x-tex">U_\psi,U_\lambda</annotation></semantics></math></span>.
+The adjusted score
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>U</mi><mi>ψ</mi></msub><mo>−</mo><msub><mi>I</mi><mrow><mi>ψ</mi><mi>λ</mi></mrow></msub><msubsup><mi>I</mi><mrow><mi>λ</mi><mi>λ</mi></mrow><mrow><mo>−</mo><mn>1</mn></mrow></msubsup><msub><mi>U</mi><mi>λ</mi></msub></mrow><annotation encoding="application/x-tex">U_\psi-I_{\psi\lambda}I_{\lambda\lambda}^{-1}U_\lambda</annotation></semantics></math></span>
+has zero covariance with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>U</mi><mi>λ</mi></msub><annotation encoding="application/x-tex">U_\lambda</annotation></semantics></math></span>,
+and its variance is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>I</mi><mrow><mi>ψ</mi><mo>⋅</mo><mi>λ</mi></mrow></msub><annotation encoding="application/x-tex">I_{\psi\cdot\lambda}</annotation></semantics></math></span>.
+The inverse of this matrix is the target block of the joint inverse
+information. Estimating a correlated nuisance direction therefore
+reduces the information available for the target. A regular profile
+likelihood ratio for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math></span>
+unconstrained target dimensions has a
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>χ</mi><mi>r</mi><mn>2</mn></msubsup><annotation encoding="application/x-tex">\chi^2_r</annotation></semantics></math></span>
+limit; nuisance dimensions are not added to its degrees of freedom.</p>
+<p>For a concrete calculation, observe
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+independent pairs with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>i</mi></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>ψ</mi><mo>+</mo><mi>λ</mi><mo>,</mo><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">X_i\sim N(\psi+\lambda,\sigma^2)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mi>i</mi></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo>,</mo><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">Y_i\sim N(\lambda,\sigma^2)</annotation></semantics></math></span>,
+with the two coordinates independent and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>σ</mi><mn>2</mn></msup><annotation encoding="application/x-tex">\sigma^2</annotation></semantics></math></span>
+known. The target
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ψ</mi><annotation encoding="application/x-tex">\psi</annotation></semantics></math></span>
+is a mean difference and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math></span>
+is the second population’s mean. One pair has information
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>I</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>ψ</mi><mo>,</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mn>1</mn><msup><mi>σ</mi><mn>2</mn></msup></mfrac><mrow><mo stretchy="true" form="prefix">(</mo><mtable><mtr><mtd columnalign="center" style="text-align: center"><mn>1</mn></mtd><mtd columnalign="center" style="text-align: center"><mn>1</mn></mtd></mtr><mtr><mtd columnalign="center" style="text-align: center"><mn>1</mn></mtd><mtd columnalign="center" style="text-align: center"><mn>2</mn></mtd></mtr></mtable><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>I</mi><mrow><mi>ψ</mi><mo>⋅</mo><mi>λ</mi></mrow></msub><mo>=</mo><mfrac><mn>1</mn><mrow><mn>2</mn><msup><mi>σ</mi><mn>2</mn></msup></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">I(\psi,\lambda)=\frac1{\sigma^2}
+ \begin{pmatrix}1&amp;1\\1&amp;2\end{pmatrix},\qquad
+ I_{\psi\cdot\lambda}=\frac1{2\sigma^2}.</annotation></semantics></math></span>
+The joint MLE is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>ψ</mi><mo accent="true">̂</mo></mover><mo>=</mo><mover><mi>X</mi><mo accent="true">¯</mo></mover><mo>−</mo><mover><mi>Y</mi><mo accent="true">¯</mo></mover></mrow><annotation encoding="application/x-tex">\widehat\psi=\overline X-\overline Y</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mo>=</mo><mover><mi>Y</mi><mo accent="true">¯</mo></mover></mrow><annotation encoding="application/x-tex">\widehat\lambda=\overline Y</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Var</mo><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>ψ</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>2</mn><msup><mi>σ</mi><mn>2</mn></msup><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">\operatorname{Var}(\widehat\psi)=2\sigma^2/n</annotation></semantics></math></span>.
+If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math></span>
+were truly known, only
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>X</mi><mo accent="true">¯</mo></mover><mo>−</mo><mi>λ</mi></mrow><annotation encoding="application/x-tex">\overline X-\lambda</annotation></semantics></math></span>
+would be needed and its variance would be
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>σ</mi><mn>2</mn></msup><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">\sigma^2/n</annotation></semantics></math></span>.
+The factor of two is the uncertainty in estimating the baseline mean,
+not an arbitrary correction. The matrix calculation and direct variance
+calculation agree:</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb5" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>sigma2 <span class="ot">&lt;-</span> <span class="dv">4</span>; n <span class="ot">&lt;-</span> <span class="dv">20</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>I <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">2</span>),<span class="dv">2</span>,<span class="dv">2</span>)<span class="sc">/</span>sigma2</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>effective <span class="ot">&lt;-</span> I[<span class="dv">1</span>,<span class="dv">1</span>]<span class="sc">-</span>I[<span class="dv">1</span>,<span class="dv">2</span>]<span class="sc">^</span><span class="dv">2</span><span class="sc">/</span>I[<span class="dv">2</span>,<span class="dv">2</span>]</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span><span class="sc">/</span>(n<span class="sc">*</span>effective)             <span class="co"># 0.4: nuisance mean estimated</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">solve</span>(I)[<span class="dv">1</span>,<span class="dv">1</span>]<span class="sc">/</span>n            <span class="co"># 0.4: joint inverse information</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>sigma2<span class="sc">/</span>n                   <span class="co"># 0.2: nuisance mean known</span></span></code></pre></div>
+<p>An exact contrast is a normal mean with unknown variance. Orthogonal
+normal components make
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>Y</mi><mo accent="true">¯</mo></mover><annotation encoding="application/x-tex">\overline Y</annotation></semantics></math></span>
+independent of the residual sum of squares, with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>S</mi><mn>2</mn></msup><mi>/</mi><msup><mi>σ</mi><mn>2</mn></msup><mo>∼</mo><msubsup><mi>χ</mi><mrow><mi>n</mi><mo>−</mo><mn>1</mn></mrow><mn>2</mn></msubsup></mrow><annotation encoding="application/x-tex">(n-1)S^2/\sigma^2\sim\chi^2_{n-1}</annotation></semantics></math></span>.
+Consequently
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>Y</mi><mo accent="true">¯</mo></mover><mo>−</mo><mi>μ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>S</mi><mi>/</mi><msqrt><mi>n</mi></msqrt><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">(\overline Y-\mu)/(S/\sqrt n)</annotation></semantics></math></span>
+has a Student
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mrow><mi>n</mi><mo>−</mo><mn>1</mn></mrow></msub><annotation encoding="application/x-tex">t_{n-1}</annotation></semantics></math></span>
+distribution. The familiar
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>
+interval uses an exact pivot under the normal model. Under a nonnormal
+independent finite-variance model, a studentized-mean normal limit may
+still hold, but the exact Student distribution is no longer established
+by that fact.</p>
+<p>Now let observations be uniform on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mi>θ</mi><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0,\theta]</annotation></semantics></math></span>.
+The sample maximum
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>M</mi><mi>n</mi></msub><annotation encoding="application/x-tex">M_n</annotation></semantics></math></span>
+is the MLE, but the support depends on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>.
+Its distribution obeys
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mi>θ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>M</mi><mi>n</mi></msub><mo>≤</mo><mi>m</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mi>/</mi><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>n</mi></msup></mrow><annotation encoding="application/x-tex">\mathbb{P}_\theta(M_n\leq m)=(m/\theta)^n</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>≤</mo><mi>m</mi><mo>≤</mo><mi>θ</mi></mrow><annotation encoding="application/x-tex">0\leq m\leq\theta</annotation></semantics></math></span>.
+Thus
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>M</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">[</mo><msub><mi>M</mi><mi>n</mi></msub><mo>,</mo><msub><mi>M</mi><mi>n</mi></msub><mi>/</mi><msup><mi>α</mi><mrow><mn>1</mn><mi>/</mi><mi>n</mi></mrow></msup><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">C(M_n)=[M_n,M_n/\alpha^{1/n}]
+ \label{i8-uniform-set}</annotation></semantics></math><span id="i8-uniform-set" class="equation-anchor"></span><span class="equation-number">(6.19)</span></span> has exact
+coverage
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mi>α</mi></mrow><annotation encoding="application/x-tex">1-\alpha</annotation></semantics></math></span>.
+Moreover
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>−</mo><msub><mi>M</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>θ</mi></mrow><annotation encoding="application/x-tex">n(\theta-M_n)/\theta</annotation></semantics></math></span>
+approaches an exponential distribution with rate one. The relevant scale
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>,
+not
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msqrt><mi>n</mi></msqrt><annotation encoding="application/x-tex">\sqrt n</annotation></semantics></math></span>,
+and the limit is not normal. This example shows why a theorem’s support
+and boundary conditions belong in the analysis, rather than in a
+footnote after applying its formula.</p>
+<h2 id="interpretation-and-a-transition-to-testing">6.10 Interpretation and a
+transition to testing</h2>
+<p>Suppose the scientific decision in Chapter <a href="03-decisions.html#i3-chapter" data-reference-type="ref" data-reference="i3-chapter">4</a>
+uses threshold
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mo>=</mo><mn>3</mn><mi>/</mi><mn>13</mn></mrow><annotation encoding="application/x-tex">\tau=3/13</annotation></semantics></math></span>.
+The observed confidence set can help communicate which probabilities
+remain compatible with its procedure. If it spans the threshold, the
+data do not tightly distinguish the two probability regimes at the
+chosen level. This does not prove equal action costs, determine the
+optimal action, or assign a posterior probability to exceeding the
+threshold. Decision costs, estimation uncertainty, and evidential
+compatibility are related questions with distinct definitions.</p>
+<p>We have to keep the probability statement attached to the procedure.
+Confidence concerns repeated sets at a fixed parameter; the observed set
+is fixed after observation. Clipping a Wald interval to the parameter
+space cannot alter its coverage for an allowed parameter. The
+likelihood-ratio interval here uses an asymptotic critical value, so its
+sampling calibration remains approximate even though its construction
+does not require a prior.</p>
+<p>A defensible report names the procedure, sample model, observed
+endpoints, and interpretation. It states any boundary or
+sparse-information limitation and, when possible, checks coverage across
+plausible settings. Chapter <a href="09-testing.html#i9-chapter" data-reference-type="ref" data-reference="i9-chapter">7</a>
+will develop the tests whose acceptance regions we have inverted here,
+including exact error control, power, and the meaning of a realized
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>-value.</p>
+<section class="interaction" id="coverage-explorer" aria-labelledby="coverage-title">
+<h2 id="coverage-title">Explore: a confidence procedure across repeated samples</h2>
+<p>Predict first: at a small population event probability, will a nominal 95% Wald interval cover nearly 95% of the time? Every value below is an exact sum over the binomial sample space, not a simulation.</p>
+<div class="controls"><label>Sample size<br><select id="coverage-n"><option>10</option><option>50</option><option>200</option></select></label><label>True event probability <output id="coverage-p-label">0.150</output><br><input id="coverage-p" type="range" min="1" max="999" value="150" step="1"></label><button type="button" id="coverage-reveal">Reveal exact coverage</button></div>
+<div id="coverage-output" hidden aria-live="polite"><div class="table-scroll"><table><caption>Coverage of the complete interval procedure</caption><thead><tr><th>Procedure</th><th>Coverage</th></tr></thead><tbody id="coverage-rows"></tbody></table></div><svg id="coverage-plot" viewbox="0 0 640 300" role="img" aria-label="Exact confidence interval coverage across population probabilities"></svg><p class="result-text">The horizontal rule marks 0.95. A confidence level describes the random procedure before seeing data. It is not a posterior probability for the realized interval.</p></div>
+<p><small>Static counterpart: the finite-sum coverage derivation, interval table, and coverage figure in this chapter. The slider evaluates only the displayed grid of probabilities.</small></p>
+</section>
+<h2 id="exercises">6.11 Exercises</h2>
+<ol class="exercises" style='--chapter:"6."'><li id="exercise-6-1"><p><strong>Coverage is a property of random sets.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>∼</mo><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>,</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">K\sim\operatorname{Binomial}(n,p)</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">p\in[0,1]</annotation></semantics></math></span>,
+and let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">C(k)</annotation></semantics></math></span>
+be any specified confidence-set procedure. Write its exact coverage as a
+finite sum. Prove that replacing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">C(k)</annotation></semantics></math></span>
+by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>∩</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">C(k)\cap[0,1]</annotation></semantics></math></span>
+leaves coverage unchanged at every allowed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+Explain why this can shorten an interval without repairing
+undercoverage.</p>
+</li><li id="exercise-6-2"><p><strong>Invert the score inequality.</strong> For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mi>k</mi></mrow><annotation encoding="application/x-tex">K=k</annotation></semantics></math></span>
+from a
+binomial<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>,</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(n,p)</annotation></semantics></math></span>
+model, let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>=</mo><mi>k</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">\widehat p=k/n</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><msup><mi>Φ</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>α</mi><mi>/</mi><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">z=\Phi^{-1}(1-\alpha/2)</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>α</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;\alpha&lt;1</annotation></semantics></math></span>.
+Solve
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>≤</mo><msup><mi>z</mi><mn>2</mn></msup><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">n(\widehat p-p)^2\le z^2p(1-p)</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">p\in[0,1]</annotation></semantics></math></span>.
+Give the endpoints at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn><mo>,</mo><mi>k</mi><mo>=</mo><mn>0</mn><mo>,</mo><mi>α</mi><mo>=</mo><mn>0.05</mn></mrow><annotation encoding="application/x-tex">n=10,k=0,\alpha=0.05</annotation></semantics></math></span>,
+compare with the Wald endpoints, and identify which step in the score
+construction uses an approximation.</p>
+</li><li id="exercise-6-3"><p><strong>Exact tail inversion and posterior quantiles.</strong> For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>∼</mo><mo>Binomial</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>,</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">K\sim\operatorname{Binomial}(n,p)</annotation></semantics></math></span>,
+derive the closed equal-tailed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>α</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(1-\alpha)</annotation></semantics></math></span>
+Clopper–Pearson interval,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>α</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;\alpha&lt;1</annotation></semantics></math></span>,
+using upper and lower binomial tails. State endpoint conventions for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>0</mn><mo>,</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">k=0,n</annotation></semantics></math></span>,
+express the interior bounds as beta quantiles, and prove coverage at
+least
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mi>α</mi></mrow><annotation encoding="application/x-tex">1-\alpha</annotation></semantics></math></span>
+for every
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">p\in[0,1]</annotation></semantics></math></span>.
+Explain why this is not the equal-tailed interval from a uniform-prior
+posterior.</p>
+</li><li id="exercise-6-4"><p><strong>A support-dependent model needs a different pivot.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>X</mi><mi>n</mi></msub></mrow><annotation encoding="application/x-tex">X_1,\ldots,X_n</annotation></semantics></math></span>
+be independent
+uniform<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mi>θ</mi><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0,\theta]</annotation></semantics></math></span>
+observations,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>θ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\theta&gt;0</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>M</mi><mi>n</mi></msub><mo>=</mo><msub><mo>max</mo><mi>i</mi></msub><msub><mi>X</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">M_n=\max_iX_i</annotation></semantics></math></span>.
+Show that
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><msub><mi>M</mi><mi>n</mi></msub><mo>,</mo><msub><mi>M</mi><mi>n</mi></msub><mi>/</mi><msup><mi>α</mi><mrow><mn>1</mn><mi>/</mi><mi>n</mi></mrow></msup><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[M_n,M_n/\alpha^{1/n}]</annotation></semantics></math></span>
+has exact coverage
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mi>α</mi></mrow><annotation encoding="application/x-tex">1-\alpha</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>α</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;\alpha&lt;1</annotation></semantics></math></span>.
+Derive the limit of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>−</mo><msub><mi>M</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>θ</mi></mrow><annotation encoding="application/x-tex">n(\theta-M_n)/\theta</annotation></semantics></math></span>
+and identify why the ordinary interior-score,
+square-root-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+likelihood argument does not apply.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="07-limits.html">Previous: 5. Sampling limits and asymptotic approximations</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="09-testing.html">Next: 7. Hypothesis Testing as a Statistical Procedure</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

@@ -1,0 +1,8 @@
+/* Collection references share the reader's existing academic typography. */
+.collection-citation { white-space: nowrap; }
+.collection-references { list-style: none; padding: 0; margin: 1em 0; }
+.collection-references > li { position: relative; padding-left: 2.7em; margin: 0 0 .8em; overflow-wrap: anywhere; scroll-margin-top: 1em; }
+.collection-references .reference-number { position: absolute; left: 0; top: 0; width: 2.3em; }
+.collection-references p { margin: 0; }
+.collection-references > li:target { outline: 1px solid var(--hopkins-blue, #002d72); outline-offset: .2em; }
+.collection-citation:focus-visible { outline: 2px solid #002d72; outline-offset: 2px; }

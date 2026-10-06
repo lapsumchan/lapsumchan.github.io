@@ -1,0 +1,1022 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Statistical Inference — Chapter 9: Empirical Bayes and the geometry of shrinkage | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Empirical Bayes and the geometry of shrinkage.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/inference/12-shrinkage.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Statistical Inference — Chapter 9: Empirical Bayes and the geometry of shrinkage | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Empirical Bayes and the geometry of shrinkage.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/inference/12-shrinkage.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Statistical Inference — Chapter 9: Empirical Bayes and the geometry of shrinkage", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Statistical Inference", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/inference/12-shrinkage.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Statistical Inference</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Questions, probability models, and likelihood</p><ol class="contents-chapters"><li><a href="01-models.html">1. Probability models and statistical targets</a></li><li><a href="02-likelihood.html">2. Likelihood, data reduction, and constructing estimators</a></li></ol><p class="contents-part">Part II: Conditional targets, regression, and loss</p><ol class="contents-chapters"><li><a href="conditional-regression.html">3. Regression and conditional targets</a></li><li><a href="03-decisions.html">4. Can a better estimate lead to a worse decision?</a></li></ol><p class="contents-part">Part III: Estimation, uncertainty, and testing</p><ol class="contents-chapters"><li><a href="07-limits.html">5. Sampling limits and asymptotic approximations</a></li><li><a href="08-confidence.html">6. Likelihood asymptotics and confidence sets</a></li><li><a href="09-testing.html">7. Hypothesis Testing as a Statistical Procedure</a></li><li><a href="06-bayes.html">8. Bayesian inference and predictive uncertainty</a></li></ol><p class="contents-part">Part IV: Shrinkage and regularized regression</p><ol class="contents-chapters"><li><a href="12-shrinkage.html" aria-current="page">9. Empirical Bayes and the geometry of shrinkage</a></li><li><a href="regularization-association.html">10. Regularization, bias correction, and association inference</a></li></ol><p class="contents-part">Part V: Association claims and multiplicity</p><ol class="contents-chapters"><li><a href="14-multiplicity.html">11. Multiplicity, simultaneous claims, and false discoveries</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#i12-experiment-section">9.1 A vector experiment and an explicit loss</a></li><li><a href="#i12-hierarchical-section">9.2 Normal–normal pooling from first principles</a></li><li><a href="#i12-eb-section">9.3 Estimating the pooling strength</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#i12-sure-section">9.4 Stein’s identity and an unbiased estimate of risk</a></li><li><a href="#i12-james-stein-section">9.5 James–Stein risk and its exact scope</a></li><li><a href="#i12-computation-section">9.6 An executable risk audit and what it can reveal</a></li><li><a href="#i12-interpretation-section">9.7 Uncertainty, model checking, and scientific interpretation</a></li><li><a href="#i12-exercises-section">9.8 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Statistical Inference</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 9</span></p><div class="chapter-content"><h1 id="i12-chapter">Chapter 9. Empirical Bayes and the geometry of shrinkage</h1>
+<p>Why estimate related quantities together? Suppose several
+laboratories report standardized estimates of different effects. Each
+estimate has appreciable sampling error, and there is reason to expect
+many effects to lie near a shared center. An analysis of each laboratory
+in isolation discards this structure; forcing all effects to be equal
+discards their differences. Partial pooling uses evidence about their
+dispersion to choose an intermediate action. To evaluate pooling, we
+need to ask whether it improves the estimates or decisions for which
+these quantities will be used; a smoother graph alone cannot answer that
+question.</p>
+<p>Chapter <a href="06-bayes.html#i6-chapter" data-reference-type="ref" data-reference="i6-chapter">8</a> derived posterior means
+under specified priors, while Chapter <a href="03-decisions.html#i3-chapter" data-reference-type="ref" data-reference="i3-chapter">4</a>
+compared estimators through their loss and risk. We now bring these
+calculations to a vector of related means. A hierarchical model gives a
+pooling rule; empirical Bayes estimates its strength from the vector; a
+frequentist risk identity lets us assess one precisely defined shrinkage
+procedure. The guarantee concerns total squared error across the vector,
+not improvement for every coordinate.</p>
+<h2 id="i12-experiment-section">9.1 A vector experiment and an explicit
+loss</h2>
+<p>Throughout the main argument, observe one vector
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>∼</mo><msub><mi>N</mi><mi>d</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>,</mo><msub><mi>I</mi><mi>d</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>θ</mi><mo>∈</mo><msup><mi>ℝ</mi><mi>d</mi></msup><mo>,</mo><mspace width="2.0em"></mspace><mi>L</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>,</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo stretchy="false" form="postfix">∥</mo><mi>a</mi><mo>−</mo><mi>θ</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup><mo>=</mo><munderover><mo>∑</mo><mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow><mi>d</mi></munderover><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>a</mi><mi>j</mi></msub><mo>−</mo><msub><mi>θ</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">X\sim N_d(\theta,I_d),\qquad \theta\in\mathbb R^d,
+ \qquad L(\theta,a)=\|a-\theta\|^2=\sum_{j=1}^d(a_j-\theta_j)^2.
+ \label{i12-experiment}</annotation></semantics></math><span id="i12-experiment" class="equation-anchor"></span><span class="equation-number">(9.1)</span></span> The integer
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math></span>
+counts mean coordinates, not repeated observations on one mean.
+Conditional on the fixed vector
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>,
+the coordinates are independent with known variance one. A raw estimate
+with a common known standard error can be divided by that standard error
+to reach this scale. Different standard errors, dependence, missing
+coordinates, or uncertainty about the variances require a different
+argument. Standardization alone does not make correlated measurements
+independent.</p>
+<p>The estimator
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>δ</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>X</mi></mrow><annotation encoding="application/x-tex">\delta_0(X)=X</annotation></semantics></math></span>
+has risk
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>,</mo><msub><mi>δ</mi><mn>0</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>d</mi></mrow><annotation encoding="application/x-tex">R(\theta,\delta_0)=d</annotation></semantics></math></span>
+for every
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>:
+each coordinate contributes one. An estimator can reduce variance by
+moving observations toward a center, but introduces bias if true effects
+lie away from that center. With a fixed weight
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>w</mi><annotation encoding="application/x-tex">w</annotation></semantics></math></span>
+and fixed center zero,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>δ</mi><mi>w</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>w</mi><mi>X</mi></mrow><annotation encoding="application/x-tex">\delta_w(X)=wX</annotation></semantics></math></span>
+has
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>,</mo><msub><mi>δ</mi><mi>w</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>w</mi><mn>2</mn></msup><mi>d</mi><mo>+</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>w</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo stretchy="false" form="postfix">∥</mo><mi>θ</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">R(\theta,\delta_w)=w^2d+(1-w)^2\|\theta\|^2.
+ \label{i12-fixed-weight-risk}</annotation></semantics></math><span id="i12-fixed-weight-risk" class="equation-anchor"></span><span class="equation-number">(9.2)</span></span> For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">w&lt;1</annotation></semantics></math></span>,
+this risk eventually exceeds
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math></span>
+as the signal grows. An appealing prior-average performance therefore
+does not prove uniform improvement at every fixed parameter. The
+James–Stein construction adapts the weight to the observed vector and
+escapes this particular fixed-weight limitation.</p>
+<p>Total squared loss expresses equal importance of all standardized
+coordinates. If one coordinate is scientifically primary, or actions
+have different consequences, that loss may be inappropriate. Loss is
+part of the problem specification, as in Chapter <a href="03-decisions.html#i3-chapter" data-reference-type="ref" data-reference="i3-chapter">4</a>;
+a theorem for one loss cannot be transferred silently to another.</p>
+<h2 id="i12-hierarchical-section">9.2 Normal–normal pooling from first
+principles</h2>
+<p>For a working hierarchical model, suppose independently
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>θ</mi><mi>j</mi></msub><mo>∣</mo><mi>μ</mi><mo>,</mo><msup><mi>τ</mi><mn>2</mn></msup><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>,</mo><msup><mi>τ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>X</mi><mi>j</mi></msub><mo>∣</mo><msub><mi>θ</mi><mi>j</mi></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mi>j</mi></msub><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msup><mi>τ</mi><mn>2</mn></msup><mo>&gt;</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\theta_j\mid\mu,\tau^2\sim N(\mu,\tau^2),\qquad
+ X_j\mid\theta_j\sim N(\theta_j,1),\qquad \tau^2&gt;0.
+ \label{i12-hierarchy}</annotation></semantics></math><span id="i12-hierarchy" class="equation-anchor"></span><span class="equation-number">(9.3)</span></span> The
+exchangeability assumption assigns the same prior distribution to
+coordinates whose labels convey no further information in this model. It
+is a substantive modeling choice. Measurements belonging to different
+biological pathways, populations, or exposure scales may need distinct
+centers or covariates rather than one common pool.</p>
+<p>Hold
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>μ</mi><mo>,</mo><msup><mi>τ</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">\mu,\tau^2</annotation></semantics></math></span>
+fixed initially. The posterior kernel for one coordinate is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>exp</mo><mrow><mo stretchy="true" form="prefix">[</mo><mo>−</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mrow><mo stretchy="true" form="prefix">{</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>j</mi></msub><mo>−</mo><msub><mi>θ</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>+</mo><mfrac><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mi>j</mi></msub><mo>−</mo><mi>μ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><msup><mi>τ</mi><mn>2</mn></msup></mfrac><mo stretchy="true" form="postfix">}</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\exp\left[-\frac12\left\{(x_j-\theta_j)^2+
+              \frac{(\theta_j-\mu)^2}{\tau^2}\right\}\right].</annotation></semantics></math></span>
+Completing the square, exactly as in Chapter <a href="06-bayes.html#i6-chapter" data-reference-type="ref" data-reference="i6-chapter">8</a>,
+gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>θ</mi><mi>j</mi></msub><mo>∣</mo><msub><mi>X</mi><mi>j</mi></msub><mo>=</mo><msub><mi>x</mi><mi>j</mi></msub><mo>,</mo><mi>μ</mi><mo>,</mo><msup><mi>τ</mi><mn>2</mn></msup><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>+</mo><mi>w</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>j</mi></msub><mo>−</mo><mi>μ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mi>w</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>w</mi><mo>=</mo><mfrac><msup><mi>τ</mi><mn>2</mn></msup><mrow><mn>1</mn><mo>+</mo><msup><mi>τ</mi><mn>2</mn></msup></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\theta_j\mid X_j=x_j,\mu,\tau^2
+ \sim N\left(\mu+w(x_j-\mu),w\right),
+ \qquad w=\frac{\tau^2}{1+\tau^2}.
+ \label{i12-normal-posterior}</annotation></semantics></math><span id="i12-normal-posterior" class="equation-anchor"></span><span class="equation-number">(9.4)</span></span> The
+posterior mean is the squared-error Bayes action. Small
+between-coordinate variance yields stronger pooling, while large
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>τ</mi><mn>2</mn></msup><annotation encoding="application/x-tex">\tau^2</annotation></semantics></math></span>
+makes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>w</mi><annotation encoding="application/x-tex">w</annotation></semantics></math></span>
+approach one. At the boundary
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>τ</mi><mn>2</mn></msup><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau^2=0</annotation></semantics></math></span>,
+the prior is degenerate at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>,
+and the limiting posterior also places all probability there. This
+boundary is a different model component rather than a normal density
+with positive variance.</p>
+<p>The marginal distribution follows without an integration trick. Write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>j</mi></msub><mo>=</mo><mi>μ</mi><mo>+</mo><msub><mi>U</mi><mi>j</mi></msub><mo>+</mo><msub><mi>ε</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">X_j=\mu+U_j+\varepsilon_j</annotation></semantics></math></span>,
+where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>U</mi><mi>j</mi></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><msup><mi>τ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">U_j\sim N(0,\tau^2)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ε</mi><mi>j</mi></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\varepsilon_j\sim N(0,1)</annotation></semantics></math></span>
+are independent. Their sum is normal with variance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>τ</mi><mn>2</mn></msup><mo>+</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\tau^2+1</annotation></semantics></math></span>:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>j</mi></msub><mo>∣</mo><mi>μ</mi><mo>,</mo><msup><mi>τ</mi><mn>2</mn></msup><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>,</mo><mn>1</mn><mo>+</mo><msup><mi>τ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="1.0em"></mspace><mi>j</mi><mo>=</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mi>d</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">X_j\mid\mu,\tau^2\sim N(\mu,1+\tau^2),\quad j=1,\ldots,d.
+ \label{i12-marginal}</annotation></semantics></math><span id="i12-marginal" class="equation-anchor"></span><span class="equation-number">(9.5)</span></span> The usefulness of
+the normal hierarchy and empirical-Bayes construction depends on whether
+a common marginal model adequately represents these coordinates;
+estimating its parameters does not remove that modeling choice.</p>
+<p>Under the stated prior, the Bayes risk of the posterior mean is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>w</mi><mo>=</mo><mi>d</mi><msup><mi>τ</mi><mn>2</mn></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>τ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">dw=d\tau^2/(1+\tau^2)</annotation></semantics></math></span>,
+because the conditional posterior variance is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>w</mi><annotation encoding="application/x-tex">w</annotation></semantics></math></span>
+in every coordinate. This is an average over the prior distribution of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>,
+distinct from
+fixed-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>
+risk in Equation <a href="#i12-fixed-weight-risk" data-reference-type="ref" data-reference="i12-fixed-weight-risk">9.2</a>.
+Retaining the subscript or explicitly stating the averaging distribution
+prevents an apparent contradiction between those two calculations.</p>
+<h2 id="i12-eb-section">9.3 Estimating the pooling strength</h2>
+<p>Empirical Bayes estimates hyperparameters from the marginal
+distribution, then inserts those estimates into the posterior rule.
+Define
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>X</mi><mo accent="true">¯</mo></mover><mo>=</mo><msup><mi>d</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>X</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">\overline X=d^{-1}\sum_jX_j</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mi>c</mi></msub><mo>=</mo><msub><mo>∑</mo><mi>j</mi></msub><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>j</mi></msub><mo>−</mo><mover><mi>X</mi><mo accent="true">¯</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">S_c=\sum_j(X_j-\overline X)^2</annotation></semantics></math></span>.
+Under Equation <a href="#i12-marginal" data-reference-type="ref" data-reference="i12-marginal">9.5</a>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mover><mi>X</mi><mo accent="true">¯</mo></mover><mo>=</mo><mi>μ</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}\overline X=\mu</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><msub><mi>S</mi><mi>c</mi></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>τ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{E}S_c=(d-1)(1+\tau^2)</annotation></semantics></math></span>.
+For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>≥</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">d\ge2</annotation></semantics></math></span>,
+a constrained moment estimate is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>μ</mi><mo accent="true">̂</mo></mover><mo>=</mo><mover><mi>X</mi><mo accent="true">¯</mo></mover><mo>,</mo><mspace width="2.0em"></mspace><msubsup><mover><mi>τ</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">m</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">m</mi></mrow><mn>2</mn></msubsup><mo>=</mo><mo>max</mo><mrow><mo stretchy="true" form="prefix">{</mo><mn>0</mn><mo>,</mo><mfrac><msub><mi>S</mi><mi>c</mi></msub><mrow><mi>d</mi><mo>−</mo><mn>1</mn></mrow></mfrac><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">}</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat\mu=\overline X,\qquad
+ \widehat\tau^2_{\mathrm{mom}}
+   =\max\left\{0,\frac{S_c}{d-1}-1\right\}.
+ \label{i12-moment}</annotation></semantics></math><span id="i12-moment" class="equation-anchor"></span><span class="equation-number">(9.6)</span></span> The truncation
+enforces the variance parameter’s nonnegative domain; the resulting
+estimate is not unbiased. A negative untruncated value means the
+observed dispersion is less than the known noise variance, not that a
+negative variance is meaningful.</p>
+<p>Maximum marginal likelihood uses a different denominator. Put
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>v</mi><mo>=</mo><mn>1</mn><mo>+</mo><msup><mi>τ</mi><mn>2</mn></msup><mo>≥</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">v=1+\tau^2\ge1</annotation></semantics></math></span>.
+Apart from constants,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>ℓ</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>,</mo><mi>v</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>−</mo><mfrac><mi>d</mi><mn>2</mn></mfrac><mo>log</mo><mi>v</mi><mo>−</mo><mfrac><mn>1</mn><mrow><mn>2</mn><mi>v</mi></mrow></mfrac><munder><mo>∑</mo><mi>j</mi></munder><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>j</mi></msub><mo>−</mo><mi>μ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\ell(\mu,v)=-\frac d2\log v-\frac1{2v}\sum_j(x_j-\mu)^2.</annotation></semantics></math></span>
+For every
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>v</mi><annotation encoding="application/x-tex">v</annotation></semantics></math></span>,
+the maximizer in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>x</mi><mo accent="true">¯</mo></mover><annotation encoding="application/x-tex">\overline x</annotation></semantics></math></span>.
+Differentiating the profile likelihood in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>v</mi><annotation encoding="application/x-tex">v</annotation></semantics></math></span>
+gives the unconstrained optimizer
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mi>c</mi></msub><mi>/</mi><mi>d</mi></mrow><annotation encoding="application/x-tex">S_c/d</annotation></semantics></math></span>.
+Hence
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mover><mi>τ</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">M</mi><mi mathvariant="normal">L</mi></mrow><mn>2</mn></msubsup><mo>=</mo><mo>max</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><msub><mi>S</mi><mi>c</mi></msub><mi>/</mi><mi>d</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="2.0em"></mspace><msubsup><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mi>j</mi><mrow><mi mathvariant="normal">E</mi><mi mathvariant="normal">B</mi></mrow></msubsup><mo>=</mo><mover><mi>μ</mi><mo accent="true">̂</mo></mover><mo>+</mo><mfrac><msup><mover><mi>τ</mi><mo accent="true">̂</mo></mover><mn>2</mn></msup><mrow><mn>1</mn><mo>+</mo><msup><mover><mi>τ</mi><mo accent="true">̂</mo></mover><mn>2</mn></msup></mrow></mfrac><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>j</mi></msub><mo>−</mo><mover><mi>μ</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat\tau^2_{\mathrm{ML}}=\max\{0,S_c/d-1\},\qquad
+ \widehat\theta^{\mathrm{EB}}_j
+ =\widehat\mu+\frac{\widehat\tau^2}{1+\widehat\tau^2}
+                   (X_j-\widehat\mu).
+ \label{i12-marginal-mle}</annotation></semantics></math><span id="i12-marginal-mle" class="equation-anchor"></span><span class="equation-number">(9.7)</span></span> Moment and
+likelihood fitting need not yield the same amount of pooling, especially
+with few coordinates. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>
+is fixed externally instead, replace
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>c</mi></msub><annotation encoding="application/x-tex">S_c</annotation></semantics></math></span>
+by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mi>μ</mi></msub><mo>=</mo><msub><mo>∑</mo><mi>j</mi></msub><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>j</mi></msub><mo>−</mo><mi>μ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">S_\mu=\sum_j(X_j-\mu)^2</annotation></semantics></math></span>;
+both the marginal variance moment and likelihood estimators use
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mi>μ</mi></msub><mi>/</mi><mi>d</mi></mrow><annotation encoding="application/x-tex">S_\mu/d</annotation></semantics></math></span>.
+Estimating the center costs a degree of freedom in the unbiased moment
+calculation.</p>
+<p>Consider a new synthetic vector of standardized observations
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>2.4</mn><mo>,</mo><mn>1.1</mn><mo>,</mo><mo>−</mo><mn>0.3</mn><mo>,</mo><mn>1.6</mn><mo>,</mo><mn>0.2</mn><mo>,</mo><mo>−</mo><mn>0.6</mn><mo>,</mo><mn>1.9</mn><mo>,</mo><mn>0.8</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(2.4,1.1,-0.3,1.6,0.2,-0.6,1.9,0.8)</annotation></semantics></math></span>.
+These eight coordinates illustrate pooling of different means; they are
+not repeated observations on the single mean from the previous chapter.
+Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>x</mi><mo accent="true">¯</mo></mover><mo>=</mo><mn>0.8875</mn></mrow><annotation encoding="application/x-tex">\overline x=0.8875</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mi>c</mi></msub><mo>=</mo><mn>7.96875</mn></mrow><annotation encoding="application/x-tex">S_c=7.96875</annotation></semantics></math></span>.
+The moment variance estimate is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.1383929</mn><annotation encoding="application/x-tex">0.1383929</annotation></semantics></math></span>
+and its weight
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.1215686</mn><annotation encoding="application/x-tex">0.1215686</annotation></semantics></math></span>;
+the marginal likelihood estimate is zero and therefore pools all eight
+coordinates at the fitted center. The two answers are close
+scientifically in their strong pooling, but materially different
+numerically at the model boundary.</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# empirical-Bayes and James-Stein computations.
+dir.create("generated", showWarnings = FALSE)
+set.seed(802312)
+options(digits = 10)
+
+js &lt;- function(x, positive = FALSE) {
+  d &lt;- ncol(x)
+  if (d &lt; 3L) stop("Fixed-center James-Stein comparison requires d &gt;= 3")
+  s &lt;- rowSums(x^2)
+  weight &lt;- 1 - (d - 2) / s
+  weight[s == 0] &lt;- 0 # Definition at the probability-zero origin.
+  if (positive) weight &lt;- pmax(0, weight)
+  x * weight
+}
+
+# Q ~ noncentral chi-square(d, lambda).  Its Poisson mixture gives E(1/Q).
+reciprocal.exact &lt;- function(d, lambda) {
+  stopifnot(d &gt; 2, lambda &gt;= 0)
+  if (lambda == 0) return(1 / (d - 2))
+  top &lt;- qpois(1 - 1e-13, lambda / 2)
+  j &lt;- 0:top
+  sum(dpois(j, lambda / 2) / (d + 2 * j - 2))
+}
+risk.exact &lt;- function(d, magnitude) {
+  d - (d - 2)^2 * reciprocal.exact(d, magnitude^2)
+}
+stopifnot(abs(risk.exact(3, 0) - 2) &lt; 1e-12,
+          abs(risk.exact(20, 0) - 2) &lt; 1e-12)
+# Independent Laplace-transform integral for noncentral cases.
+integral.checks &lt;- expand.grid(d = c(3, 5, 10, 20), magnitude = c(0, 2, 8))
+integral.checks$mixture &lt;- mapply(function(d, m) reciprocal.exact(d, m^2),
+                                 integral.checks$d, integral.checks$magnitude)
+integral.checks$integral &lt;- mapply(function(d, m) {
+  integrate(function(t) (1 + 2*t)^(-d/2) * exp(-m^2*t/(1+2*t)),
+            0, Inf, rel.tol = 1e-9, subdivisions = 1000)$value
+}, integral.checks$d, integral.checks$magnitude)
+stopifnot(max(abs(integral.checks$mixture-integral.checks$integral)) &lt; 2e-8)
+write.csv(integral.checks, "generated/ch12-exact-checks.csv", row.names = FALSE)
+
+# Synthetic standardized estimates.
+x &lt;- c(2.4, 1.1, -.3, 1.6, .2, -.6, 1.9, .8)
+d &lt;- length(x); mu.hat &lt;- mean(x); s &lt;- sum((x-mu.hat)^2)
+tau2.moment &lt;- max(0, s/(d-1)-1)
+tau2.mle &lt;- max(0, s/d-1)
+weight.moment &lt;- tau2.moment/(1+tau2.moment)
+weight.mle &lt;- tau2.mle/(1+tau2.mle)
+example &lt;- data.frame(coordinate = seq_along(x), observation = x,
+                      eb.moment = mu.hat+weight.moment*(x-mu.hat),
+                      eb.mle = mu.hat+weight.mle*(x-mu.hat),
+                      js.zero = as.vector(js(matrix(x, nrow = 1))))
+write.csv(example, "generated/ch12-example.csv", row.names = FALSE)
+example.parameters &lt;- data.frame(d = d, mu.hat = mu.hat, residual.sum = s,
+                                tau2.moment = tau2.moment, tau2.mle = tau2.mle,
+                                weight.moment = weight.moment, weight.mle = weight.mle)
+write.csv(example.parameters, "generated/ch12-example-parameters.csv", row.names = FALSE)
+# Independent numerical checks of posterior moments and vector derivatives.
+posterior.mean &lt;- mu.hat+weight.moment*(x[1]-mu.hat)
+joint &lt;- function(t) dnorm(x[1], t, 1)*dnorm(t, mu.hat, sqrt(tau2.moment))
+normalizer &lt;- integrate(joint, -Inf, Inf, rel.tol=1e-10)$value
+quad.mean &lt;- integrate(function(t) t*joint(t), -Inf, Inf, rel.tol=1e-10)$value/normalizer
+quad.var &lt;- integrate(function(t) (t-posterior.mean)^2*joint(t),
+                      -Inf, Inf, rel.tol=1e-10)$value/normalizer
+point &lt;- c(1.2,-.4,.8,2,-1); a &lt;- 3; step &lt;- 1e-6
+g &lt;- function(v) -a*v/sum(v^2)
+numeric.divergence &lt;- sum(vapply(seq_along(point), function(j) {
+  plus &lt;- minus &lt;- point; plus[j] &lt;- plus[j]+step; minus[j] &lt;- minus[j]-step
+  (g(plus)[j]-g(minus)[j])/(2*step)
+}, numeric(1)))
+exact.divergence &lt;- -a*(length(point)-2)/sum(point^2)
+stopifnot(abs(quad.mean-posterior.mean)&lt;1e-9,
+          abs(quad.var-weight.moment)&lt;1e-9,
+          abs(numeric.divergence-exact.divergence)&lt;1e-7)
+write.csv(data.frame(quad.mean=quad.mean, formula.mean=posterior.mean,
+                     quad.variance=quad.var, formula.variance=weight.moment,
+                     numeric.divergence=numeric.divergence,
+                     formula.divergence=exact.divergence),
+          "generated/ch12-derivation-checks.csv", row.names=FALSE)
+
+# Paired comparison: all procedures see each exact same noise vector.
+B &lt;- 100000L
+grid &lt;- expand.grid(d = c(5, 10, 20), magnitude = c(0, 1, 2, 4, 8, 16))
+rows &lt;- vector("list", nrow(grid))
+for (k in seq_len(nrow(grid))) {
+  d &lt;- grid$d[k]; mag &lt;- grid$magnitude[k]
+  theta &lt;- c(mag, rep(0, d-1))
+  z &lt;- matrix(rnorm(B*d), nrow = B, ncol = d)
+  xx &lt;- sweep(z, 2, theta, "+")
+  loss.x &lt;- rowSums(z^2)
+  loss.js &lt;- rowSums(sweep(js(xx), 2, theta, "-")^2)
+  loss.pp &lt;- rowSums(sweep(js(xx, TRUE), 2, theta, "-")^2)
+  difference &lt;- loss.js-loss.x
+  pp.difference &lt;- loss.pp-loss.x
+  sure &lt;- d-(d-2)^2/rowSums(xx^2)
+  rows[[k]] &lt;- data.frame(d = d, magnitude = mag, lambda = mag^2, replicates = B,
+                         risk.x = mean(loss.x), risk.js = mean(loss.js),
+                         risk.js.exact = risk.exact(d, mag),
+                         mcse.js = sd(loss.js)/sqrt(B),
+                         paired.difference = mean(difference),
+                         paired.mcse = sd(difference)/sqrt(B),
+                         risk.positive.part = mean(loss.pp),
+                         paired.pp.difference = mean(pp.difference),
+                         paired.pp.mcse = sd(pp.difference)/sqrt(B),
+                         sure.mean = mean(sure))
+}
+risk &lt;- do.call(rbind, rows)
+write.csv(risk, "generated/ch12-risk-grid.csv", row.names = FALSE)
+# Monte Carlo standard errors use d &gt;= 5: squared-loss variance is finite.
+# Exact deterministic risk grids also include d = 3, with no CLT claim.
+stopifnot(all(is.finite(as.matrix(risk))),
+          max(abs(risk$risk.js-risk$risk.js.exact)/(risk$mcse.js+.001)) &lt; 7)
+
+# More precise coordinate audit exposes the distinction from total risk.
+B.coord &lt;- 400000L; theta &lt;- c(4, rep(0, 4)); d &lt;- length(theta)
+z &lt;- matrix(rnorm(B.coord*d), nrow = B.coord)
+xx &lt;- sweep(z, 2, theta, "+")
+loss.x &lt;- z^2
+loss.js &lt;- sweep(js(xx), 2, theta, "-")^2
+coordinate &lt;- data.frame(coordinate = seq_len(d), theta = theta,
+                         risk.x = colMeans(loss.x), risk.js = colMeans(loss.js),
+                         difference = colMeans(loss.js-loss.x),
+                         paired.mcse = apply(loss.js-loss.x, 2, sd)/sqrt(B.coord))
+write.csv(coordinate, "generated/ch12-coordinate-risk.csv", row.names = FALSE)
+total.difference &lt;- rowSums(loss.js-loss.x)
+write.csv(data.frame(d=d, magnitude=4, replicates=B.coord,
+                     risk.x=mean(rowSums(loss.x)), risk.js=mean(rowSums(loss.js)),
+                     difference=mean(total.difference),
+                     paired.mcse=sd(total.difference)/sqrt(B.coord)),
+          "generated/ch12-coordinate-total.csv", row.names=FALSE)
+
+# Smooth deterministic risk data: suitable for a web control without fresh MC.
+interaction &lt;- expand.grid(d = c(3, 5, 10, 20), magnitude = seq(0, 16, by=.25))
+interaction$risk.x &lt;- interaction$d
+interaction$risk.js &lt;- mapply(risk.exact, interaction$d, interaction$magnitude)
+interaction$risk.reduction &lt;- interaction$risk.x-interaction$risk.js
+write.csv(interaction, "generated/ch12-interaction-risk.csv", row.names = FALSE)
+writeLines(c("Deterministic fixed-center James-Stein risk under X ~ N_d(theta,I).",
+             "d: number of mean coordinates; values 3,5,10,20.",
+             "magnitude: Euclidean norm of theta; grid 0 to 16 in steps of .25.",
+             "risk.x: expected total squared loss of the raw vector X, equal to d.",
+             "risk.js: expected total squared loss from the Poisson-mixture formula.",
+             "risk.reduction: risk.x minus risk.js; not a coordinate-risk reduction.",
+             "No Monte Carlo standard errors apply to this deterministic grid."),
+           "generated/ch12-interaction-schema.txt")
+
+plot.risk &lt;- function() {
+  par(mfrow=c(1,2), mar=c(4.2,4.4,2,1), las=1)
+  colors &lt;- c("#002D72", "#0072CE", "#555555", "#B35C00")
+  for(panel in 1:2) {
+    plot(NA, xlim=c(0,16), ylim=if(panel==1)c(0,21) else c(0,18),
+         xlab="Signal magnitude ||theta||", ylab=if(panel==1)
+         "Expected total squared loss" else "Risk reduction from X")
+    for(j in seq_along(colors)) {
+      v &lt;- interaction[interaction$d==c(3,5,10,20)[j],]
+      lines(v$magnitude, if(panel==1)v$risk.js else v$risk.reduction,
+            col=colors[j], lty=j, lwd=2)
+      if(panel==1) abline(h=v$d[1], col=colors[j], lty=3)
+    }
+    if(panel==1) legend("topleft", legend=paste("d =",c(3,5,10,20)),
+                       col=colors,lty=1:4,lwd=2,bty="n",cex=.85)
+  }
+}
+cairo_pdf("generated/ch12-risk.pdf", width=8, height=3.9); plot.risk(); dev.off()
+png("generated/ch12-risk.png", width=1600, height=780, res=200); plot.risk(); dev.off()
+plot.example &lt;- function() {
+  par(mar=c(4.2,4.2,1.2,1), las=1)
+  plot(example$coordinate, example$observation, pch=1, ylim=c(-1,3),
+       xlab="Synthetic coordinate", ylab="Standardized estimate")
+  segments(example$coordinate, example$observation,
+           example$coordinate, example$eb.moment, col="#555555")
+  points(example$coordinate, example$eb.moment,pch=16,col="#002D72")
+  abline(h=mu.hat,lty=2,col="#002D72")
+  legend("topright", c("Observation", "Moment empirical Bayes", "Fitted center"),
+         pch=c(1,16,NA), lty=c(NA,NA,2), col=c("black","#002D72","#002D72"), bty="n")
+}
+cairo_pdf("generated/ch12-example.pdf",width=7,height=3.8);plot.example();dev.off()
+png("generated/ch12-example.png",width=1400,height=760,res=200);plot.example();dev.off()
+
+selected &lt;- risk[risk$d==5 &amp; risk$magnitude %in% c(0,4,8),]
+tex &lt;- c("\\begin{center}\\begin{tabular}{rrrrr}\\toprule",
+         "$\\|\\theta\\|$ &amp; Exact JS risk &amp; Simulated JS risk &amp; Paired difference &amp; MCSE\\\\\\midrule",
+         apply(selected,1,function(v) sprintf("%.0f &amp; %.4f &amp; %.4f &amp; %.4f &amp; %.4f\\\\",
+              as.numeric(v["magnitude"]),as.numeric(v["risk.js.exact"]),as.numeric(v["risk.js"]),
+              as.numeric(v["paired.difference"]),as.numeric(v["paired.mcse"]))),
+         "\\bottomrule\\end{tabular}\\end{center}")
+writeLines(tex,"generated/ch12-risk-table.tex")
+cat("Example parameters:\n"); print(example.parameters)
+cat("Selected paired risk comparisons:\n"); print(selected)
+cat("Coordinate-specific risk at theta=(4,0,0,0,0):\n");print(coordinate)
+cat("Maximum independent reciprocal-mixture discrepancy:",
+    max(abs(integral.checks$mixture-integral.checks$integral)),"\n")
+
+cat("Runtime record:\n"); print(sessionInfo())
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">2.4</span>,<span class="fl">1.1</span>,<span class="sc">-</span>.<span class="dv">3</span>,<span class="fl">1.6</span>,.<span class="dv">2</span>,<span class="sc">-</span>.<span class="dv">6</span>,<span class="fl">1.9</span>,.<span class="dv">8</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="fu">length</span>(x); center <span class="ot">&lt;-</span> <span class="fu">mean</span>(x)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>Sc <span class="ot">&lt;-</span> <span class="fu">sum</span>((x<span class="sc">-</span>center)<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>tau2 <span class="ot">&lt;-</span> <span class="fu">max</span>(<span class="dv">0</span>,Sc<span class="sc">/</span>(d<span class="dv">-1</span>)<span class="sc">-</span><span class="dv">1</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>w <span class="ot">&lt;-</span> tau2<span class="sc">/</span>(<span class="dv">1</span><span class="sc">+</span>tau2)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>estimate <span class="ot">&lt;-</span> center<span class="sc">+</span>w<span class="sc">*</span>(x<span class="sc">-</span>center)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">center=</span>center, <span class="at">Sc=</span>Sc, <span class="at">tau2=</span>tau2, <span class="at">weight=</span>w)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 0.8875000, 7.9687500, 0.1383929, 0.1215686</span></span></code></pre></div>
+<figure id="i12-example-figure">
+<a href="../assets/inference/ch12-example.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch12-example.png" alt="Figure 9.1. Moment empirical-Bayes pooling for eight synthetic
+standardized estimates. Segments connect each observation to its
+estimate; the fitted center is estimated from this same
+vector.">
+</a><figcaption>Figure 9.1. Moment empirical-Bayes pooling for eight synthetic
+standardized estimates. Segments connect each observation to its
+estimate; the fitted center is estimated from this same
+vector.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch12-example.png">Open full-size figure</a></p></figure>
+<p>The fitted center is not a known external target. With
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>τ</mi><mn>2</mn></msup><annotation encoding="application/x-tex">\tau^2</annotation></semantics></math></span>
+fixed but an improper flat prior on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>,
+the hierarchy gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>μ</mi><mo>∣</mo><mi>X</mi><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>X</mi><mo accent="true">¯</mo></mover><mo>,</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>τ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>d</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mu\mid X\sim N(\overline X,(1+\tau^2)/d)</annotation></semantics></math></span>.
+Integrating over this center uncertainty yields marginal posterior
+variance for each
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>θ</mi><mi>j</mi></msub><annotation encoding="application/x-tex">\theta_j</annotation></semantics></math></span>
+equal to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>w</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>d</mi></mrow><annotation encoding="application/x-tex">w+(1-w)/d</annotation></semantics></math></span>,
+rather than
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>w</mi><annotation encoding="application/x-tex">w</annotation></semantics></math></span>.
+This follows from total variance: conditional variance is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>w</mi><annotation encoding="application/x-tex">w</annotation></semantics></math></span>
+and conditional mean depends on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>
+through coefficient
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mi>w</mi></mrow><annotation encoding="application/x-tex">1-w</annotation></semantics></math></span>.
+At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>τ</mi><mn>2</mn></msup><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau^2=0</annotation></semantics></math></span>,
+the remaining variance is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mi>d</mi></mrow><annotation encoding="application/x-tex">1/d</annotation></semantics></math></span>;
+the common mean is still uncertain. A plug-in zero posterior variance
+would erase that uncertainty. This illustrative calculation conditions
+on known
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>τ</mi><mn>2</mn></msup><annotation encoding="application/x-tex">\tau^2</annotation></semantics></math></span>;
+estimating the latter adds another uncertainty layer.</p>
+<p>Center uncertainty also induces posterior dependence. With
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>τ</mi><mn>2</mn></msup><annotation encoding="application/x-tex">\tau^2</annotation></semantics></math></span>
+known, the coordinates are conditionally independent given
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>,</mo><mi>μ</mi></mrow><annotation encoding="application/x-tex">X,\mu</annotation></semantics></math></span>,
+but for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>j</mi><mo>≠</mo><mi>k</mi></mrow><annotation encoding="application/x-tex">j\ne k</annotation></semantics></math></span>
+the law of total covariance gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Cov</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mi>j</mi></msub><mo>,</mo><msub><mi>θ</mi><mi>k</mi></msub><mo>∣</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>w</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>Var</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>∣</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mn>1</mn><mo>−</mo><mi>w</mi></mrow><mi>d</mi></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\operatorname{Cov}(\theta_j,\theta_k\mid X)
+ =(1-w)^2\operatorname{Var}(\mu\mid X)=\frac{1-w}{d}.
+ \label{i12-center-covariance}</annotation></semantics></math><span id="i12-center-covariance" class="equation-anchor"></span><span class="equation-number">(9.8)</span></span> Thus the
+posterior covariance matrix is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><msub><mi>I</mi><mi>d</mi></msub><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>w</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>𝟏</mn><msup><mn>𝟏</mn><mi>T</mi></msup><mi>/</mi><mi>d</mi></mrow><annotation encoding="application/x-tex">wI_d+(1-w)\mathbf 1\mathbf 1^T/d</annotation></semantics></math></span>.
+At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>τ</mi><mn>2</mn></msup><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau^2=0</annotation></semantics></math></span>,
+all coordinates are the same uncertain mean; their differences have zero
+posterior variance, while each coordinate has variance
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mi>d</mi></mrow><annotation encoding="application/x-tex">1/d</annotation></semantics></math></span>.
+Distinguishing uncertainty about a contrast from uncertainty about an
+absolute level explains why complete pooling need not imply precise
+knowledge of every effect.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="dv">4</span>; tau2 <span class="ot">&lt;-</span> <span class="dv">1</span>; w <span class="ot">&lt;-</span> tau2<span class="sc">/</span>(<span class="dv">1</span><span class="sc">+</span>tau2)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>V <span class="ot">&lt;-</span> w<span class="sc">*</span><span class="fu">diag</span>(d)<span class="sc">+</span>(<span class="dv">1</span><span class="sc">-</span>w)<span class="sc">*</span><span class="fu">matrix</span>(<span class="dv">1</span>,d,d)<span class="sc">/</span>d</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">variance=</span>V[<span class="dv">1</span>,<span class="dv">1</span>], <span class="at">covariance=</span>V[<span class="dv">1</span>,<span class="dv">2</span>],</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">contrast.variance=</span>V[<span class="dv">1</span>,<span class="dv">1</span>]<span class="sc">+</span>V[<span class="dv">2</span>,<span class="dv">2</span>]<span class="sc">-</span><span class="dv">2</span><span class="sc">*</span>V[<span class="dv">1</span>,<span class="dv">2</span>])</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 0.625, 0.125, 1.000</span></span></code></pre></div>
+<h2 id="i12-sure-section">9.4 Stein’s identity and an unbiased estimate of
+risk</h2>
+<p>The hierarchy has supplied a shrinkage rule. To evaluate its
+repeated-sampling performance, we now return to fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>
+in Equation <a href="#i12-experiment" data-reference-type="ref" data-reference="i12-experiment">9.1</a>; no prior is
+assumed true. For an appropriate scalar function
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>g</mi><mi>j</mi></msub><annotation encoding="application/x-tex">g_j</annotation></semantics></math></span>
+of the vector, normal integration by parts gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mi>θ</mi></msub><mo stretchy="false" form="prefix">{</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>j</mi></msub><mo>−</mo><msub><mi>θ</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>g</mi><mi>j</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>=</mo><msub><mi>𝔼</mi><mi>θ</mi></msub><mrow><mo stretchy="true" form="prefix">{</mo><mfrac><mrow><mi>∂</mi><msub><mi>g</mi><mi>j</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>∂</mi><msub><mi>x</mi><mi>j</mi></msub></mrow></mfrac><mo stretchy="true" form="postfix">}</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}_\theta\{(X_j-\theta_j)g_j(X)\}
+   =\mathbb{E}_\theta\left\{\frac{\partial g_j(X)}{\partial x_j}\right\}.
+ \label{i12-stein}</annotation></semantics></math><span id="i12-stein" class="equation-anchor"></span><span class="equation-number">(9.9)</span></span> To see the sign and
+boundary condition, the normal density satisfies
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>∂</mi><msub><mi>f</mi><mi>θ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>∂</mi><msub><mi>x</mi><mi>j</mi></msub><mo>=</mo><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>j</mi></msub><mo>−</mo><msub><mi>θ</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>f</mi><mi>θ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\partial f_\theta(x)/\partial x_j=-(x_j-\theta_j)f_\theta(x)</annotation></semantics></math></span>.
+Integrate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><msub><mi>g</mi><mi>j</mi></msub><mi>∂</mi><msub><mi>f</mi><mi>θ</mi></msub><mi>/</mi><mi>∂</mi><msub><mi>x</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">-g_j\partial f_\theta/\partial x_j</annotation></semantics></math></span>
+over
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>x</mi><mi>j</mi></msub><annotation encoding="application/x-tex">x_j</annotation></semantics></math></span>;
+a vanishing boundary term leaves
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>∂</mi><msub><mi>g</mi><mi>j</mi></msub><mi>/</mi><mi>∂</mi><msub><mi>x</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>f</mi><mi>θ</mi></msub></mrow><annotation encoding="application/x-tex">(\partial g_j/\partial x_j)f_\theta</annotation></semantics></math></span>.
+Then integrate the other coordinates. Sufficient conditions include
+differentiability, integrable terms, and decay making these operations
+valid. Singular functions require a separate justification, supplied
+below.</p>
+<p>Write any suitably regular estimator as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>X</mi><mo>+</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\delta(X)=X+g(X)</annotation></semantics></math></span>.
+Expanding its total error and applying Equation <a href="#i12-stein" data-reference-type="ref" data-reference="i12-stein">9.9</a>
+coordinatewise yields
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>,</mo><mi>δ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>d</mi><mo>+</mo><msub><mi>𝔼</mi><mi>θ</mi></msub><mo stretchy="false" form="prefix">{</mo><mo stretchy="false" form="postfix">∥</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup><mo>+</mo><mn>2</mn><mo>div</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="1.0em"></mspace><mo>div</mo><mi>g</mi><mo>=</mo><munderover><mo>∑</mo><mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow><mi>d</mi></munderover><mfrac><mrow><mi>∂</mi><msub><mi>g</mi><mi>j</mi></msub></mrow><mrow><mi>∂</mi><msub><mi>x</mi><mi>j</mi></msub></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">R(\theta,\delta)
+ =d+\mathbb{E}_\theta\{\|g(X)\|^2+2\operatorname{div}g(X)\},
+ \quad \operatorname{div}g=\sum_{j=1}^d\frac{\partial g_j}{\partial x_j}.
+ \label{i12-sure}</annotation></semantics></math><span id="i12-sure" class="equation-anchor"></span><span class="equation-number">(9.10)</span></span> Thus the realized
+expression
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>+</mo><mo stretchy="false" form="postfix">∥</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup><mo>+</mo><mn>2</mn><mo>div</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">d+\|g(X)\|^2+2\operatorname{div}g(X)</annotation></semantics></math></span>
+is Stein’s unbiased risk estimate, or SURE. It estimates
+repeated-sampling total risk, not the unobserved error on this
+particular vector. It can be negative even though risk is nonnegative.
+Further, selecting a procedure by minimizing its observed SURE and
+reporting that same minimum as an unbiased assessment ignores selection.
+The identity evaluates a specified rule; it does not automatically
+validate unrestricted tuning after inspection.</p>
+<p>A fixed shrinkage weight provides a check on the identity before we
+use a singular function. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>δ</mi><mi>w</mi></msub><mo>=</mo><mi>w</mi><mi>X</mi></mrow><annotation encoding="application/x-tex">\delta_w=wX</annotation></semantics></math></span>,
+then
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>w</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>x</mi></mrow><annotation encoding="application/x-tex">g(x)=(w-1)x</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>div</mo><mi>g</mi><mo>=</mo><mi>d</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>w</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{div}g=d(w-1)</annotation></semantics></math></span>.
+SURE becomes
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>+</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>w</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo stretchy="false" form="postfix">∥</mo><mi>X</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup><mo>+</mo><mn>2</mn><mi>d</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>w</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">d+(w-1)^2\|X\|^2+2d(w-1).</annotation></semantics></math></span>
+Its expectation is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>+</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>w</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>+</mo><mo stretchy="false" form="postfix">∥</mo><mi>θ</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mn>2</mn><mi>d</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>w</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">d+(w-1)^2(d+\|\theta\|^2)+2d(w-1)</annotation></semantics></math></span>,
+which simplifies to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>w</mi><mn>2</mn></msup><mi>d</mi><mo>+</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>w</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo stretchy="false" form="postfix">∥</mo><mi>θ</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">w^2d+(1-w)^2\|\theta\|^2</annotation></semantics></math></span>,
+recovering Equation <a href="#i12-fixed-weight-risk" data-reference-type="eqref" data-reference="i12-fixed-weight-risk">(9.2)</a>. This
+calculation makes the distinction concrete: SURE is a data-based
+estimate of a specified procedure’s risk, and its expected value is the
+analytic risk curve.</p>
+<p>For a constant
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math></span>,
+take
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>−</mo><mi>a</mi><mi>x</mi><mi>/</mi><mo stretchy="false" form="postfix">∥</mo><mi>x</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">g(x)=-ax/\|x\|^2</annotation></semantics></math></span>
+away from zero and assign any finite value at zero, which has
+probability zero. Put
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mo>=</mo><mo stretchy="false" form="postfix">∥</mo><mi>x</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">S=\|x\|^2</annotation></semantics></math></span>.
+Direct differentiation gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="postfix">∥</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup><mo>=</mo><mfrac><msup><mi>a</mi><mn>2</mn></msup><mi>S</mi></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mo>div</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>−</mo><mfrac><mrow><mi>a</mi><mi>d</mi></mrow><mi>S</mi></mfrac><mo>+</mo><mfrac><mrow><mn>2</mn><mi>a</mi><munder><mo>∑</mo><mi>j</mi></munder><msubsup><mi>x</mi><mi>j</mi><mn>2</mn></msubsup></mrow><msup><mi>S</mi><mn>2</mn></msup></mfrac><mo>=</mo><mo>−</mo><mfrac><mrow><mi>a</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>−</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mi>S</mi></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\|g(x)\|^2=\frac{a^2}{S},\qquad
+ \operatorname{div}g(x)
+ =-\frac{ad}{S}+\frac{2a\sum_jx_j^2}{S^2}
+ =-\frac{a(d-2)}{S}.
+ \label{i12-divergence}</annotation></semantics></math><span id="i12-divergence" class="equation-anchor"></span><span class="equation-number">(9.11)</span></span> The coefficient
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>−</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">d-2</annotation></semantics></math></span>
+comes from the geometry of this vector derivative. Replacing it with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math></span>,
+or differentiating a data-dependent shrinkage factor as if it were
+constant, produces the wrong risk calculation.</p>
+<p>For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>&gt;</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">d&gt;2</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mi>θ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>S</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{E}_\theta(S^{-1})</annotation></semantics></math></span>
+is finite. Near the origin a bounded normal density and spherical volume
+element produce an integral proportional to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mo>∫</mo><mn>0</mn><mi>ϵ</mi></msubsup><msup><mi>r</mi><mrow><mi>d</mi><mo>−</mo><mn>3</mn></mrow></msup><mspace width="0.167em"></mspace><mi>d</mi><mi>r</mi></mrow><annotation encoding="application/x-tex">\int_0^\epsilon r^{d-3}\,dr</annotation></semantics></math></span>;
+outside a ball,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>S</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><annotation encoding="application/x-tex">S^{-1}</annotation></semantics></math></span>
+is bounded. One rigorous route is to first use
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>g</mi><mi>ε</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>−</mo><mi>a</mi><mi>x</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>S</mi><mo>+</mo><mi>ε</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">g_\varepsilon(x)=-ax/(S+\varepsilon)</annotation></semantics></math></span>,
+then let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ε</mi><annotation encoding="application/x-tex">\varepsilon</annotation></semantics></math></span>
+decrease to zero. Its squared norm is bounded by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>a</mi><mn>2</mn></msup><mi>/</mi><mi>S</mi></mrow><annotation encoding="application/x-tex">a^2/S</annotation></semantics></math></span>,
+and the absolute derivatives by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mrow><mo stretchy="true" form="prefix">|</mo><mi>a</mi><mo stretchy="true" form="postfix">|</mo></mrow><mi>/</mi><mi>S</mi></mrow><annotation encoding="application/x-tex">3|a|/S</annotation></semantics></math></span>;
+integrability permits passage to the limit. This establishes the
+identity for this singular rule, rather than assuming ordinary
+integration by parts automatically covers it.</p>
+<h2 id="i12-james-stein-section">9.5 James–Stein risk and its exact
+scope</h2>
+<p>Substitution into SURE gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>,</mo><msub><mi>δ</mi><mi>a</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>d</mi><mo>+</mo><mo stretchy="false" form="prefix">{</mo><msup><mi>a</mi><mn>2</mn></msup><mo>−</mo><mn>2</mn><mi>a</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>−</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><msub><mi>𝔼</mi><mi>θ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>S</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>δ</mi><mi>a</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mfrac><mi>a</mi><mrow><mo stretchy="false" form="postfix">∥</mo><mi>X</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mi>X</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">R(\theta,\delta_a)=d+
+ \{a^2-2a(d-2)\}\mathbb{E}_\theta(S^{-1}),
+ \qquad \delta_a(X)=\left(1-\frac a{\|X\|^2}\right)X.
+ \label{i12-general-risk}</annotation></semantics></math><span id="i12-general-risk" class="equation-anchor"></span><span class="equation-number">(9.12)</span></span> For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>≥</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">d\ge3</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>a</mi><mo>&lt;</mo><mn>2</mn><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>−</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">0&lt;a&lt;2(d-2)</annotation></semantics></math></span>,
+the coefficient is negative and the expectation positive: this rule has
+smaller risk than
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math></span>
+for every fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>.
+Within this
+constant-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math></span>
+family, the quadratic coefficient is minimized at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>=</mo><mi>d</mi><mo>−</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">a=d-2</annotation></semantics></math></span>.</p>
+<div class="theorem">
+<p><strong>Theorem 9.1 (Fixed-center James–Stein improvement).</strong>
+Under Equation <a href="#i12-experiment" data-reference-type="ref" data-reference="i12-experiment">9.1</a>, for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>≥</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">d\ge3</annotation></semantics></math></span>,
+the estimator
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>δ</mi><mrow><mi mathvariant="normal">J</mi><mi mathvariant="normal">S</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mfrac><mrow><mi>d</mi><mo>−</mo><mn>2</mn></mrow><mrow><mo stretchy="false" form="postfix">∥</mo><mi>X</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mi>X</mi></mrow><annotation encoding="application/x-tex">\delta_{\mathrm{JS}}(X)=\left(1-\frac{d-2}{\|X\|^2}\right)X
+ \label{i12-js-rule}</annotation></semantics></math><span id="i12-js-rule" class="equation-anchor"></span><span class="equation-number">(9.13)</span></span> has total
+squared-error risk
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>,</mo><msub><mi>δ</mi><mrow><mi mathvariant="normal">J</mi><mi mathvariant="normal">S</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>d</mi><mo>−</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>−</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><msub><mi>𝔼</mi><mi>θ</mi></msub><mo stretchy="false" form="prefix">{</mo><mo stretchy="false" form="postfix">∥</mo><mi>X</mi><msup><mo stretchy="false" form="postfix">∥</mo><mrow><mo>−</mo><mn>2</mn></mrow></msup><mo stretchy="false" form="postfix">}</mo><mo>&lt;</mo><mi>d</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">R(\theta,\delta_{\mathrm{JS}})
+ =d-(d-2)^2\mathbb{E}_\theta\{\|X\|^{-2}\}&lt;d.
+ \label{i12-js-risk}</annotation></semantics></math><span id="i12-js-risk" class="equation-anchor"></span><span class="equation-number">(9.14)</span></span> The value assigned
+at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">X=0</annotation></semantics></math></span>
+does not change the risk.</p>
+</div>
+<div class="proof">
+<p><em>Proof.</em> Equations <a href="#i12-sure" data-reference-type="ref" data-reference="i12-sure">9.10</a>–<a href="#i12-general-risk" data-reference-type="ref" data-reference="i12-general-risk">9.12</a>, including
+their integrability justification, apply with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>=</mo><mi>d</mi><mo>−</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">a=d-2</annotation></semantics></math></span>.
+The finite expectation of a strictly positive random variable is
+positive, establishing strict improvement. ◻</p>
+</div>
+<p>At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>θ</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\theta=0</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mo>∼</mo><msubsup><mi>χ</mi><mi>d</mi><mn>2</mn></msubsup></mrow><annotation encoding="application/x-tex">S\sim\chi^2_d</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mi>/</mi><mi>S</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>−</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{E}(1/S)=1/(d-2)</annotation></semantics></math></span>,
+so the risk is exactly two regardless of dimension
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>≥</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">d\ge3</annotation></semantics></math></span>.
+This follows by integrating the chi-square density, or by its gamma
+moment formula. The result does not claim zero risk at the origin; the
+shrinkage rule remains noisy and can reverse an observed coordinate’s
+sign.</p>
+<p>For any fixed external center
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>c</mi><annotation encoding="application/x-tex">c</annotation></semantics></math></span>,
+translation gives the analogous rule
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi><mo>+</mo><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>−</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mo stretchy="false" form="postfix">∥</mo><mi>X</mi><mo>−</mo><mi>c</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup><mo stretchy="false" form="postfix">}</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo>−</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">c+\{1-(d-2)/\|X-c\|^2\}(X-c)</annotation></semantics></math></span>
+and the same dominance conclusion. Replacing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>c</mi><annotation encoding="application/x-tex">c</annotation></semantics></math></span>
+by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>X</mi><mo accent="true">¯</mo></mover><annotation encoding="application/x-tex">\overline X</annotation></semantics></math></span>
+is not the same proof. The residual vector then lives in a
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(d-1)</annotation></semantics></math></span>-dimensional
+subspace, and the estimated center has its own error. The centered
+construction uses a
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>−</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">d-3</annotation></semantics></math></span>
+coefficient for this reason; simply using
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>−</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">d-2</annotation></semantics></math></span>
+with a fitted center misapplies the fixed-center theorem. It need not
+produce a bad estimator, but requires its own proof. In an orthonormal
+coordinate system with first direction
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>d</mi><mrow><mo>−</mo><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">d^{-1/2}(1,\ldots,1)</annotation></semantics></math></span>,
+estimating the unshrunk center direction contributes risk one. Shrinking
+the remaining
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">d-1</annotation></semantics></math></span>
+normal coordinates with coefficient
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math></span>
+contributes
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mo stretchy="false" form="prefix">{</mo><msup><mi>a</mi><mn>2</mn></msup><mo>−</mo><mn>2</mn><mi>a</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>−</mo><mn>3</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><msub><mi>𝔼</mi><mi>θ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>S</mi><mi>c</mi><mrow><mo>−</mo><mn>1</mn></mrow></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">(d-1)+\{a^2-2a(d-3)\}\mathbb{E}_\theta(S_c^{-1}).</annotation></semantics></math></span>
+For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>≥</mo><mn>4</mn></mrow><annotation encoding="application/x-tex">d\ge4</annotation></semantics></math></span>,
+their sum is below
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math></span>
+when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>a</mi><mo>&lt;</mo><mn>2</mn><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>−</mo><mn>3</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">0&lt;a&lt;2(d-3)</annotation></semantics></math></span>,
+minimized within this family at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>=</mo><mi>d</mi><mo>−</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">a=d-3</annotation></semantics></math></span>.
+This residual-space argument distinguishes an externally fixed center
+from an estimated one while retaining the latter’s risk.</p>
+<p>The positive-part modification replaces the factor by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>max</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>−</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>S</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\max\{0,1-(d-2)/S\}</annotation></semantics></math></span>,
+eliminating sign reversal. It is included in the numerical comparison as
+a defined alternative. Its additional domination result requires a
+further argument not proved here; we do not infer that theorem from a
+few simulated parameter values. Similarly, empirical-Bayes fitting
+toward an estimated center is not covered by the displayed theorem
+merely because both methods shrink.</p>
+<p>The theorem also illustrates a worst-case risk comparison.
+Product-normal proper priors
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>θ</mi><mo>∼</mo><msub><mi>N</mi><mi>d</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><msup><mi>τ</mi><mn>2</mn></msup><msub><mi>I</mi><mi>d</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\theta\sim N_d(0,\tau^2I_d)</annotation></semantics></math></span>
+have optimal Bayes risk
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><msup><mi>τ</mi><mn>2</mn></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>τ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">d\tau^2/(1+\tau^2)</annotation></semantics></math></span>,
+approaching
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math></span>
+as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>τ</mi><mn>2</mn></msup><mo>→</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">\tau^2\to\infty</annotation></semantics></math></span>.
+For any proper prior, the smallest prior-average risk is a lower bound
+on the smallest worst-case risk. Taking the limit of these lower bounds
+shows that the minimax value in this experiment is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math></span>,
+attained by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math></span>.
+James–Stein risk is at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math></span>
+everywhere, so this rule is minimax too, despite strictly improving on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math></span>
+at every finite
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>.
+The raw vector is minimax and inadmissible. Strict pointwise dominance
+and equal supremum risk can coexist; the supremum need not be attained
+at a finite parameter.</p>
+<h2 id="i12-computation-section">9.6 An executable risk audit and what it
+can reveal</h2>
+<p>At fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>,
+simulate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>=</mo><mi>θ</mi><mo>+</mo><mi>Z</mi></mrow><annotation encoding="application/x-tex">X=\theta+Z</annotation></semantics></math></span>
+with independent standard normal coordinates and calculate the losses of
+both rules on the same vector. Pairing removes much of the shared noise
+from their difference. A Monte Carlo standard error for the estimated
+difference is the sample standard deviation of the paired differences
+divided by the square root of the number of independent repetitions.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb3" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">802312</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="dv">5</span>; B <span class="ot">&lt;-</span> <span class="dv">100000</span>; theta <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">4</span>,<span class="fu">rep</span>(<span class="dv">0</span>,d<span class="dv">-1</span>))</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>Z <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">rnorm</span>(B<span class="sc">*</span>d),<span class="at">nrow=</span>B)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>X <span class="ot">&lt;-</span> <span class="fu">sweep</span>(Z,<span class="dv">2</span>,theta,<span class="st">"+"</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>S <span class="ot">&lt;-</span> <span class="fu">rowSums</span>(X<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>estimate <span class="ot">&lt;-</span> X<span class="sc">*</span>(<span class="dv">1</span><span class="sc">-</span>(d<span class="dv">-2</span>)<span class="sc">/</span>S)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>loss.x <span class="ot">&lt;-</span> <span class="fu">rowSums</span>(Z<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>loss.js <span class="ot">&lt;-</span> <span class="fu">rowSums</span>(<span class="fu">sweep</span>(estimate,<span class="dv">2</span>,theta,<span class="st">"-"</span>)<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>difference <span class="ot">&lt;-</span> loss.js<span class="sc">-</span>loss.x</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">difference=</span><span class="fu">mean</span>(difference),<span class="at">mcse=</span><span class="fu">sd</span>(difference)<span class="sc">/</span><span class="fu">sqrt</span>(B))</span></code></pre></div>
+<p>The complete R example uses seed 802312 and 100,000 repetitions for
+each of 18 configurations:
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>=</mo><mn>5</mn><mo>,</mo><mn>10</mn><mo>,</mo><mn>20</mn></mrow><annotation encoding="application/x-tex">d=5,10,20</annotation></semantics></math></span>
+and signal norms
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>8</mn><mo>,</mo><mn>16</mn></mrow><annotation encoding="application/x-tex">0,1,2,4,8,16</annotation></semantics></math></span>.
+It records each risk, paired differences and standard errors, SURE
+averages, and positive-part results. The table separates simulated risks
+and their Monte Carlo uncertainty from a deterministic James–Stein
+benchmark.</p>
+<div class="center">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<thead>
+<tr class="header">
+<th style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="postfix">∥</mo><mi>θ</mi><mo stretchy="false" form="postfix">∥</mo></mrow><annotation encoding="application/x-tex">\|\theta\|</annotation></semantics></math></span></th>
+<th style="text-align: right;">Exact JS risk</th>
+<th style="text-align: right;">Simulated JS risk</th>
+<th style="text-align: right;">Paired difference</th>
+<th style="text-align: right;">MCSE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2.0000</td>
+<td style="text-align: right;">1.9826</td>
+<td style="text-align: right;">-3.0159</td>
+<td style="text-align: right;">0.0131</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">4.4755</td>
+<td style="text-align: right;">4.4871</td>
+<td style="text-align: right;">-0.5246</td>
+<td style="text-align: right;">0.0045</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">4.8616</td>
+<td style="text-align: right;">4.8635</td>
+<td style="text-align: right;">-0.1387</td>
+<td style="text-align: right;">0.0023</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>For the benchmark,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Q</mi><mo>=</mo><mo stretchy="false" form="postfix">∥</mo><mi>X</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">Q=\|X\|^2</annotation></semantics></math></span>
+has a noncentral chi-square distribution with degrees of freedom
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math></span>
+and noncentrality
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>=</mo><mo stretchy="false" form="postfix">∥</mo><mi>θ</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">\lambda=\|\theta\|^2</annotation></semantics></math></span>.
+Its Poisson mixture gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>Q</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munderover><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow><mo accent="false">∞</mo></munderover><mfrac><mrow><mi>ℙ</mi><mo stretchy="false" form="prefix">{</mo><mi>J</mi><mo>=</mo><mi>k</mi><mo stretchy="false" form="postfix">}</mo></mrow><mrow><mi>d</mi><mo>+</mo><mn>2</mn><mi>k</mi><mo>−</mo><mn>2</mn></mrow></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mi>J</mi><mo>∼</mo><mo>Poisson</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mi>/</mi><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}(Q^{-1})=\sum_{k=0}^\infty
+ \frac{\mathbb{P}\{J=k\}}{d+2k-2},\qquad
+ J\sim\operatorname{Poisson}(\lambda/2).
+ \label{i12-noncentral-reciprocal}</annotation></semantics></math><span id="i12-noncentral-reciprocal" class="equation-anchor"></span><span class="equation-number">(9.15)</span></span> The R
+calculation truncates at a Poisson quantile leaving at most
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mrow><mo>−</mo><mn>13</mn></mrow></msup><annotation encoding="application/x-tex">10^{-13}</annotation></semantics></math></span>
+upper-tail mass; the omitted contribution is bounded by that mass
+divided by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>−</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">d-2</annotation></semantics></math></span>.
+An independent integral of the Laplace transform checks the reciprocal
+values. Figure <a href="#i12-risk-figure" data-reference-type="ref" data-reference="i12-risk-figure">9.2</a> uses these deterministic
+expectations. It shows how the gain changes with the signal norm,
+without simulation noise obscuring the pattern.</p>
+<figure id="i12-risk-figure">
+<a href="../assets/inference/ch12-risk.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch12-risk.png" alt="Figure 9.2. Exact James–Stein total risk and its reduction from the risk
+dd
+of
+XX.
+Horizontal dotted lines in the left panel show the latter benchmark.
+Predict the effect of increasing signal magnitude before reading the
+right panel.">
+</a><figcaption>Figure 9.2. Exact James–Stein total risk and its reduction from the risk
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math></span>
+of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math></span>.
+Horizontal dotted lines in the left panel show the latter benchmark.
+Predict the effect of increasing signal magnitude before reading the
+right panel.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch12-risk.png">Open full-size figure</a></p></figure>
+<p>There is a computational caution at small dimensions. At the origin,
+squared error for the ordinary rule has a singular contribution
+proportional to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mi>S</mi></mrow><annotation encoding="application/x-tex">1/S</annotation></semantics></math></span>.
+Its expectation exists for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>&gt;</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">d&gt;2</annotation></semantics></math></span>,
+but its second moment fails for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>=</mo><mn>3</mn><mo>,</mo><mn>4</mn></mrow><annotation encoding="application/x-tex">d=3,4</annotation></semantics></math></span>.
+A finite simulated sample standard deviation in those dimensions does
+not establish the finite-variance central-limit justification of the
+usual Monte Carlo standard error. The paired simulation grid therefore
+starts at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>=</mo><mn>5</mn></mrow><annotation encoding="application/x-tex">d=5</annotation></semantics></math></span>;
+exact risk curves still include
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>=</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">d=3</annotation></semantics></math></span>.
+A mathematical integrability condition can change how a computational
+result should be assessed.</p>
+<p>Finally examine coordinate risks. A separate 400,000-repetition
+experiment at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>θ</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>4</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\theta=(4,0,0,0,0)</annotation></semantics></math></span>
+finds James–Stein risk near 1.59 for coordinate one, versus 1.00 for its
+raw observation; the other coordinates have risks near 0.72 each. Their
+improvements outweigh the first coordinate’s deterioration in total
+loss. This is a counterexample to the assertion that the rule helps
+every individual component. Rotational symmetry makes total risk depend
+only on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="postfix">∥</mo><mi>θ</mi><mo stretchy="false" form="postfix">∥</mo></mrow><annotation encoding="application/x-tex">\|\theta\|</annotation></semantics></math></span>,
+but does not make coordinate risks identical when the coordinates have
+different true means.</p>
+<h2 id="i12-interpretation-section">9.7 Uncertainty, model checking, and
+scientific interpretation</h2>
+<p>Plug-in empirical-Bayes posterior summaries condition on fitted
+hyperparameters as though they were known. Their intervals are not
+automatically calibrated either under
+fixed-<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>
+repetition or under the full fitted hierarchy. Boundary variance
+estimates are especially revealing: complete pooling can return zero
+conditional posterior variance while the fitted common center remains
+uncertain. A full hierarchical analysis puts a prior on hyperparameters
+and integrates their posterior distribution; a carefully designed
+bootstrap refits hyperparameters in each simulated dataset. These are
+additional methods, not interchangeable justifications for a plug-in
+interval.</p>
+<p>Before choosing pooling, examine the observation variances,
+dependence, comparability of coordinates, and plausibility of a common
+distribution. Posterior predictive checks can compare the observed
+dispersion or tail behavior with replicated vectors, but fitting and
+checking the same summary creates limitations described in Chapter <a href="06-bayes.html#i6-chapter" data-reference-type="ref" data-reference="i6-chapter">8</a>. Subgroup patterns
+discarded by a single normal marginal model cannot be recovered by
+tuning its variance. Unequal scientific consequences require a
+corresponding loss, and an aggregate accuracy gain does not establish
+calibrated uncertainty or better threshold decisions.</p>
+<p>For genetic effect estimates or regression coefficients, we first
+need their sampling covariance, standard errors, and any selection that
+produced the vector. These features determine whether a pooling model is
+defensible and which risk comparison is relevant. The next chapter
+returns to a regression design: penalties can reduce variability there
+too, but coefficient uncertainty requires an argument beyond a
+squared-error improvement.</p>
+<span id="exercises"></span><h2 id="i12-exercises-section">9.8 Exercises</h2>
+<ol class="exercises" style='--chapter:"9."'><li id="exercise-9-1"><p><strong>Pooling and two risk calculations.</strong> For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>j</mi><mo>=</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mi>d</mi></mrow><annotation encoding="application/x-tex">j=1,\ldots,d</annotation></semantics></math></span>,
+suppose independently
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>θ</mi><mi>j</mi></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><msup><mi>τ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\theta_j\sim N(0,\tau^2)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>j</mi></msub><mo>∣</mo><msub><mi>θ</mi><mi>j</mi></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mi>j</mi></msub><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">X_j\mid\theta_j\sim N(\theta_j,1)</annotation></semantics></math></span>,
+with fixed known
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>τ</mi><mn>2</mn></msup><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau^2&gt;0</annotation></semantics></math></span>.
+Use total squared loss
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>,</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msubsup><mo>∑</mo><mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow><mi>d</mi></msubsup><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>a</mi><mi>j</mi></msub><mo>−</mo><msub><mi>θ</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">L(\theta,a)=\sum_{j=1}^d(a_j-\theta_j)^2</annotation></semantics></math></span>.</p>
+<ol>
+<li><p>Complete the square to derive the posterior mean and variance of
+each
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>θ</mi><mi>j</mi></msub><annotation encoding="application/x-tex">\theta_j</annotation></semantics></math></span>.
+Write the posterior-mean rule as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>δ</mi><mi>w</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>w</mi><mi>X</mi></mrow><annotation encoding="application/x-tex">\delta_w(X)=wX</annotation></semantics></math></span>.</p></li>
+<li><p>Derive its prior-average Bayes risk and its repeated-sampling
+risk when the vector
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>θ</mi><mo>∈</mo><msup><mi>ℝ</mi><mi>d</mi></msup></mrow><annotation encoding="application/x-tex">\theta\in\mathbb R^d</annotation></semantics></math></span>
+is held fixed.</p></li>
+<li><p>Determine the values of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="postfix">∥</mo><mi>θ</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">\|\theta\|^2</annotation></semantics></math></span>
+for which
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>δ</mi><mi>w</mi></msub><annotation encoding="application/x-tex">\delta_w</annotation></semantics></math></span>
+has smaller fixed-parameter risk than the raw rule
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math></span>.
+Explain why a low prior-average risk does not establish dominance for
+every fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>.</p></li>
+</ol>
+</li><li id="exercise-9-2"><p><strong>A fitted center is not a known center.</strong> Consider the independent normal hierarchy
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>θ</mi><mi>j</mi></msub><mo>∣</mo><mi>μ</mi><mo>,</mo><msup><mi>τ</mi><mn>2</mn></msup><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>,</mo><msup><mi>τ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\theta_j\mid\mu,\tau^2\sim N(\mu,\tau^2)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>j</mi></msub><mo>∣</mo><msub><mi>θ</mi><mi>j</mi></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mi>j</mi></msub><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">X_j\mid\theta_j\sim N(\theta_j,1)</annotation></semantics></math></span>,
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>j</mi><mo>=</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mi>d</mi></mrow><annotation encoding="application/x-tex">j=1,\ldots,d</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>≥</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">d\ge2</annotation></semantics></math></span>.
+Write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>X</mi><mo accent="true">¯</mo></mover><mo>=</mo><msup><mi>d</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>X</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">\overline X=d^{-1}\sum_jX_j</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mi>c</mi></msub><mo>=</mo><msub><mo>∑</mo><mi>j</mi></msub><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>j</mi></msub><mo>−</mo><mover><mi>X</mi><mo accent="true">¯</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">S_c=\sum_j(X_j-\overline X)^2</annotation></semantics></math></span>.</p>
+<ol>
+<li><p>With both
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>τ</mi><mn>2</mn></msup><mo>≥</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau^2\ge0</annotation></semantics></math></span>
+unknown, derive the constrained moment estimate and maximum
+marginal-likelihood estimate of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>τ</mi><mn>2</mn></msup><annotation encoding="application/x-tex">\tau^2</annotation></semantics></math></span>.
+Explain the denominators
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">d-1</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math></span>.</p></li>
+<li><p>Now treat
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>τ</mi><mn>2</mn></msup><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau^2&gt;0</annotation></semantics></math></span>
+as known and assign an improper flat prior to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>μ</mi><mo>∈</mo><mi>ℝ</mi></mrow><annotation encoding="application/x-tex">\mu\in\mathbb R</annotation></semantics></math></span>.
+Derive the proper posterior of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math></span>,
+then use total variance and covariance to derive the posterior
+covariance matrix of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>.
+Write it in terms of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>=</mo><msup><mi>τ</mi><mn>2</mn></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>τ</mi><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">w=\tau^2/(1+\tau^2)</annotation></semantics></math></span>.</p></li>
+<li><p>Find the posterior variance of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>θ</mi><mi>j</mi></msub><mo>−</mo><msub><mi>θ</mi><mi>k</mi></msub></mrow><annotation encoding="application/x-tex">\theta_j-\theta_k</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>j</mi><mo>≠</mo><mi>k</mi></mrow><annotation encoding="application/x-tex">j\ne k</annotation></semantics></math></span>.
+Take the limit as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>τ</mi><mn>2</mn></msup><mo>↓</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau^2\downarrow0</annotation></semantics></math></span>
+and distinguish uncertainty about the common level from uncertainty
+about a contrast. Explain which additional uncertainty is omitted when
+an estimated
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>τ</mi><mn>2</mn></msup><annotation encoding="application/x-tex">\tau^2</annotation></semantics></math></span>
+is simply inserted into this known-variance calculation.</p></li>
+</ol>
+</li><li id="exercise-9-3"><p><strong>The derivative behind shrinkage.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>∼</mo><msub><mi>N</mi><mi>d</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>,</mo><msub><mi>I</mi><mi>d</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">X\sim N_d(\theta,I_d)</annotation></semantics></math></span>
+with fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>θ</mi><mo>∈</mo><msup><mi>ℝ</mi><mi>d</mi></msup></mrow><annotation encoding="application/x-tex">\theta\in\mathbb R^d</annotation></semantics></math></span>
+and integer
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>≥</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">d\ge3</annotation></semantics></math></span>.
+Compare estimators under total squared loss. For a constant
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">a&gt;0</annotation></semantics></math></span>,
+define
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>−</mo><mi>a</mi><mi>x</mi><mi>/</mi><mo stretchy="false" form="postfix">∥</mo><mi>x</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">g(x)=-ax/\|x\|^2</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>≠</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">x\ne0</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>δ</mi><mi>a</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>X</mi><mo>+</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\delta_a(X)=X+g(X)</annotation></semantics></math></span>;
+assign any finite value at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">x=0</annotation></semantics></math></span>.</p>
+<ol>
+<li><p>Derive
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>div</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\operatorname{div}g(x)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="postfix">∥</mo><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">\|g(x)\|^2</annotation></semantics></math></span>.
+Use the normal integration-by-parts risk identity to obtain
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>,</mo><msub><mi>δ</mi><mi>a</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">R(\theta,\delta_a)</annotation></semantics></math></span>.</p></li>
+<li><p>Justify finiteness of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mi>θ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mo stretchy="false" form="postfix">∥</mo><mi>X</mi><msup><mo stretchy="false" form="postfix">∥</mo><mrow><mo>−</mo><mn>2</mn></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb E_\theta(\|X\|^{-2})</annotation></semantics></math></span>
+and the use of the singular
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>g</mi><annotation encoding="application/x-tex">g</annotation></semantics></math></span>
+by considering
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>g</mi><mi>ϵ</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>−</mo><mi>a</mi><mi>x</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mo stretchy="false" form="postfix">∥</mo><mi>x</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup><mo>+</mo><mi>ϵ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">g_\epsilon(x)=-ax/(\|x\|^2+\epsilon)</annotation></semantics></math></span>
+as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ϵ</mi><mo>↓</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\epsilon\downarrow0</annotation></semantics></math></span>.</p></li>
+<li><p>Determine the interval of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math></span>
+giving strict improvement over
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math></span>
+for every fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>,
+and the minimizing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math></span>
+within this constant-coefficient family.</p></li>
+<li><p>State the loss to which this conclusion applies. Does it
+establish smaller risk for each coordinate separately, or for a rule
+that replaces the fixed center zero by the sample mean? Explain which
+parts of the argument would need to change.</p></li>
+</ol>
+</li><li id="exercise-9-4"><p><strong>Finite risk can coexist with infinite simulation variance.</strong> At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>θ</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\theta=0</annotation></semantics></math></span>,
+let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>∼</mo><msub><mi>N</mi><mi>d</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><msub><mi>I</mi><mi>d</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">X\sim N_d(0,I_d)</annotation></semantics></math></span>
+for integer
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>≥</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">d\ge3</annotation></semantics></math></span>
+and use the ordinary James–Stein rule
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>−</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mo stretchy="false" form="postfix">∥</mo><mi>X</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup><mo stretchy="false" form="postfix">}</mo><mi>X</mi></mrow><annotation encoding="application/x-tex">\delta(X)=\{1-(d-2)/\|X\|^2\}X</annotation></semantics></math></span>,
+without positive-part truncation. Put
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mo>=</mo><mo stretchy="false" form="postfix">∥</mo><mi>X</mi><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">S=\|X\|^2</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mo>=</mo><mo stretchy="false" form="postfix">∥</mo><mi>δ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">L=\|\delta(X)\|^2</annotation></semantics></math></span>.</p>
+<ol>
+<li><p>Express
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>L</mi><annotation encoding="application/x-tex">L</annotation></semantics></math></span>
+as a function of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>S</mi><annotation encoding="application/x-tex">S</annotation></semantics></math></span>
+and derive
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>S</mi><mrow><mo>−</mo><mi>r</mi></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb E(S^{-r})</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r&gt;0</annotation></semantics></math></span>,
+including the exact integrability condition.</p></li>
+<li><p>Determine the dimensions for which
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>L</mi><annotation encoding="application/x-tex">L</annotation></semantics></math></span>
+has a finite mean and a finite variance. Calculate the mean where it
+exists.</p></li>
+<li><p>Suppose a simulation at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>=</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">d=3</annotation></semantics></math></span>
+produces a finite sample standard deviation from
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>B</mi><annotation encoding="application/x-tex">B</annotation></semantics></math></span>
+independent draws. Explain why this does not justify the usual standard
+error
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>s</mi><mi>L</mi></msub><mi>/</mi><msqrt><mi>B</mi></msqrt></mrow><annotation encoding="application/x-tex">s_L/\sqrt B</annotation></semantics></math></span>.
+Give a defensible way to compare the simulation with the exact risk
+without changing the estimator or silently discarding large
+losses.</p></li>
+</ol>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="06-bayes.html">Previous: 8. Bayesian inference and predictive uncertainty</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="regularization-association.html">Next: 10. Regularization, bias correction, and association inference</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

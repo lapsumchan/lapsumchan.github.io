@@ -1,0 +1,744 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Survival Analysis — Chapter 5: Likelihood under incomplete observation | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Likelihood under incomplete observation.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/survival/07-likelihood.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Survival Analysis — Chapter 5: Likelihood under incomplete observation | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Likelihood under incomplete observation.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/survival/07-likelihood.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Survival Analysis — Chapter 5: Likelihood under incomplete observation", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Survival Analysis", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/survival/07-likelihood.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Survival Analysis</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Events, observation, and population functions</p><ol class="contents-chapters"><li><a href="01-observation.html">1. Events, clocks, and incomplete observation</a></li><li><a href="02-functions.html">2. Survival, risk, hazard, and lifetime summaries</a></li></ol><p class="contents-part">Part II: Risk sets and nonparametric estimation</p><ol class="contents-chapters"><li><a href="03-km.html">3. Estimating survival from incomplete follow-up</a></li><li><a href="04-nelson-aalen.html">4. Nelson--Aalen estimation and counting processes</a></li></ol><p class="contents-part">Part III: Likelihood and survival regression</p><ol class="contents-chapters"><li><a href="07-likelihood.html" aria-current="page">5. Likelihood under incomplete observation</a></li><li><a href="08-parametric.html">6. Parametric survival regression</a></li><li><a href="09-cox.html">7. The Cox model: estimation and absolute risk</a></li><li><a href="10-strata-ties.html">8. Stratification and tied event times</a></li><li><a href="11-diagnostics.html">9. Diagnostics that answer model questions</a></li></ol><p class="contents-part">Part IV: Competing events</p><ol class="contents-chapters"><li><a href="15-competing-risks.html">10. Competing risks and first-event probabilities</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#s7-observed-set">5.1 The observation determines the contribution</a></li><li><a href="#s7-factorization">5.2 Why right-censored time carries information</a></li><li><a href="#s7-exponential">5.3 Events and exposure in an exponential model</a></li><li><a href="#s7-shape-check">5.4 A sufficient reduction also imposes a restriction</a></li><li><a href="#s7-information">5.5 Curvature, uncertainty, and the role of design</a></li><li><a href="#s7-profile">5.6 A profile calculation that can be inspected</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#s7-entry">5.7 Delayed entry conditions on having reached entry</a></li><li><a href="#s7-interval">5.8 Intervals are probabilities, not invented times</a></li><li><a href="#a-defensible-likelihood-analysis">5.9 A defensible likelihood analysis</a></li><li><a href="#exercises">5.10 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Survival Analysis</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 5</span></p><div class="chapter-content"><h1 id="s7-chapter">Chapter 5. Likelihood under incomplete observation</h1>
+<h2 id="s7-observed-set">5.1 The observation determines the
+contribution</h2>
+<p>For the twelve-person cohort, Kaplan–Meier and Nelson–Aalen used
+changing risk sets without prescribing the full event-time distribution.
+In Section <a href="03-km.html#s3-likelihood" data-reference-type="ref" data-reference="s3-likelihood">3.2</a>, a censored record
+contributed survival through its last observation. We now use that same
+observation logic to fit an explicit distribution and quantify
+uncertainty in its parameters. Exact events, intervals, and delayed
+entry will each change what the likelihood must represent. A regression
+model will then let the distribution depend on measured
+characteristics.</p>
+<p>Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">T&gt;0</annotation></semantics></math></span>
+denote time from a clearly defined origin to one specified event. A
+population model has density
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f(t;\theta)</annotation></semantics></math></span>,
+survival
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(t;\theta)</annotation></semantics></math></span>,
+and hazard
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\lambda(t;\theta)</annotation></semantics></math></span>;
+for a continuous distribution,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo>=</mo><mi>λ</mi><mi>S</mi></mrow><annotation encoding="application/x-tex">f=\lambda S</annotation></semantics></math></span>.
+An exact event at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>,
+an event known only to lie between two visits, and being event-free when
+follow-up ends reveal different sets of possible event times. Their
+likelihood contributions must express those different observations.
+Treating all three as events at a recorded numerical time changes the
+data, even if the resulting model converges cleanly.</p>
+<p>The scientific target in this chapter is a parameter of the
+event-time distribution, or a function such as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(5;\theta)</annotation></semantics></math></span>.
+We condition on any baseline covariates for now and suppress them from
+notation. Across-subject independence supports multiplication of
+individual contributions. The observation mechanism must also allow the
+event-distribution factor to be used without an omitted
+parameter-dependent selection term. These are substantive conditions.
+The act of writing a censoring indicator does not establish them.</p>
+<div id="s7-contributions">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 5.1. Event-distribution contributions under suitable independent or
+ignorable observation. Exact-event rows are densities; interval rows are
+probabilities.
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>&lt;</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">a&lt;x</annotation></semantics></math></span>
+denotes independently delayed entry.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Observation</th>
+<th style="text-align: left;">What is known</th>
+<th style="text-align: left;">Contribution</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Exact event</td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T=x</annotation></semantics></math></span></td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f(x;\theta)</annotation></semantics></math></span></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Right censoring</td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T&gt;x</annotation></semantics></math></span></td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(x;\theta)</annotation></semantics></math></span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Left censoring</td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>≤</mo><mi>r</mi></mrow><annotation encoding="application/x-tex">T\leq r</annotation></semantics></math></span></td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>r</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">1-S(r;\theta)</annotation></semantics></math></span></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Interval censoring</td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>l</mi><mo>&lt;</mo><mi>T</mi><mo>≤</mo><mi>r</mi></mrow><annotation encoding="application/x-tex">l&lt;T\leq r</annotation></semantics></math></span></td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>l</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>r</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(l;\theta)-S(r;\theta)</annotation></semantics></math></span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Exact event after entry</td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T=x</annotation></semantics></math></span>,
+conditional on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>a</mi></mrow><annotation encoding="application/x-tex">T&gt;a</annotation></semantics></math></span></td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f(x;\theta)/S(a;\theta)</annotation></semantics></math></span></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Right censoring after entry</td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T&gt;x</annotation></semantics></math></span>,
+conditional on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>a</mi></mrow><annotation encoding="application/x-tex">T&gt;a</annotation></semantics></math></span></td>
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(x;\theta)/S(a;\theta)</annotation></semantics></math></span></td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>An exact continuous observation is interpreted through the density of
+an arbitrarily small measurement interval, rather than a positive
+probability at one point. Factors representing its width can be omitted
+if independent of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>.
+By contrast, an interval-censored record already describes a set with
+positive probability. Replacing it by its midpoint uses a density at a
+fabricated event time; shrinking an interval may make an approximation
+reasonable, but interval width and the shape of the density then matter.
+The likelihood is a function of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>
+for the fixed observed record, not a probability distribution over
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>.</p>
+<p>The observation rule also determines the measure with respect to
+which a likelihood is written. With exact failures and right censoring,
+there is a time coordinate and a discrete status coordinate. An event
+row has a density in time; a censoring row contains a survival
+probability multiplied by its own observation-mechanism density or mass.
+Omitting a parameter-free factor does not make these two rows the same
+type of observation. This is why a single formula such as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f(x)</annotation></semantics></math></span>
+for every recorded exit cannot represent the experiment.</p>
+<h2 id="s7-factorization">5.2 Why right-censored time carries
+information</h2>
+<p>Section <a href="03-km.html#s3-likelihood" data-reference-type="ref" data-reference="s3-likelihood">3.2</a> derived the joint
+observation distribution for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>,</mo><mi>C</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">X=\min(T,C)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><mo>=</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>T</mi><mo>≤</mo><mi>C</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\Delta=\mathbf{1}\{T\leq C\}</annotation></semantics></math></span>.
+Under independence of continuous event and censoring times, an event
+record contributes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>G</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>;</mo><mi>ψ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f(x;\theta)G(x;\psi)</annotation></semantics></math></span>
+and a censoring record contributes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>g</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>;</mo><mi>ψ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(x;\theta)g(x;\psi)</annotation></semantics></math></span>.
+Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo>,</mo><mi>G</mi></mrow><annotation encoding="application/x-tex">g,G</annotation></semantics></math></span>
+describe random censoring. If the parameters range over separate spaces,
+the event-distribution factor is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mi>T</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munderover><mo>∏</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><mi>f</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>Δ</mi><mi>i</mi></msub></msup><mi>S</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mn>1</mn><mo>−</mo><msub><mi>Δ</mi><mi>i</mi></msub></mrow></msup><mo>=</mo><munderover><mo>∏</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><mi>λ</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>Δ</mi><mi>i</mi></msub></msup><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">L_T(\theta)=\prod_{i=1}^n f(X_i;\theta)^{\Delta_i}
+ S(X_i;\theta)^{1-\Delta_i}
+ =\prod_{i=1}^n\lambda(X_i;\theta)^{\Delta_i}S(X_i;\theta).
+ \label{s7-right-likelihood}</annotation></semantics></math><span id="s7-right-likelihood" class="equation-anchor"></span><span class="equation-number">(5.1)</span></span> A censored
+person contributes survival through their observed follow-up. Their
+later event time is not recovered, but their event-free time is useful.
+This explains why deleting censored records generally wastes information
+and can induce selection, even when censoring is independent.</p>
+<p>For a fixed administrative closing time, the mechanism has a
+probability mass and is not described entirely by a continuous censoring
+density. Nonetheless an administrative censor at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+establishes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T&gt;x</annotation></semantics></math></span>
+and supplies the same event factor. Conditional independence
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>⊥</mo><mi>C</mi><mo>∣</mo><mi>Z</mi></mrow><annotation encoding="application/x-tex">T\perp C\mid Z</annotation></semantics></math></span>
+can justify <a href="#s7-right-likelihood" data-reference-type="eqref" data-reference="s7-right-likelihood">(5.1)</a> within a
+correctly specified covariate model even when marginal independence
+fails. The selection experiment in Section <a href="03-km.html#s3-censoring-selection" data-reference-type="ref" data-reference="s3-censoring-selection">3.7</a>
+demonstrated that distinction. A pooled analysis does not inherit
+conditional independence by leaving
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math></span>
+out.</p>
+<p>It is also useful to separate dependence of event and censoring times
+from shared parameters in their marginal distributions. Independent
+times with a censoring distribution that contains information about
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math></span>
+require a more careful full-likelihood discussion; discarding that
+information is not the same operation as omitting censoring that depends
+on the unobserved
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math></span>.
+We use independent, parameter-distinct mechanisms for the worked
+examples. We do not extrapolate this argument to arbitrary dropout or
+adaptive visits.</p>
+<h2 id="s7-exponential">5.3 Events and exposure in an exponential model</h2>
+<p>Assume a constant event hazard
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\lambda&gt;0</annotation></semantics></math></span>.
+Then
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>;</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>λ</mi><msup><mi>e</mi><mrow><mo>−</mo><mi>λ</mi><mi>x</mi></mrow></msup></mrow><annotation encoding="application/x-tex">f(x;\lambda)=\lambda e^{-\lambda x}</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>;</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>λ</mi><mi>x</mi></mrow></msup></mrow><annotation encoding="application/x-tex">S(x;\lambda)=e^{-\lambda x}</annotation></semantics></math></span>.
+Define total observed events and exposure by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>=</mo><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>Δ</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">D=\sum_i\Delta_i</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mo>=</mo><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>X</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">W=\sum_iX_i</annotation></semantics></math></span>.
+Taking logarithms gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>ℓ</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>D</mi><mo>log</mo><mi>λ</mi><mo>−</mo><mi>λ</mi><mi>W</mi><mo>+</mo><mtext mathvariant="normal">constant</mtext><mo>,</mo><mspace width="2.0em"></mspace><mi>U</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mi>D</mi><mi>λ</mi></mfrac><mo>−</mo><mi>W</mi><mo>,</mo><mspace width="2.0em"></mspace><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mi>D</mi><msup><mi>λ</mi><mn>2</mn></msup></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\ell(\lambda)=D\log\lambda-\lambda W+\text{constant},\qquad
+ U(\lambda)=\frac D\lambda-W,\qquad
+ J(\lambda)=\frac D{\lambda^2}.
+ \label{s7-exponential-score}</annotation></semantics></math><span id="s7-exponential-score" class="equation-anchor"></span><span class="equation-number">(5.2)</span></span> Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>U</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">U(\lambda)</annotation></semantics></math></span>
+is a score and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">J(\lambda)</annotation></semantics></math></span>
+is observed information;
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>J</mi><annotation encoding="application/x-tex">J</annotation></semantics></math></span>
+has this parameter-dependent meaning, distinct from the
+nonempty-risk-set indicator
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">J(u)</annotation></semantics></math></span>
+in the counting-process chapter. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">D&gt;0</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">W&gt;0</annotation></semantics></math></span>,
+strict concavity yields the unique interior maximum
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mo>=</mo><mi>D</mi><mi>/</mi><mi>W</mi></mrow><annotation encoding="application/x-tex">\widehat\lambda=D/W</annotation></semantics></math></span>.
+This is the event count divided by person-time, not events divided by
+the number of participants. Its units are inverse time. At a specified
+horizon
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>,
+invariance of maximum likelihood gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>S</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>t</mi><mover><mi>λ</mi><mo accent="true">̂</mo></mover></mrow></msup></mrow><annotation encoding="application/x-tex">\widehat S(t)=e^{-t\widehat\lambda}</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>F</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>t</mi><mover><mi>λ</mi><mo accent="true">̂</mo></mover></mrow></msup></mrow><annotation encoding="application/x-tex">\widehat F(t)=1-e^{-t\widehat\lambda}</annotation></semantics></math></span>.</p>
+<p>In our cohort
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>=</mo><mn>6</mn></mrow><annotation encoding="application/x-tex">D=6</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mo>=</mo><mn>56</mn></mrow><annotation encoding="application/x-tex">W=56</annotation></semantics></math></span>
+person-months, and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mo>=</mo><mn>3</mn><mi>/</mi><mn>28</mn><mo>=</mo><mn>0.107142857</mn></mrow><annotation encoding="application/x-tex">\widehat\lambda=3/28=0.107142857</annotation></semantics></math></span>
+per month. The five-month survival estimate is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.585251</mn><annotation encoding="application/x-tex">0.585251</annotation></semantics></math></span>
+and risk is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.414749</mn><annotation encoding="application/x-tex">0.414749</annotation></semantics></math></span>.
+The Kaplan–Meier risk was
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.375</mn><annotation encoding="application/x-tex">0.375</annotation></semantics></math></span>.
+These are two estimators of the same event-distribution quantity under
+different shape assumptions. Their difference is not resolved by calling
+one parametric and the other nonparametric. The constant-hazard
+restriction is the reason the exponential estimate pools exposure across
+early and late follow-up.</p>
+<p>If no events occur, the log likelihood is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mi>λ</mi><mi>W</mi></mrow><annotation encoding="application/x-tex">-\lambda W</annotation></semantics></math></span>.
+Its maximum over the closure
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>≥</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\lambda\geq0</annotation></semantics></math></span>
+is at zero, and there is no finite interior solution. The formula
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">J(\widehat\lambda)</annotation></semantics></math></span>
+is then undefined, so a plug-in normal standard error is not
+appropriate. A zero estimated rate does not establish a zero population
+rate. A one-sided likelihood analysis can still limit rates compatible
+with the observed event-free exposure.</p>
+<h2 id="s7-shape-check">5.4 A sufficient reduction also imposes a
+restriction</h2>
+<p>The exponential likelihood depends on the individual records only
+through
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>D</mi><annotation encoding="application/x-tex">D</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>W</mi><annotation encoding="application/x-tex">W</annotation></semantics></math></span>.
+That reduction is computationally convenient, but it also shows what the
+model cannot distinguish. Consider a new version of the same
+observation-time vector in which the month-1 event becomes a censor and
+the month-8 censor becomes an event. There are still six events and 56
+person-months. The exponential likelihood is identical at every
+candidate rate, so its fitted five-month survival remains 0.585251. The
+rearranged records, however, contain fewer early events and more late
+events.</p>
+<p>Under the same event-first convention, the alternative Kaplan–Meier
+five-month survival is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>10</mn><mi>/</mi><mn>11</mn><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>6</mn><mi>/</mi><mn>8</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>15</mn><mi>/</mi><mn>22</mn><mo>=</mo><mn>0.681818</mn></mrow><annotation encoding="application/x-tex">(10/11)(6/8)=15/22=0.681818</annotation></semantics></math></span>,
+rather than the original
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>5</mn><mi>/</mi><mn>8</mn><mo>=</mo><mn>0.625</mn></mrow><annotation encoding="application/x-tex">5/8=0.625</annotation></semantics></math></span>.
+The script verifies this calculation independently. This difference is
+not a contradiction: Kaplan–Meier uses the locations of event
+increments, while a constant-hazard likelihood pools their entire
+exposure. Two observations can carry the same information for a
+parameter within one restricted family but different information about
+the broader shape of an event distribution. A sufficient statistic is
+sufficient for a specified model and parameter, not for every scientific
+question.</p>
+<p>This gives a practical model check. Before reporting a pooled
+constant rate, inspect event timing, risk-set denominators, and a
+nonparametric survival or cumulative-hazard plot. An approximately
+straight cumulative hazard can support the plausibility of a constant
+rate over a chosen range, but sparse late follow-up may hide departures.
+The same-data comparison also shares sampling variation, so one visual
+discrepancy is not a calibrated test. A richer model or a prespecified
+shape test can formalize a particular alternative. It cannot establish
+independent censoring merely by improving fit to the observable
+records.</p>
+<p>The alternative statuses define a thought experiment; they do not
+replace the cohort’s recorded outcomes. It isolates the restriction
+imposed by a constant hazard. When an analysis is reduced to events and
+total exposure, the reduction is justified within that model, while the
+timing information needed to assess the model has been set aside.</p>
+<h2 id="s7-information">5.5 Curvature, uncertainty, and the role of
+design</h2>
+<p>The observed information at the interior maximum is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>D</mi><mi>/</mi><msup><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">J(\widehat\lambda)=D/\widehat\lambda^2</annotation></semantics></math></span>.
+Its inverse motivates the large-sample variance approximation
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mo>Var</mo><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><msup><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mn>2</mn></msup><mi>D</mi></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mover><mo>SE</mo><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">{</mo><mo>log</mo><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="postfix">}</mo><mo>=</mo><mfrac><mn>1</mn><msqrt><mi>D</mi></msqrt></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat{\operatorname{Var}}(\widehat\lambda)
+ =\frac{\widehat\lambda^2}{D},\qquad
+ \widehat{\operatorname{SE}}\{\log\widehat\lambda\}
+ =\frac1{\sqrt D}.
+ \label{s7-curvature}</annotation></semantics></math><span id="s7-curvature" class="equation-anchor"></span><span class="equation-number">(5.3)</span></span> The second
+equality is a delta-method result. A log-scale approximate 95% interval
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mo>log</mo><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mo>±</mo><msub><mi>z</mi><mn>0.975</mn></msub><mi>/</mi><msqrt><mi>D</mi></msqrt><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\exp\{\log\widehat\lambda\pm z_{0.975}/\sqrt D\}</annotation></semantics></math></span>.
+It respects positivity, but six events still make a large-sample
+approximation fragile. Transforming an interval into a valid parameter
+space does not establish its nominal coverage.</p>
+<p>Expected information requires the distribution of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>D</mi><annotation encoding="application/x-tex">D</annotation></semantics></math></span>,
+hence the observation design. For example, let independent event and
+random-censoring times have rates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>c</mi><annotation encoding="application/x-tex">c</annotation></semantics></math></span>,
+with administrative closure at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>τ</mi><annotation encoding="application/x-tex">\tau</annotation></semantics></math></span>.
+An observed event has probability
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mi>D</mi></msub><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>τ</mi></msubsup><mi>λ</mi><msup><mi>e</mi><mrow><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo>+</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>t</mi></mrow></msup><mspace width="0.167em"></mspace><mi>d</mi><mi>t</mi><mo>=</mo><mfrac><mi>λ</mi><mrow><mi>λ</mi><mo>+</mo><mi>c</mi></mrow></mfrac><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo>+</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>τ</mi></mrow></msup><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>I</mi><mi>n</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>n</mi><msub><mi>p</mi><mi>D</mi></msub></mrow><msup><mi>λ</mi><mn>2</mn></msup></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">p_D=\int_0^\tau\lambda e^{-(\lambda+c)t}\,dt
+ =\frac{\lambda}{\lambda+c}\{1-e^{-(\lambda+c)\tau}\},\qquad
+ I_n(\lambda)=\frac{np_D}{\lambda^2}.
+ \label{s7-design-information}</annotation></semantics></math><span id="s7-design-information" class="equation-anchor"></span><span class="equation-number">(5.4)</span></span> At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>100</mn></mrow><annotation encoding="application/x-tex">n=100</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>=</mo><mn>0.1</mn></mrow><annotation encoding="application/x-tex">\lambda=0.1</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi><mo>=</mo><mn>0.05</mn></mrow><annotation encoding="application/x-tex">c=0.05</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mo>=</mo><mn>8</mn></mrow><annotation encoding="application/x-tex">\tau=8</annotation></semantics></math></span>,
+these expressions predict about 46.59 observed events and information
+about 4658.70. The censoring rate matters for this expectation even
+though its likelihood factor was omitted from event-parameter
+maximization. Longer observation can improve precision by allowing more
+events, not by turning every censoring time into an event.</p>
+<p>The same design connects the score to exposure. Since
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo>&gt;</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo>+</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>t</mi></mrow></msup></mrow><annotation encoding="application/x-tex">\mathbb{P}(X&gt;t)=e^{-(\lambda+c)t}</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>≤</mo><mi>t</mi><mo>&lt;</mo><mi>τ</mi></mrow><annotation encoding="application/x-tex">0\leq t&lt;\tau</annotation></semantics></math></span>,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mi>X</mi><mo>=</mo><msubsup><mo>∫</mo><mn>0</mn><mi>τ</mi></msubsup><mi>ℙ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo>&gt;</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>d</mi><mi>t</mi><mo>=</mo><mfrac><mrow><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo>+</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>τ</mi></mrow></msup></mrow><mrow><mi>λ</mi><mo>+</mo><mi>c</mi></mrow></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mi>𝔼</mi><mi>Δ</mi><mo>=</mo><mi>λ</mi><mi>𝔼</mi><mi>X</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}X=\int_0^\tau\mathbb{P}(X&gt;t)\,dt
+ =\frac{1-e^{-(\lambda+c)\tau}}{\lambda+c},\qquad
+ \mathbb{E}\Delta=\lambda\mathbb{E}X.
+ \label{s7-design-exposure}</annotation></semantics></math><span id="s7-design-exposure" class="equation-anchor"></span><span class="equation-number">(5.5)</span></span> It follows
+that
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mi>U</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>n</mi><mo stretchy="false" form="prefix">{</mo><mi>𝔼</mi><mi>Δ</mi><mi>/</mi><mi>λ</mi><mo>−</mo><mi>𝔼</mi><mi>X</mi><mo stretchy="false" form="postfix">}</mo><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mathbb{E}U(\lambda)=n\{\mathbb{E}\Delta/\lambda-\mathbb{E}X\}=0</annotation></semantics></math></span>.
+Thus the score equation balances observed events with their modeled
+expectation over observed person-time. It does not assert that the
+random ratio
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mi>/</mi><mi>W</mi></mrow><annotation encoding="application/x-tex">D/W</annotation></semantics></math></span>
+is exactly unbiased in a finite censored sample.</p>
+<p>Without censoring, the sum of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+independent exponential event times is gamma distributed and supplies an
+exact chi-square pivot. With ordinary right censoring,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>D</mi><annotation encoding="application/x-tex">D</annotation></semantics></math></span>
+is random and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>W</mi><annotation encoding="application/x-tex">W</annotation></semantics></math></span>
+includes minima of times. Substituting
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>D</mi><annotation encoding="application/x-tex">D</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+in that complete-data pivot generally does not retain its exact
+distribution. A fixed-event stopping design has its own sampling law; a
+fixed administrative closing design has another. Likelihood algebra and
+sampling calibration must remain separate questions.</p>
+<h2 id="s7-profile">5.6 A profile calculation that can be inspected</h2>
+<p>Rather than summarizing the likelihood by one curvature number,
+compare candidate rates with the maximizer:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Q</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>2</mn><mo stretchy="false" form="prefix">{</mo><mo>ℓ</mo><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mo>ℓ</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>=</mo><mn>2</mn><mrow><mo stretchy="true" form="prefix">[</mo><mi>D</mi><mo>log</mo><mfrac><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mi>λ</mi></mfrac><mo>−</mo><mi>W</mi><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mo>−</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">Q(\lambda)=2\{\ell(\widehat\lambda)-\ell(\lambda)\}
+ =2\left[D\log\frac{\widehat\lambda}{\lambda}
+          -W(\widehat\lambda-\lambda)\right].
+ \label{s7-deviance}</annotation></semantics></math><span id="s7-deviance" class="equation-anchor"></span><span class="equation-number">(5.6)</span></span> Under regular
+large-sample conditions, retaining candidates with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Q</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>≤</mo><msubsup><mi>χ</mi><mrow><mn>1</mn><mo>,</mo><mn>0.95</mn></mrow><mn>2</mn></msubsup></mrow><annotation encoding="application/x-tex">Q(\lambda)\leq\chi^2_{1,0.95}</annotation></semantics></math></span>
+gives an approximate likelihood-ratio confidence set. This is still
+asymptotic, not an exact interval for six events. The retained set is
+asymmetric on the rate scale. Since five-month risk increases with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math></span>,
+its endpoints transform in the same order; survival decreases, so
+survival endpoints reverse.</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# Incomplete-observation likelihood examples.
+options(digits = 10)
+dir.create("results", showWarnings = FALSE)
+dir.create("figures", showWarnings = FALSE)
+cohort &lt;- read.csv(text="id,time,status,known.at.5,event.by.5\nA,1,1,TRUE,1\nB,2,1,TRUE,1\nC,2,0,FALSE,NA\nD,3,0,FALSE,NA\nE,4,1,TRUE,1\nF,4,1,TRUE,1\nG,5,0,TRUE,0\nH,6,1,TRUE,0\nI,6,0,TRUE,0\nJ,7,0,TRUE,0\nK,8,1,TRUE,0\nL,8,0,TRUE,0\n")
+D &lt;- sum(cohort$status); W &lt;- sum(cohort$time)
+rate &lt;- D/W
+loglik &lt;- function(lambda, d = D, w = W) d*log(lambda) - lambda*w
+score &lt;- function(lambda) D/lambda - W
+info &lt;- D/rate^2
+se.log &lt;- 1/sqrt(D)
+ci.log &lt;- exp(log(rate) + c(-1, 1)*qnorm(.975)*se.log)
+cut &lt;- qchisq(.95, 1)
+deviance &lt;- function(lambda) 2*(loglik(rate) - loglik(lambda))
+ci.profile &lt;- c(uniroot(function(x) deviance(x)-cut,
+                         c(rate/1000, rate), tol=1e-12)$root,
+                uniroot(function(x) deviance(x)-cut,
+                         c(rate, rate*10), tol=1e-12)$root)
+risk &lt;- function(lambda, t) -expm1(-lambda*t)
+summary &lt;- data.frame(quantity = c("events", "person.months", "rate", "observed.information",
+ "rate.se", "log.interval.lower", "log.interval.upper", "profile.lower", "profile.upper",
+ "survival.5", "risk.5", "risk.profile.lower.5", "risk.profile.upper.5"),
+ value = c(D, W, rate, info, rate/sqrt(D), ci.log, ci.profile,
+ exp(-5*rate), risk(rate, 5), risk(ci.profile, 5)))
+write.csv(summary, "results/ch07-summary.csv", row.names = FALSE)
+# Independent differentiation and maximization checks.
+numeric.score &lt;- (loglik(rate + 1e-6) - loglik(rate - 1e-6))/(2e-6)
+fit &lt;- optimize(loglik, c(.00001, 1), maximum = TRUE, tol = 1e-12)
+stopifnot(D == 6, W == 56, abs(score(rate)) &lt; 1e-12,
+ abs(fit$maximum-rate) &lt; 1e-7, abs(numeric.score) &lt; 1e-6,
+ max(abs(deviance(ci.profile)-cut)) &lt; .002)
+# Same D and W can hide different event-time patterns under the exponential restriction.
+changed &lt;- cohort$status; changed[1] &lt;- 0; changed[12] &lt;- 1
+km5 &lt;- function(status) {
+ t &lt;- sort(unique(cohort$time[status==1 &amp; cohort$time&lt;=5]))
+ prod(vapply(t,function(x)1-sum(status==1 &amp; cohort$time==x)/sum(cohort$time&gt;=x),numeric(1)))
+}
+stopifnot(sum(changed)==D,abs(km5(changed)-15/22)&lt;1e-12)
+write.csv(data.frame(pattern=c("Original","Early event exchanged for late event"),
+ events=c(D,sum(changed)),exposure=c(W,W),rate=c(rate,rate),
+ km.survival5=c(km5(cohort$status),km5(changed))),"results/ch07-shape-comparison.csv",row.names=FALSE)
+# Delayed entry example: condition on being event-free at A.
+entry &lt;- c(0, .5, .5, 1, 1, 1, 2, 2, 2, 3, 3, 3)
+stopifnot(all(entry &lt; cohort$time))
+conditional.exposure &lt;- sum(cohort$time-entry)
+entry.rate &lt;- D/conditional.exposure
+write.csv(data.frame(id = cohort$id, entry = entry,
+ time = cohort$time, status = cohort$status,
+ exposure = cohort$time-entry), "results/ch07-entry.csv", row.names = FALSE)
+# Mixed observed sets: exact 1.2, right-censored 2, interval (1,3],
+# left-censored 1.5, and exact 4 after independent entry at 1.
+mixed.loglik &lt;- function(lambda) {
+  log(lambda)-lambda*1.2 - lambda*2 +
+    (-lambda*1 + log(-expm1(-lambda*2))) +
+    log(-expm1(-lambda*1.5)) + log(lambda)-lambda*(4-1)
+}
+mixed &lt;- optimize(mixed.loglik, c(.0001, 2), maximum = TRUE, tol = 1e-12)
+mixed.wide.loglik &lt;- function(lambda) {
+ log(lambda)-lambda*1.2-lambda*2 + (-lambda+log(-expm1(-5*lambda))) +
+ log(-expm1(-1.5*lambda))+log(lambda)-3*lambda
+}
+mixed.wide &lt;- optimize(mixed.wide.loglik,c(.0001,2),maximum=TRUE,tol=1e-12)
+write.csv(data.frame(interval=c("(1,3]","(1,6]"),rate=c(mixed$maximum,mixed.wide$maximum),
+ max.loglik=c(mixed$objective,mixed.wide$objective)),"results/ch07-mixed-comparison.csv",row.names=FALSE)
+write.csv(data.frame(lambda=seq(.01,1.2,length.out=200),
+ narrow=sapply(seq(.01,1.2,length.out=200),mixed.loglik),
+ wide=sapply(seq(.01,1.2,length.out=200),mixed.wide.loglik)),
+ "results/ch07-mixed-curves.csv",row.names=FALSE)
+# Profile curves for changing what one observation establishes.
+grid &lt;- seq(.015, .3, length.out = 300)
+regimes &lt;- data.frame(regime = c("Original cohort", "One more event", "Six more person-months"),
+                      events = c(6, 7, 6), exposure = c(56, 56, 62))
+curves &lt;- do.call(rbind, lapply(seq_len(nrow(regimes)), function(i) {
+  d &lt;- regimes$events[i]; w &lt;- regimes$exposure[i]; mle &lt;- d/w
+  data.frame(regime = regimes$regime[i], lambda = grid, events = d,
+    exposure = w, mle = mle,
+    deviance = 2*(loglik(mle,d,w)-loglik(grid,d,w)),
+    survival.5 = exp(-5*grid), risk.5 = risk(grid,5))
+}))
+write.csv(curves, "results/ch07-likelihood-grid.csv", row.names = FALSE)
+write.csv(data.frame(quantity = c("entry.exposure", "entry.rate", "mixed.rate", "mixed.loglik"),
+ value = c(conditional.exposure, entry.rate, mixed$maximum, mixed$objective)),
+ "results/ch07-additional.csv", row.names = FALSE)
+# Expected information requires an observation design, not only observed W.
+lambda &lt;- .1; censor.rate &lt;- .05; tau &lt;- 8; n &lt;- 100
+p.event &lt;- lambda/(lambda+censor.rate)*(-expm1(-(lambda+censor.rate)*tau))
+expected.info &lt;- n*p.event/lambda^2
+write.csv(data.frame(n=n, rate=lambda, censor.rate=censor.rate, tau=tau,
+ event.probability=p.event, expected.events=n*p.event,
+ expected.information=expected.info), "results/ch07-design.csv", row.names=FALSE)
+draw &lt;- function() {
+  plot(grid, 2*(loglik(rate)-loglik(grid)), type="l", lwd=2,
+    col="#002D72", xlab="Exponential rate (per month)",
+    ylab="Twice the log-likelihood loss", ylim=c(0,12))
+  abline(h=cut,lty=2,col="gray40"); abline(v=rate,lty=3,col="gray50")
+  for (i in 2:3) {
+    d&lt;-regimes$events[i]; w&lt;-regimes$exposure[i]; m&lt;-d/w
+    lines(grid,2*(loglik(m,d,w)-loglik(grid,d,w)),
+          col=c("#4C79A4","#555555")[i-1], lty=i, lwd=1.6)
+  }
+  legend("topright",regimes$regime,col=c("#002D72","#4C79A4","#555555"),
+         lty=1:3,lwd=2,bty="n",cex=.85)
+}
+cairo_pdf("figures/ch07-likelihood.pdf",width=7,height=4.5); draw(); dev.off()
+png("figures/ch07-likelihood.png",width=1400,height=900,res=200); draw(); dev.off()
+cat("D =",D," W =",W," lambda =",rate,"\n")
+print(summary)
+cat("Delayed-entry exposure =",conditional.exposure," rate =",entry.rate,"\n")
+cat("Mixed-observation rate =",mixed$maximum,"\n")
+capture.output(sessionInfo(),file="results/ch07-sessionInfo.txt")
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>D <span class="ot">&lt;-</span> <span class="fu">sum</span>(cohort<span class="sc">$</span>status)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>W <span class="ot">&lt;-</span> <span class="fu">sum</span>(cohort<span class="sc">$</span>time)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>rate <span class="ot">&lt;-</span> D<span class="sc">/</span>W</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>loglik <span class="ot">&lt;-</span> <span class="cf">function</span>(lambda) D<span class="sc">*</span><span class="fu">log</span>(lambda) <span class="sc">-</span> lambda<span class="sc">*</span>W</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>loss <span class="ot">&lt;-</span> <span class="cf">function</span>(lambda) <span class="dv">2</span><span class="sc">*</span>(<span class="fu">loglik</span>(rate)<span class="sc">-</span><span class="fu">loglik</span>(lambda))</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>cut <span class="ot">&lt;-</span> <span class="fu">qchisq</span>(.<span class="dv">95</span>, <span class="dv">1</span>)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>lower <span class="ot">&lt;-</span> <span class="fu">uniroot</span>(<span class="cf">function</span>(x) <span class="fu">loss</span>(x)<span class="sc">-</span>cut,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>                 <span class="fu">c</span>(rate<span class="sc">/</span><span class="dv">1000</span>, rate), <span class="at">tol=</span><span class="fl">1e-12</span>)<span class="sc">$</span>root</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>upper <span class="ot">&lt;-</span> <span class="fu">uniroot</span>(<span class="cf">function</span>(x) <span class="fu">loss</span>(x)<span class="sc">-</span>cut,</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>                 <span class="fu">c</span>(rate, rate<span class="sc">*</span><span class="dv">10</span>), <span class="at">tol=</span><span class="fl">1e-12</span>)<span class="sc">$</span>root</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>risk.limits <span class="ot">&lt;-</span> <span class="sc">-</span><span class="fu">expm1</span>(<span class="sc">-</span><span class="dv">5</span><span class="sc">*</span><span class="fu">c</span>(lower, upper))</span></code></pre></div>
+<p>The helper <code>loss()</code> evaluates the likelihood-ratio
+statistic
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Q</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">Q(\lambda)</annotation></semantics></math></span>;
+its name does not denote a decision-theoretic loss. The use of
+<code>-expm1(-u)</code> calculates
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>u</mi></mrow></msup></mrow><annotation encoding="application/x-tex">1-e^{-u}</annotation></semantics></math></span>
+accurately when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>u</mi><annotation encoding="application/x-tex">u</annotation></semantics></math></span>
+is small. Both endpoint searches bracket a root on one side of the
+maximum. Evaluating
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Q</mi><annotation encoding="application/x-tex">Q</annotation></semantics></math></span>
+at the returned roots should reproduce the cutoff; plotting the profile
+checks whether the brackets cover the relevant region. These are checks
+of the computation, while the constant-hazard assumption is assessed
+through event timing and scientific context.</p>
+<figure id="s7-likelihood-figure">
+<a href="../assets/survival/ch07-likelihood.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch07-likelihood.png" alt="Figure 5.1. Original likelihood comparison for the twelve-person cohort.
+The horizontal line is the asymptotic 95% likelihood-ratio cutoff.
+Alternative records have either seven events with the same 56
+person-months, or six events with 62 person-months. They are thought
+experiments about information, not corrected versions of the original
+data.">
+</a><figcaption>Figure 5.1. Original likelihood comparison for the twelve-person cohort.
+The horizontal line is the asymptotic 95% likelihood-ratio cutoff.
+Alternative records have either seven events with the same 56
+person-months, or six events with 62 person-months. They are thought
+experiments about information, not corrected versions of the original
+data.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch07-likelihood.png">Open full-size figure</a></p></figure>
+<p>Predict the direction of each change before studying the curves. With
+the same exposure, an additional event increases the fitted rate to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>7</mn><mi>/</mi><mn>56</mn><mo>=</mo><mn>0.125</mn></mrow><annotation encoding="application/x-tex">7/56=0.125</annotation></semantics></math></span>.
+With the same events, six extra event-free person-months decrease it to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>6</mn><mi>/</mi><mn>62</mn><mo>=</mo><mn>0.0967742</mn></mrow><annotation encoding="application/x-tex">6/62=0.0967742</annotation></semantics></math></span>.
+The profile changes in both location and shape. Merely adding six
+censored participants is not enough to predict the change: their
+observed exposure matters. The complete R example evaluates the same
+three likelihood profiles, so we can reproduce the comparison without
+changing the cohort.</p>
+<h2 id="s7-entry">5.7 Delayed entry conditions on having reached entry</h2>
+<p>We write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>A</mi><annotation encoding="application/x-tex">A</annotation></semantics></math></span>
+for entry time in this likelihood development, the quantity denoted
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>L</mi><annotation encoding="application/x-tex">L</annotation></semantics></math></span>
+in the opening observation chapter. A person entering at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><mi>a</mi></mrow><annotation encoding="application/x-tex">A=a</annotation></semantics></math></span>
+must already have survived to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math></span>.
+This is left truncation, distinct from left censoring, which observes an
+event before a threshold. Under independent truncation, conditioning on
+entry time and eligibility gives the event contribution
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f(x;\theta)/S(a;\theta)</annotation></semantics></math></span>
+for an exact event at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>&gt;</mo><mi>a</mi></mrow><annotation encoding="application/x-tex">x&gt;a</annotation></semantics></math></span>,
+or
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>;</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(x;\theta)/S(a;\theta)</annotation></semantics></math></span>
+for right censoring. The denominator removes the probability of
+surviving before the person could be sampled.</p>
+<p>For exponential times the log-likelihood factor becomes
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>ℓ</mo><mi>A</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>D</mi><mo>log</mo><mi>λ</mi><mo>−</mo><mi>λ</mi><munder><mo>∑</mo><mi>i</mi></munder><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>−</mo><msub><mi>A</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mtext mathvariant="normal">constant</mtext><mo>,</mo><mspace width="2.0em"></mspace><msub><mover><mi>λ</mi><mo accent="true">̂</mo></mover><mi>A</mi></msub><mo>=</mo><mfrac><mi>D</mi><mrow><munder><mo>∑</mo><mi>i</mi></munder><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>−</mo><msub><mi>A</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\ell_A(\lambda)=D\log\lambda-\lambda\sum_i(X_i-A_i)
+ +\text{constant},\qquad
+ \widehat\lambda_A=\frac D{\sum_i(X_i-A_i)}.
+ \label{s7-entry-rate}</annotation></semantics></math><span id="s7-entry-rate" class="equation-anchor"></span><span class="equation-number">(5.7)</span></span> The exposure
+begins at entry, not at the original time origin. The event clock can
+still measure time since that origin; risk-set membership and observed
+exposure are what change. In the illustrative entry vector
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>0.5</mn><mo>,</mo><mn>0.5</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>3</mn><mo>,</mo><mn>3</mn><mo>,</mo><mn>3</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">A=(0,0.5,0.5,1,1,1,2,2,2,3,3,3)</annotation></semantics></math></span>,
+all
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mi>i</mi></msub><mo>&lt;</mo><msub><mi>X</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">A_i&lt;X_i</annotation></semantics></math></span>,
+the exposure is 37 person-months, and the fitted rate is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>6</mn><mi>/</mi><mn>37</mn></mrow><annotation encoding="application/x-tex">6/37</annotation></semantics></math></span>.
+Counting the unobserved pre-entry time as follow-up would wrongly reuse
+56 in the denominator.</p>
+<p>This conditional likelihood identifies an event distribution only
+under its selection conditions and adequate overlap of entry and
+event-time support. If early disease determines when a participant
+presents, independent truncation may fail. Censoring independence after
+entry is another condition. We have changed the observation design in
+this illustration; we have not claimed that the original cohort had
+delayed entry.</p>
+<h2 id="s7-interval">5.8 Intervals are probabilities, not invented
+times</h2>
+<p>For an exponential model, observing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>l</mi><mo>&lt;</mo><mi>T</mi><mo>≤</mo><mi>r</mi></mrow><annotation encoding="application/x-tex">l&lt;T\leq r</annotation></semantics></math></span>
+contributes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>e</mi><mrow><mo>−</mo><mi>λ</mi><mi>l</mi></mrow></msup><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>λ</mi><mi>r</mi></mrow></msup></mrow><annotation encoding="application/x-tex">e^{-\lambda l}-e^{-\lambda r}</annotation></semantics></math></span>,
+and observing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>≤</mo><mi>r</mi></mrow><annotation encoding="application/x-tex">T\leq r</annotation></semantics></math></span>
+contributes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>λ</mi><mi>r</mi></mrow></msup></mrow><annotation encoding="application/x-tex">1-e^{-\lambda r}</annotation></semantics></math></span>.
+Their stable log forms are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mi>λ</mi><mi>l</mi><mo>+</mo><mo>log</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><mo>expm1</mo><mrow><mo stretchy="true" form="prefix">[</mo><mo>−</mo><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>r</mi><mo>−</mo><mi>l</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">-\lambda l+\log\{-\operatorname{expm1}[-\lambda(r-l)]\}</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>log</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><mo>expm1</mo><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><mi>λ</mi><mi>r</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\log\{-\operatorname{expm1}(-\lambda r)\}</annotation></semantics></math></span>.
+A new five-record example combines an exact event at 1.2, right
+censoring at 2, an event in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>3</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">(1,3]</annotation></semantics></math></span>,
+left censoring at 1.5, and an exact event at 4 after entry at 1. The
+complete R example maximizes the sum of these contributions directly. No
+artificial midpoint or common event indicator can express all five
+observations faithfully.</p>
+<p>For inspection times fixed in advance, or otherwise ignorable for the
+specified event model, these interval probabilities supply the event
+likelihood. If visits become more frequent when latent disease worsens,
+the visit process may convey additional event information. Conditioning
+on the reported intervals does not automatically remove that dependence.
+We would then need to represent the inspection mechanism as well. The
+five records illustrate likelihood contributions, not a justification
+for using ordinary right-censoring software on interval-censored
+data.</p>
+<h2 id="a-defensible-likelihood-analysis">5.9 A defensible likelihood
+analysis</h2>
+<p>Start by stating the endpoint, origin, observation scheme, parameter
+space, and independence conditions. Verify units and status coding,
+inspect the log likelihood over plausible parameter values, and check
+optimization against a simpler case. Numerical convergence means an
+algorithm met a criterion; an interior maximum requires a mathematical
+or numerical comparison with boundaries and alternative solutions. When
+uncertainty is reported, say which sampling approximation calibrated
+it.</p>
+<p>Score, Wald, and likelihood-ratio tests are related large-sample
+procedures, not a universal ranking of scientific reliability. Their
+agreement in a small example does not verify the model. A rate estimated
+in a previous study is itself uncertain; testing a new cohort against
+that estimate as though it were an exact population constant omits the
+previous study’s sampling error. Finally, a well-fitting event model
+cannot repair a false observation assumption. Chapter <a href="08-parametric.html#s8-chapter" data-reference-type="ref" data-reference="s8-chapter">6</a> adds covariates and
+compares several distributional shapes while retaining this likelihood
+logic.</p>
+<h2 id="exercises">5.10 Exercises</h2>
+<ol class="exercises" style='--chapter:"5."'><li id="exercise-5-1"><p><strong>Likelihood contributions follow observed sets.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math></span>
+have an absolutely continuous distribution with density
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>f</mi><annotation encoding="application/x-tex">f</annotation></semantics></math></span>
+and survival
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>S</mi><annotation encoding="application/x-tex">S</annotation></semantics></math></span>.
+Under ignorable observation, derive contributions for: an exact event at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>;
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T&gt;x</annotation></semantics></math></span>;
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>≤</mo><mi>r</mi></mrow><annotation encoding="application/x-tex">T\leq r</annotation></semantics></math></span>;
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>l</mi><mo>&lt;</mo><mi>T</mi><mo>≤</mo><mi>r</mi></mrow><annotation encoding="application/x-tex">l&lt;T\leq r</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>≤</mo><mi>l</mi><mo>&lt;</mo><mi>r</mi></mrow><annotation encoding="application/x-tex">0\leq l&lt;r</annotation></semantics></math></span>.
+Under independent truncation at entry
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math></span>
+and eligibility
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>a</mi></mrow><annotation encoding="application/x-tex">T&gt;a</annotation></semantics></math></span>,
+derive the exact-event and right-censoring contributions for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>&gt;</mo><mi>a</mi></mrow><annotation encoding="application/x-tex">x&gt;a</annotation></semantics></math></span>
+assuming
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">S(a)&gt;0</annotation></semantics></math></span>.
+Identify which contributions are densities and which are dimensionless
+probabilities, and distinguish left censoring from left truncation.</p>
+</li><li id="exercise-5-2"><p><strong>Information depends on follow-up design.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+independent people have
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>∼</mo><mo>Exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>λ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">T\sim\operatorname{Exp}(\lambda)</annotation></semantics></math></span>,
+independent dropout
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mo>∼</mo><mo>Exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">C\sim\operatorname{Exp}(c)</annotation></semantics></math></span>
+and fixed closure
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>τ</mi><annotation encoding="application/x-tex">\tau</annotation></semantics></math></span>,
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\lambda&gt;0</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi><mo>≥</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">c\geq0</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau&gt;0</annotation></semantics></math></span>.
+Interpret
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">c=0</annotation></semantics></math></span>
+as no random dropout. Derive the observed-event probability, expected
+event count and expected information for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>λ</mi><annotation encoding="application/x-tex">\lambda</annotation></semantics></math></span>.
+Evaluate them for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>100</mn></mrow><annotation encoding="application/x-tex">n=100</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>=</mo><mn>0.1</mn></mrow><annotation encoding="application/x-tex">\lambda=0.1</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi><mo>=</mo><mn>0.05</mn></mrow><annotation encoding="application/x-tex">c=0.05</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mo>=</mo><mn>8</mn></mrow><annotation encoding="application/x-tex">\tau=8</annotation></semantics></math></span>.
+Compare the
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mo>→</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">\tau\to\infty</annotation></semantics></math></span>
+limits for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">c=0</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">c&gt;0</annotation></semantics></math></span>,
+and explain why realized exposure alone does not determine expected
+information.</p>
+</li><li id="exercise-5-3"><p><strong>Interior and boundary uncertainty.</strong> For independent exponentially distributed event times with rate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\lambda&gt;0</annotation></semantics></math></span>
+and independent, parameter-separated right censoring, the twelve-person
+cohort has
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>=</mo><mn>6</mn></mrow><annotation encoding="application/x-tex">D=6</annotation></semantics></math></span>
+events and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mo>=</mo><mn>56</mn></mrow><annotation encoding="application/x-tex">W=56</annotation></semantics></math></span>
+person-months. Derive the MLE and form approximate 95% log-rate and
+profile-likelihood intervals using the one-degree-of-freedom chi-square
+cutoff. Transform both to five-month event risk. Explain why replacing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math></span>
+by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>D</mi><annotation encoding="application/x-tex">D</annotation></semantics></math></span>
+in the complete-data gamma pivot does not generally make an exact
+interval. Describe the maximum and curvature problem if
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">D=0</annotation></semantics></math></span>
+but
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>W</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">W&gt;0</annotation></semantics></math></span>.</p>
+</li><li id="exercise-5-4"><p><strong>Entry changes exposure.</strong> Use the twelve-person cohort with observed follow-up
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>3</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>4</mn><mo>,</mo><mn>5</mn><mo>,</mo><mn>6</mn><mo>,</mo><mn>6</mn><mo>,</mo><mn>7</mn><mo>,</mo><mn>8</mn><mo>,</mo><mn>8</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">x=(1,2,2,3,4,4,5,6,6,7,8,8)</annotation></semantics></math></span>
+months and event indicators
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\delta=(1,1,0,0,1,1,0,1,0,0,1,0)</annotation></semantics></math></span>,
+in participant order A–L. Everyone enters at zero. Same-time events are
+counted before censoring; a censor at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+establishes
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&gt;</mo><mi>x</mi></mrow><annotation encoding="application/x-tex">T&gt;x</annotation></semantics></math></span>.
+Now give participants A–L entry times
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>0.5</mn><mo>,</mo><mn>0.5</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>3</mn><mo>,</mo><mn>3</mn><mo>,</mo><mn>3</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">a=(0,0.5,0.5,1,1,1,2,2,2,3,3,3)</annotation></semantics></math></span>
+months, all below exit times. Under independent truncation and
+independent right censoring after entry, derive the conditional
+exponential likelihood and fitted rate. For an entrant at month 2
+censored at month 6, compare the correct factor with the factor that
+ignores entry. State the support and selection assumptions needed for
+interpretation.</p>
+</li><li id="exercise-5-5"><p><strong>A likelihood for mixed observations.</strong> Assume independent subjects with common exponential event rate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\lambda&gt;0</annotation></semantics></math></span>
+and ignorable inspection/censoring. Observe: an exact event at 1.2;
+right censoring at 2; an event in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>3</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">(1,3]</annotation></semantics></math></span>;
+an event before or at 1.5; and an exact event at 4 conditional on
+independent entry at 1. Derive the log likelihood, obtain its numerical
+maximum, and check the interval contribution using both a difference of
+exponentials and a stable log form. Replace
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>3</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">(1,3]</annotation></semantics></math></span>
+by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>6</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">(1,6]</annotation></semantics></math></span>,
+keep all other records fixed, and recompute the maximum. Explain why
+widening the observed set does not by itself determine the direction of
+the fitted rate.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="04-nelson-aalen.html">Previous: 4. Nelson--Aalen estimation and counting processes</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="08-parametric.html">Next: 6. Parametric survival regression</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

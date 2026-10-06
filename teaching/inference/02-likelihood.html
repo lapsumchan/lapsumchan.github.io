@@ -1,0 +1,665 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Statistical Inference — Chapter 2: Likelihood, data reduction, and constructing estimators | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Likelihood, data reduction, and constructing estimators.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/inference/02-likelihood.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Statistical Inference — Chapter 2: Likelihood, data reduction, and constructing estimators | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Likelihood, data reduction, and constructing estimators.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/inference/02-likelihood.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Statistical Inference — Chapter 2: Likelihood, data reduction, and constructing estimators", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Statistical Inference", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/inference/02-likelihood.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Statistical Inference</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Questions, probability models, and likelihood</p><ol class="contents-chapters"><li><a href="01-models.html">1. Probability models and statistical targets</a></li><li><a href="02-likelihood.html" aria-current="page">2. Likelihood, data reduction, and constructing estimators</a></li></ol><p class="contents-part">Part II: Conditional targets, regression, and loss</p><ol class="contents-chapters"><li><a href="conditional-regression.html">3. Regression and conditional targets</a></li><li><a href="03-decisions.html">4. Can a better estimate lead to a worse decision?</a></li></ol><p class="contents-part">Part III: Estimation, uncertainty, and testing</p><ol class="contents-chapters"><li><a href="07-limits.html">5. Sampling limits and asymptotic approximations</a></li><li><a href="08-confidence.html">6. Likelihood asymptotics and confidence sets</a></li><li><a href="09-testing.html">7. Hypothesis Testing as a Statistical Procedure</a></li><li><a href="06-bayes.html">8. Bayesian inference and predictive uncertainty</a></li></ol><p class="contents-part">Part IV: Shrinkage and regularized regression</p><ol class="contents-chapters"><li><a href="12-shrinkage.html">9. Empirical Bayes and the geometry of shrinkage</a></li><li><a href="regularization-association.html">10. Regularization, bias correction, and association inference</a></li></ol><p class="contents-part">Part V: Association claims and multiplicity</p><ol class="contents-chapters"><li><a href="14-multiplicity.html">11. Multiplicity, simultaneous claims, and false discoveries</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#the-same-expression-a-different-argument">2.1 The same expression, a different argument</a></li><li><a href="#constructing-the-maximum-likelihood-estimator">2.2 Constructing the maximum likelihood estimator</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#boundaries-are-part-of-the-problem">2.3 Boundaries are part of the problem</a></li><li><a href="#why-the-count-is-sufficient">2.4 Why the count is sufficient</a></li><li><a href="#sufficiency-is-relative-to-a-model">2.5 Sufficiency is relative to a model</a></li><li><a href="#conditioning-can-construct-a-better-estimator">2.6 Conditioning can construct a better estimator</a></li><li><a href="#construction-is-not-evaluation">2.7 Construction is not evaluation</a></li><li><a href="#exercises">2.8 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Statistical Inference</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 2</span></p><div class="chapter-content"><h1 id="i2-chapter">Chapter 2. Likelihood, data reduction, and constructing
+estimators</h1>
+<p>Chapter <a href="01-models.html#i1-chapter" data-reference-type="ref" data-reference="i1-chapter">1</a> fixed a model value and
+calculated probabilities of possible data. We now fix the observed data
+and compare model values. This change of viewpoint produces a likelihood
+function. It does not, by itself, produce a probability distribution
+over the parameter.</p>
+<p>Keep the synthetic binary-outcome study and suppose the observed
+sample contains two events among ten independent people. The example is
+small enough to solve analytically and enumerate exactly. We will derive
+its maximum likelihood estimator, examine the boundary cases that a
+score equation misses, and show why the event count retains the model’s
+information about the common probability. We then use conditioning to
+construct an estimator from an intentionally inefficient starting point.
+With each construction, we will ask what the argument establishes about
+the estimator.</p>
+<h2 id="the-same-expression-a-different-argument">2.1 The same expression, a
+different argument</h2>
+<p>For observed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>n</mi></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>x</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">d_n=(x_1,\ldots,x_n)</annotation></semantics></math></span>,
+define
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℒ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>;</mo><msub><mi>d</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munderover><mo>∏</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><msup><mi>p</mi><msub><mi>x</mi><mi>i</mi></msub></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mn>1</mn><mo>−</mo><msub><mi>x</mi><mi>i</mi></msub></mrow></msup><mo>=</mo><msup><mi>p</mi><mi>k</mi></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>n</mi><mo>−</mo><mi>k</mi></mrow></msup><mo>,</mo><mspace width="2.0em"></mspace><mi>k</mi><mo>=</mo><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><msub><mi>x</mi><mi>i</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathcal L(p;d_n)=
+ \prod_{i=1}^{n}p^{x_i}(1-p)^{1-x_i}
+ =p^k(1-p)^{n-k},
+ \qquad k=\sum_{i=1}^{n}x_i.
+ \label{i2-sequence-likelihood}</annotation></semantics></math><span id="i2-sequence-likelihood" class="equation-anchor"></span><span class="equation-number">(2.1)</span></span> Here the
+data are fixed and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+varies. We use calligraphic
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ℒ</mi><annotation encoding="application/x-tex">\mathcal L</annotation></semantics></math></span>
+for likelihood, reserving ordinary
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>L</mi><annotation encoding="application/x-tex">L</annotation></semantics></math></span>
+for a separately defined loss in decision theory. For two candidate
+values, a likelihood ratio compares how much probability they assign to
+the same observed sequence. A larger value means better agreement with
+that observation in this particular comparison; it is not the
+probability that the candidate parameter is correct.</p>
+<p>If we observe only the count, its likelihood is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℒ</mi><mi>K</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>;</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mi>n</mi><mi>k</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>p</mi><mi>k</mi></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>n</mi><mo>−</mo><mi>k</mi></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathcal L_K(p;k)=\binom nk p^k(1-p)^{n-k}.
+ \label{i2-count-likelihood}</annotation></semantics></math><span id="i2-count-likelihood" class="equation-anchor"></span><span class="equation-number">(2.2)</span></span> For the
+fixed observed count, the extra factor does not depend on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+It therefore cancels in likelihood ratios and does not change the
+maximizer. It could not be dropped when calculating
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>=</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb{P}_p(K=k)</annotation></semantics></math></span>
+in Chapter <a href="01-models.html#i1-chapter" data-reference-type="ref" data-reference="i1-chapter">1</a>: probability calculations
+must account for all sequences contributing to an event. Proportional
+likelihoods and equal probabilities are different statements.</p>
+<p>At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn><mo>,</mo><mi>k</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">n=10,k=2</annotation></semantics></math></span>,
+comparing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.2</mn></mrow><annotation encoding="application/x-tex">p=0.2</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.4</mn></mrow><annotation encoding="application/x-tex">p=0.4</annotation></semantics></math></span>
+gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mi>ℒ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.2</mn><mo>;</mo><msub><mi>d</mi><mn>10</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>ℒ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.4</mn><mo>;</mo><msub><mi>d</mi><mn>10</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mn>0.2</mn><mn>0.4</mn></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mn>0.8</mn><mn>0.6</mn></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mn>8</mn></msup><mo>≃</mo><mn>2.497</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{\mathcal L(0.2;d_{10})}{\mathcal L(0.4;d_{10})}
+ =\left(\frac{0.2}{0.4}\right)^2
+  \left(\frac{0.8}{0.6}\right)^8
+ \simeq 2.497.
+ \label{i2-likelihood-ratio}</annotation></semantics></math><span id="i2-likelihood-ratio" class="equation-anchor"></span><span class="equation-number">(2.3)</span></span> The
+observed data favor
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.2</mn><annotation encoding="application/x-tex">0.2</annotation></semantics></math></span>
+over
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.4</mn><annotation encoding="application/x-tex">0.4</annotation></semantics></math></span>
+in this likelihood-ratio sense. The ratio is not posterior odds unless
+prior odds and a Bayesian model have also been specified. It is not a
+tail probability or the probability of obtaining data at least as
+extreme as these.</p>
+<p>A relative likelihood divides the likelihood by its maximum. Its peak
+is one, making plots easier to compare. Normalizing a curve to have peak
+one does not make its integral one. Even normalizing its integral with
+respect to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>p</mi></mrow><annotation encoding="application/x-tex">dp</annotation></semantics></math></span>
+introduces a choice of parameterization; it does not create a
+parameter-free inferential interpretation. In Bayesian inference
+(Chapter <a href="06-bayes.html#i6-chapter" data-reference-type="ref" data-reference="i6-chapter">8</a>), we specify a prior and
+derive the resulting posterior. That specification is the additional
+step needed to interpret a normalized likelihood as a posterior.</p>
+<h2 id="constructing-the-maximum-likelihood-estimator">2.2 Constructing the
+maximum likelihood estimator</h2>
+<p>The likelihood ratio compares two specified candidates. We now let
+the candidate vary over the allowed parameter space and find the value
+that gives the observed data the greatest likelihood. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>p</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;p&lt;1</annotation></semantics></math></span>,
+the log likelihood, up to a term constant in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>ℓ</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>k</mi><mo>log</mo><mi>p</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>−</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\ell(p)=k\log p+(n-k)\log(1-p).
+ \label{i2-loglik}</annotation></semantics></math><span id="i2-loglik" class="equation-anchor"></span><span class="equation-number">(2.4)</span></span> Because logarithm is
+strictly increasing, maximizing the positive likelihood is equivalent to
+maximizing its logarithm. The logarithm turns the product over
+observations into a sum and often makes differentiation and numerical
+calculation more stable.</p>
+<p>For an interior observation
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>k</mi><mo>&lt;</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">0&lt;k&lt;n</annotation></semantics></math></span>,
+the score and curvature are
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><mi>U</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>ℓ</mo><mi>′</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mfrac><mi>k</mi><mi>p</mi></mfrac><mo>−</mo><mfrac><mrow><mi>n</mi><mo>−</mo><mi>k</mi></mrow><mrow><mn>1</mn><mo>−</mo><mi>p</mi></mrow></mfrac><mo>=</mo><mfrac><mrow><mi>k</mi><mo>−</mo><mi>n</mi><mi>p</mi></mrow><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>,</mo></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"><mo>ℓ</mo><mi>″</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mo>−</mo><mfrac><mi>k</mi><msup><mi>p</mi><mn>2</mn></msup></mfrac><mo>−</mo><mfrac><mrow><mi>n</mi><mo>−</mo><mi>k</mi></mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mfrac><mo>&lt;</mo><mn>0</mn><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+ U(p)=\ell'(p)&amp;=\frac{k}{p}-\frac{n-k}{1-p}
+                =\frac{k-np}{p(1-p)}, \label{i2-score}\\
+ \ell''(p)&amp;=-\frac{k}{p^2}-\frac{n-k}{(1-p)^2}&lt;0.
+ \label{i2-curvature}
+\end{aligned}</annotation></semantics></math><span id="i2-score" class="equation-anchor"></span><span id="i2-curvature" class="equation-anchor"></span><span class="equation-number">(2.5, 2.6)</span></span> The score vanishes at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mi>k</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">p=k/n</annotation></semantics></math></span>.
+Strict concavity makes this the unique interior maximum. Moreover, the
+likelihood tends to zero at both endpoints when both events and
+nonevents have been observed. Together these facts establish the global
+maximum on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0,1]</annotation></semantics></math></span>:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>p</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">M</mi><mi mathvariant="normal">L</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>n</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>K</mi><mi>/</mi><mi>n</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat p_{\mathrm{ML}}(D_n)=K/n.
+ \label{i2-mle}</annotation></semantics></math><span id="i2-mle" class="equation-anchor"></span><span class="equation-number">(2.7)</span></span> The estimator is the
+rule applied to random data. The estimate in our sample is the number
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.2</mn><annotation encoding="application/x-tex">0.2</annotation></semantics></math></span>.</p>
+<p>At that observed maximum, the score is zero and the negative
+curvature is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>62.5</mn><annotation encoding="application/x-tex">62.5</annotation></semantics></math></span>.
+A sharply curved log likelihood indicates a more rapid local decrease
+when a candidate parameter moves away from the maximizer. This is useful
+information about the observed likelihood shape, but converting
+curvature into an uncertainty interval requires an additional
+inferential argument. A plot alone does not establish interval
+coverage.</p>
+<p>The implementation below checks three separate claims: count and
+sequence likelihoods differ by the combinatorial factor; a grid and
+continuous optimization recover the interior maximum; and the analytic
+curvature agrees with a numerical second difference. Numerical agreement
+is useful evidence about the implementation. The concavity and endpoint
+argument explain why the answer is global.</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# Likelihood and exact conditional enumeration.
+dir.create("generated",showWarnings=FALSE)
+n &lt;- 10L; observed.k &lt;- 2L
+grid &lt;- seq(0,1,length.out=1001)
+count.likelihood &lt;- dbinom(observed.k,n,grid)
+sequence.likelihood &lt;- grid^observed.k*(1-grid)^(n-observed.k)
+stopifnot(max(abs(count.likelihood-
+                  choose(n,observed.k)*sequence.likelihood))&lt;1e-12)
+relative &lt;- count.likelihood/max(count.likelihood)
+stopifnot(abs(grid[which.max(relative)]-observed.k/n)&lt;1e-12)
+fit &lt;- optimize(function(z) -dbinom(observed.k,n,z,log=TRUE),
+                interval=c(1e-10,1-1e-10),tol=1e-10)
+stopifnot(abs(fit$minimum-observed.k/n)&lt;1e-6)
+for(kk in 0:n)
+ stopifnot(abs(grid[which.max(dbinom(kk,n,grid))]-kk/n)&lt;1e-12)
+score &lt;- function(z) observed.k/z-(n-observed.k)/(1-z)
+curvature &lt;- function(z) -observed.k/z^2-(n-observed.k)/(1-z)^2
+h &lt;- 1e-4
+ll &lt;- function(z) dbinom(observed.k,n,z,log=TRUE)
+numcurv &lt;- (ll(.2+h)-2*ll(.2)+ll(.2-h))/h^2
+stopifnot(abs(score(.2))&lt;1e-12,abs(curvature(.2)+62.5)&lt;1e-12,
+          abs(numcurv-curvature(.2))&lt;.001)
+# Enumerate all ordered samples, so conditional checks have no Monte Carlo error.
+x &lt;- as.matrix(expand.grid(rep(list(0:1),n)))
+K &lt;- rowSums(x)
+stopifnot(nrow(x)==2^n,sum(K==observed.k)==choose(n,observed.k))
+ct &lt;- do.call(rbind,lapply(c(.15,.60),function(p) {
+ w &lt;- p^K*(1-p)^(n-K)
+ wk &lt;- w[K==observed.k]/sum(w[K==observed.k])
+ stopifnot(max(abs(wk-1/choose(n,observed.k)))&lt;1e-12)
+ cm &lt;- vapply(0:n,function(j) sum(x[K==j,1]*w[K==j])/sum(w[K==j]),0.0)
+ stopifnot(max(abs(cm-(0:n)/n))&lt;1e-12)
+ data.frame(p=p,k=0:n,conditional.mean=cm)
+}))
+write.csv(ct,"generated/ch02-conditional-means.csv",row.names=FALSE)
+write.csv(data.frame(grid,count.likelihood,sequence.likelihood,relative),
+          "generated/ch02-likelihood.csv",row.names=FALSE)
+write.csv(data.frame(sequence=apply(x[K==2,],1,paste0,collapse=""),
+                    conditional.probability=1/45),
+          "generated/ch02-conditional-sequences.csv",row.names=FALSE)
+p &lt;- .15; w &lt;- p^K*(1-p)^(n-K)
+v1 &lt;- sum((x[,1]-p)^2*w); vk &lt;- sum((K/n-p)^2*w)
+stopifnot(abs(v1-p*(1-p))&lt;1e-12,abs(vk-p*(1-p)/n)&lt;1e-12)
+writeLines(c("\\begin{tabular}{lrr}","\\toprule",
+ "Quantity &amp; Exact calculation &amp; Value \\\\","\\midrule",
+ "Sequences with $K=2$ &amp; $\\binom{10}{2}$ &amp; 45 \\\\",
+ sprintf("Each conditional probability &amp; $1/45$ &amp; %.6f \\\\",1/45),
+ "$E_p(X_1\\mid K=2)$ &amp; $2/10$ &amp; 0.200000 \\\\",
+ sprintf("$\\mathrm{Var}_{0.15}(X_1)$ &amp; $p(1-p)$ &amp; %.6f \\\\",v1),
+ sprintf("$\\mathrm{Var}_{0.15}(K/10)$ &amp; $p(1-p)/10$ &amp; %.6f \\\\",vk),
+ "\\bottomrule","\\end{tabular}"),"generated/ch02-enumeration-table.tex")
+save.plot &lt;- function(stem,draw) {
+ pdf(paste0("generated/",stem,".pdf"),width=7,height=3.8);draw();dev.off()
+ png(paste0("generated/",stem,".png"),width=1400,height=760,res=200);draw();dev.off()
+}
+save.plot("ch02-likelihood",function() {
+ par(mfrow=c(1,2),mar=c(4.2,4.2,2,0.8),las=1)
+ plot(grid,relative,type="l",lwd=2,col="#002D72",xlab="Candidate p",
+      ylab="Relative likelihood",main="Observed K = 2 of 10")
+ lines(grid,sequence.likelihood/max(sequence.likelihood),lty=2,lwd=2,col="#777777")
+ abline(v=.2,lty=3)
+ legend("topright",c("Count","Ordered sequence"),lty=c(1,2),
+        col=c("#002D72","#777777"),bty="n",cex=.8)
+ plot(grid,dbinom(0,n,grid),type="l",lwd=2,col="#002D72",
+      xlab="Candidate p",ylab="Likelihood",main="Boundary observations")
+ lines(grid,dbinom(n,n,grid),lty=2,lwd=2,col="#555555")
+ legend("top",c("K = 0","K = 10"),col=c("#002D72","#555555"),lty=c(1,2),bty="n")
+})
+save.plot("ch02-conditioning",function() {
+ par(mfrow=c(1,2),mar=c(4.2,4.2,2,0.8),las=1)
+ barplot(choose(n,0:n),names.arg=0:n,col="#002D72",border=NA,
+         xlab="Count k",ylab="Number of sequences",main="Count partitions")
+ plot(0:n,(0:n)/n,type="l",lwd=2,col="#002D72",ylim=c(0,1),
+      xlab="Conditioning count k",ylab="Conditional mean of X1",main="Conditional means")
+ points(0:n,ct$conditional.mean[ct$p==.15],pch=1,cex=1.2)
+ points(0:n,ct$conditional.mean[ct$p==.60],pch=3)
+ legend("topleft",c("p = 0.15","p = 0.60"),pch=c(1,3),bty="n",cex=.8)
+})
+
+
+writeLines(capture.output(sessionInfo()),"generated/ch02-sessionInfo.txt")
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">10</span><span class="dt">L</span>; observed.k <span class="ot">&lt;-</span> <span class="dv">2</span><span class="dt">L</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>grid <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="at">length.out=</span><span class="dv">1001</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>count.likelihood <span class="ot">&lt;-</span> <span class="fu">dbinom</span>(observed.k,n,grid)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>sequence.likelihood <span class="ot">&lt;-</span> grid<span class="sc">^</span>observed.k<span class="sc">*</span>(<span class="dv">1</span><span class="sc">-</span>grid)<span class="sc">^</span>(n<span class="sc">-</span>observed.k)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">max</span>(<span class="fu">abs</span>(count.likelihood<span class="sc">-</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">choose</span>(n,observed.k)<span class="sc">*</span>sequence.likelihood))<span class="sc">&lt;</span><span class="fl">1e-12</span>)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>relative <span class="ot">&lt;-</span> count.likelihood<span class="sc">/</span><span class="fu">max</span>(count.likelihood)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">abs</span>(grid[<span class="fu">which.max</span>(relative)]<span class="sc">-</span>observed.k<span class="sc">/</span>n)<span class="sc">&lt;</span><span class="fl">1e-12</span>)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>fit <span class="ot">&lt;-</span> <span class="fu">optimize</span>(<span class="cf">function</span>(z) <span class="sc">-</span><span class="fu">dbinom</span>(observed.k,n,z,<span class="at">log=</span><span class="cn">TRUE</span>),</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>                <span class="at">interval=</span><span class="fu">c</span>(<span class="fl">1e-10</span>,<span class="dv">1</span><span class="fl">-1e-10</span>),<span class="at">tol=</span><span class="fl">1e-10</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">abs</span>(fit<span class="sc">$</span>minimum<span class="sc">-</span>observed.k<span class="sc">/</span>n)<span class="sc">&lt;</span><span class="fl">1e-6</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(kk <span class="cf">in</span> <span class="dv">0</span><span class="sc">:</span>n)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a> <span class="fu">stopifnot</span>(<span class="fu">abs</span>(grid[<span class="fu">which.max</span>(<span class="fu">dbinom</span>(kk,n,grid))]<span class="sc">-</span>kk<span class="sc">/</span>n)<span class="sc">&lt;</span><span class="fl">1e-12</span>)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>score <span class="ot">&lt;-</span> <span class="cf">function</span>(z) observed.k<span class="sc">/</span>z<span class="sc">-</span>(n<span class="sc">-</span>observed.k)<span class="sc">/</span>(<span class="dv">1</span><span class="sc">-</span>z)</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>curvature <span class="ot">&lt;-</span> <span class="cf">function</span>(z) <span class="sc">-</span>observed.k<span class="sc">/</span>z<span class="sc">^</span><span class="dv">2</span><span class="sc">-</span>(n<span class="sc">-</span>observed.k)<span class="sc">/</span>(<span class="dv">1</span><span class="sc">-</span>z)<span class="sc">^</span><span class="dv">2</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>h <span class="ot">&lt;-</span> <span class="fl">1e-4</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>ll <span class="ot">&lt;-</span> <span class="cf">function</span>(z) <span class="fu">dbinom</span>(observed.k,n,z,<span class="at">log=</span><span class="cn">TRUE</span>)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>numcurv <span class="ot">&lt;-</span> (<span class="fu">ll</span>(.<span class="dv">2</span><span class="sc">+</span>h)<span class="sc">-</span><span class="dv">2</span><span class="sc">*</span><span class="fu">ll</span>(.<span class="dv">2</span>)<span class="sc">+</span><span class="fu">ll</span>(.<span class="dv">2</span><span class="sc">-</span>h))<span class="sc">/</span>h<span class="sc">^</span><span class="dv">2</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">abs</span>(<span class="fu">score</span>(.<span class="dv">2</span>))<span class="sc">&lt;</span><span class="fl">1e-12</span>,<span class="fu">abs</span>(<span class="fu">curvature</span>(.<span class="dv">2</span>)<span class="sc">+</span><span class="fl">62.5</span>)<span class="sc">&lt;</span><span class="fl">1e-12</span>,</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>          <span class="fu">abs</span>(numcurv<span class="sc">-</span><span class="fu">curvature</span>(.<span class="dv">2</span>))<span class="sc">&lt;</span>.<span class="dv">001</span>)</span></code></pre></div>
+<figure id="i2-likelihood-figure">
+<a href="../assets/inference/ch02-likelihood.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch02-likelihood.png" alt="Figure 2.1. Left: count and ordered-sequence relative likelihoods
+coincide for
+k=2,n=10k=2,n=10.
+Right: all-nonevent and all-event samples place their maxima at opposite
+boundaries when the parameter space is closed.">
+</a><figcaption>Figure 2.1. Left: count and ordered-sequence relative likelihoods
+coincide for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>2</mn><mo>,</mo><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">k=2,n=10</annotation></semantics></math></span>.
+Right: all-nonevent and all-event samples place their maxima at opposite
+boundaries when the parameter space is closed.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch02-likelihood.png">Open full-size figure</a></p></figure>
+<h2 id="boundaries-are-part-of-the-problem">2.3 Boundaries are part of the
+problem</h2>
+<p>When
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">k=0</annotation></semantics></math></span>,
+the likelihood is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>n</mi></msup><annotation encoding="application/x-tex">(1-p)^n</annotation></semantics></math></span>,
+decreasing throughout the interior. Its maximum on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0,1]</annotation></semantics></math></span>
+is at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">p=0</annotation></semantics></math></span>.
+There is no interior score root. When
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">k=n</annotation></semantics></math></span>,
+the likelihood is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>p</mi><mi>n</mi></msup><annotation encoding="application/x-tex">p^n</annotation></semantics></math></span>,
+with maximum at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">p=1</annotation></semantics></math></span>.
+Thus the formula
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">K/n</annotation></semantics></math></span>
+still works on the closed parameter space, but a derivation that simply
+solves the score equation has omitted these cases.</p>
+<p>Now change the parameter space to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0,1)</annotation></semantics></math></span>.
+For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">k=0</annotation></semantics></math></span>,
+likelihood values approach their supremum as
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+approaches zero, but no permitted value attains it. There is no MLE in
+that open parameter space. Reporting zero without explaining the
+extension to the closure changes the stated optimization problem. This
+distinction is important in more complicated models where a numerical
+routine returns a very large finite coefficient while the likelihood is
+maximized only at an infinite limit.</p>
+<p>Constraints also change the answer. If scientific knowledge genuinely
+restricts
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>≤</mo><mn>0.1</mn></mrow><annotation encoding="application/x-tex">p\le 0.1</annotation></semantics></math></span>,
+the
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>2</mn><mo>,</mo><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">k=2,n=10</annotation></semantics></math></span>
+likelihood is increasing over the allowed interval, so the constrained
+maximum is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.1</mn><annotation encoding="application/x-tex">0.1</annotation></semantics></math></span>,
+not
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.2</mn><annotation encoding="application/x-tex">0.2</annotation></semantics></math></span>.
+A constraint should represent a justified model choice, not an
+after-the-fact device for obtaining a preferred estimate.</p>
+<p>For software, boundary-safe likelihood evaluation matters. Directly
+writing
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>log</mo><mi>p</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>−</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">k\log p+(n-k)\log(1-p)</annotation></semantics></math></span>
+at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">p=0</annotation></semantics></math></span>
+or
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1</mn><annotation encoding="application/x-tex">1</annotation></semantics></math></span>
+can produce undefined arithmetic even when the probability has a
+well-defined limit. The base R binomial mass function handles those
+endpoint probabilities. A numerical optimizer over a small interior
+interval is appropriate for checking our interior example, but it does
+not prove what happens at an excluded endpoint.</p>
+<h2 id="why-the-count-is-sufficient">2.4 Why the count is sufficient</h2>
+<p>A statistic is a function of the data that does not depend on the
+unknown parameter. The count
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math></span>
+partitions the
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>2</mn><mi>n</mi></msup><annotation encoding="application/x-tex">2^n</annotation></semantics></math></span>
+possible binary sequences into groups: all sequences with zero events,
+all sequences with one event, and so on. Within each group, the order
+and positions of events differ.</p>
+<p>For any compatible sequence
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math></span>
+with count
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math></span>,
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>p</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;p&lt;1</annotation></semantics></math></span>,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>n</mi></msub><mo>=</mo><mi>x</mi><mo>∣</mo><mi>K</mi><mo>=</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><msup><mi>p</mi><mi>k</mi></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>n</mi><mo>−</mo><mi>k</mi></mrow></msup></mrow><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mi>n</mi><mi>k</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>p</mi><mi>k</mi></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>n</mi><mo>−</mo><mi>k</mi></mrow></msup></mrow></mfrac><mo>=</mo><mfrac><mn>1</mn><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mi>n</mi><mi>k</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}_p(D_n=x\mid K=k)
+ =\frac{p^k(1-p)^{n-k}}{\binom nk p^k(1-p)^{n-k}}
+ =\frac{1}{\binom nk}.
+ \label{i2-conditional-sequence}</annotation></semantics></math><span id="i2-conditional-sequence" class="equation-anchor"></span><span class="equation-number">(2.8)</span></span> The
+conditional distribution does not depend on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+Conditional on the count, the remaining randomness in the ordered
+sequence is therefore irrelevant for distinguishing members of this
+Bernoulli model. This is the definition of sufficiency in the present
+discrete setting.</p>
+<p>At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn><mo>,</mo><mi>k</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">n=10,k=2</annotation></semantics></math></span>,
+all 45 compatible sequences have conditional probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>45</mn></mrow><annotation encoding="application/x-tex">1/45</annotation></semantics></math></span>,
+whether the candidate parameter is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.15</mn><annotation encoding="application/x-tex">0.15</annotation></semantics></math></span>
+or
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.60</mn><annotation encoding="application/x-tex">0.60</annotation></semantics></math></span>.
+At the boundary model values, only the possible count needs a
+conditional distribution; conditioning on an impossible count is not
+defined by this ratio. These zero-probability qualifications do not
+invalidate sufficiency.</p>
+<p>An exact computational check enumerates the entire sample space
+instead of approximating it with random draws. Each row of the matrix
+below is an ordered binary sequence. The script weights rows under two
+parameter values, conditions on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">K=2</annotation></semantics></math></span>,
+and checks both uniformity and conditional means.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Enumerate all ordered samples, so conditional checks have no Monte Carlo error.</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(<span class="fu">expand.grid</span>(<span class="fu">rep</span>(<span class="fu">list</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">1</span>),n)))</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>K <span class="ot">&lt;-</span> <span class="fu">rowSums</span>(x)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">nrow</span>(x)<span class="sc">==</span><span class="dv">2</span><span class="sc">^</span>n,<span class="fu">sum</span>(K<span class="sc">==</span>observed.k)<span class="sc">==</span><span class="fu">choose</span>(n,observed.k))</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>ct <span class="ot">&lt;-</span> <span class="fu">do.call</span>(rbind,<span class="fu">lapply</span>(<span class="fu">c</span>(.<span class="dv">15</span>,.<span class="dv">60</span>),<span class="cf">function</span>(p) {</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a> w <span class="ot">&lt;-</span> p<span class="sc">^</span>K<span class="sc">*</span>(<span class="dv">1</span><span class="sc">-</span>p)<span class="sc">^</span>(n<span class="sc">-</span>K)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a> wk <span class="ot">&lt;-</span> w[K<span class="sc">==</span>observed.k]<span class="sc">/</span><span class="fu">sum</span>(w[K<span class="sc">==</span>observed.k])</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a> <span class="fu">stopifnot</span>(<span class="fu">max</span>(<span class="fu">abs</span>(wk<span class="dv">-1</span><span class="sc">/</span><span class="fu">choose</span>(n,observed.k)))<span class="sc">&lt;</span><span class="fl">1e-12</span>)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a> cm <span class="ot">&lt;-</span> <span class="fu">vapply</span>(<span class="dv">0</span><span class="sc">:</span>n,<span class="cf">function</span>(j) <span class="fu">sum</span>(x[K<span class="sc">==</span>j,<span class="dv">1</span>]<span class="sc">*</span>w[K<span class="sc">==</span>j])<span class="sc">/</span><span class="fu">sum</span>(w[K<span class="sc">==</span>j]),<span class="fl">0.0</span>)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a> <span class="fu">stopifnot</span>(<span class="fu">max</span>(<span class="fu">abs</span>(cm<span class="sc">-</span>(<span class="dv">0</span><span class="sc">:</span>n)<span class="sc">/</span>n))<span class="sc">&lt;</span><span class="fl">1e-12</span>)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a> <span class="fu">data.frame</span>(<span class="at">p=</span>p,<span class="at">k=</span><span class="dv">0</span><span class="sc">:</span>n,<span class="at">conditional.mean=</span>cm)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>}))</span></code></pre></div>
+<div id="i2-enumeration-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 2.1. Exact enumeration of the Bernoulli sample space. The
+conditional probabilities are parameter-free; the variances in the last
+two rows are evaluated at the illustrative
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">p=0.15</annotation></semantics></math></span>.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Quantity</th>
+<th style="text-align: right;">Exact calculation</th>
+<th style="text-align: right;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Sequences with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">K=2</annotation></semantics></math></span></td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mn>10</mn><mn>2</mn></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\binom{10}{2}</annotation></semantics></math></span></td>
+<td style="text-align: right;">45</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Each conditional probability</td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>45</mn></mrow><annotation encoding="application/x-tex">1/45</annotation></semantics></math></span></td>
+<td style="text-align: right;">0.022222</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>E</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mn>1</mn></msub><mo>∣</mo><mi>K</mi><mo>=</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">E_p(X_1\mid K=2)</annotation></semantics></math></span></td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mi>/</mi><mn>10</mn></mrow><annotation encoding="application/x-tex">2/10</annotation></semantics></math></span></td>
+<td style="text-align: right;">0.200000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mn>0.15</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathrm{Var}_{0.15}(X_1)</annotation></semantics></math></span></td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p(1-p)</annotation></semantics></math></span></td>
+<td style="text-align: right;">0.127500</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mn>0.15</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mi>/</mi><mn>10</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathrm{Var}_{0.15}(K/10)</annotation></semantics></math></span></td>
+<td style="text-align: right;"><span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mn>10</mn></mrow><annotation encoding="application/x-tex">p(1-p)/10</annotation></semantics></math></span></td>
+<td style="text-align: right;">0.012750</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>The cancellation also explains the factorization criterion. In the
+finite discrete case, suppose
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>g</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow><mi>h</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">f_p(x)=g_p(T(x))h(x),
+ \label{i2-factorization}</annotation></semantics></math><span id="i2-factorization" class="equation-anchor"></span><span class="equation-number">(2.9)</span></span> where the
+factorization functions are nonnegative and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math></span>
+does not depend on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.
+For an attainable value
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ℙ</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mi>n</mi></msub><mo>=</mo><mi>x</mi><mo>∣</mo><mi>T</mi><mo>=</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>h</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><munder><mo>∑</mo><mrow><mi>z</mi><mo>:</mo><mi>T</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>t</mi></mrow></munder><mi>h</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mspace width="1.0em"></mspace><mrow><mtext mathvariant="normal">when </mtext><mspace width="0.333em"></mspace></mrow><mi>T</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>t</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}_p(D_n=x\mid T=t)
+ =\frac{h(x)}{\sum_{z:T(z)=t}h(z)}
+ \quad\text{when }T(x)=t.
+ \label{i2-factorization-conditional}</annotation></semantics></math><span id="i2-factorization-conditional" class="equation-anchor"></span><span class="equation-number">(2.10)</span></span>
+The common
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>g</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">g_p(t)</annotation></semantics></math></span>
+cancels, proving sufficiency whenever the conditioning event has
+positive probability. The functions in a factorization need not
+individually be probability mass functions. In particular,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>p</mi><mi>k</mi></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi>n</mi><mo>−</mo><mi>k</mi></mrow></msup></mrow><annotation encoding="application/x-tex">p^k(1-p)^{n-k}</annotation></semantics></math></span>
+is a useful factor even though it is missing the binomial coefficient
+needed for the count’s mass function. More general dominated-model
+versions of the theorem require the corresponding measure-theoretic
+qualifications; the finite argument is enough for our example.</p>
+<h2 id="sufficiency-is-relative-to-a-model">2.5 Sufficiency is relative to a
+model</h2>
+<p>It would be a mistake to interpret sufficiency as permission to
+destroy the individual records. A pattern such as many events
+concentrated in one family, site, or period might challenge the
+assumptions of independence or a common event probability. The count can
+preserve all information about
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+within a specified model while discarding information useful for
+questioning that model.</p>
+<p>For a simple contrast, let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mn>1</mn></msub><annotation encoding="application/x-tex">X_1</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mn>2</mn></msub><annotation encoding="application/x-tex">X_2</annotation></semantics></math></span>
+be independent with distinct unknown probabilities
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mn>1</mn></msub><annotation encoding="application/x-tex">p_1</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mn>2</mn></msub><annotation encoding="application/x-tex">p_2</annotation></semantics></math></span>.
+The sequences
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(1,0)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0,1)</annotation></semantics></math></span>
+have the same total but probabilities
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mn>2</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p_1(1-p_2)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>p</mi><mn>2</mn></msub></mrow><annotation encoding="application/x-tex">(1-p_1)p_2</annotation></semantics></math></span>.
+Their ratio depends on the parameter pair. Knowing which individual had
+the event now helps distinguish models. The total is not sufficient for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>p</mi><mn>1</mn></msub><mo>,</mo><msub><mi>p</mi><mn>2</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(p_1,p_2)</annotation></semantics></math></span>.</p>
+<p>This is why data reduction and data retention answer different
+questions. The reduced statistic may be all that one calculation
+requires, while design variables, original measurements, missingness
+indicators, and identifiers remain necessary for checking assumptions
+and reproducing the analysis. The scientific meaning of the ordering
+also matters: exchangeability in the initial model is an assumption, not
+a license to ignore time or cluster structure in every study.</p>
+<h2 id="conditioning-can-construct-a-better-estimator">2.6 Conditioning can
+construct a better estimator</h2>
+<p>The parameter-free conditional distribution gives us more than a
+data-reduction statement. We can use it to average an estimator over the
+ordering that the count does not retain. Suppose, deliberately
+inefficiently, that we estimate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+using only the first observation,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>U</mi><mo>=</mo><msub><mi>X</mi><mn>1</mn></msub></mrow><annotation encoding="application/x-tex">U=X_1</annotation></semantics></math></span>.
+It is unbiased because
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>p</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}_p(X_1)=p</annotation></semantics></math></span>.
+Given
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mi>k</mi></mrow><annotation encoding="application/x-tex">K=k</annotation></semantics></math></span>,
+symmetry makes each position equally likely to contain an event. More
+explicitly, for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">k&gt;0</annotation></semantics></math></span>,
+exactly
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mrow><mi>n</mi><mo>−</mo><mn>1</mn></mrow><mrow><mi>k</mi><mo>−</mo><mn>1</mn></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\binom{n-1}{k-1}</annotation></semantics></math></span>
+of the
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mfrac linethickness="0"><mi>n</mi><mi>k</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\binom nk</annotation></semantics></math></span>
+sequences have their first coordinate equal to one. Their ratio is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">k/n</annotation></semantics></math></span>;
+at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">k=0</annotation></semantics></math></span>
+the first coordinate is necessarily zero. Thus
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mn>1</mn></msub><mo>∣</mo><mi>K</mi><mo>=</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mi>k</mi><mi>n</mi></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}_p(X_1\mid K=k)=\frac{k}{n}.
+ \label{i2-conditional-mean}</annotation></semantics></math><span id="i2-conditional-mean" class="equation-anchor"></span><span class="equation-number">(2.11)</span></span> Averaging
+over the parameter-free conditional distribution produces the
+implementable estimator
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">K/n</annotation></semantics></math></span>.
+We do not have to know
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+to calculate it.</p>
+<p>The law of total variance states
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>Var</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mo>Var</mo><mi>p</mi></msub><mo stretchy="false" form="prefix">{</mo><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mn>1</mn></msub><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>+</mo><msub><mi>𝔼</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">{</mo><msub><mo>Var</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mn>1</mn></msub><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\operatorname{Var}_p(X_1)
+ =\operatorname{Var}_p\{\mathbb{E}_p(X_1\mid K)\}
+  +\mathbb{E}_p\{\operatorname{Var}_p(X_1\mid K)\}.
+ \label{i2-total-variance}</annotation></semantics></math><span id="i2-total-variance" class="equation-anchor"></span><span class="equation-number">(2.12)</span></span> The final
+term is nonnegative, so conditioning cannot increase variance here.
+Direct calculation gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p(1-p)</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mn>1</mn></msub><annotation encoding="application/x-tex">X_1</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">p(1-p)/n</annotation></semantics></math></span>
+for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">K/n</annotation></semantics></math></span>.
+Both estimators are unbiased; the second uses all observations in this
+model. At
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>0.15</mn><mo>,</mo><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">p=0.15,n=10</annotation></semantics></math></span>,
+the variances are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.1275</mn><annotation encoding="application/x-tex">0.1275</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.01275</mn><annotation encoding="application/x-tex">0.01275</annotation></semantics></math></span>.</p>
+<figure id="i2-conditioning-figure">
+<a href="../assets/inference/ch02-conditioning.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/inference/ch02-conditioning.png" alt="Figure 2.2. The count partitions the 1,024 ordered samples into 11
+groups. Conditional averaging of
+X1X_1
+gives
+k/10k/10
+at both checked parameter values; the overlapping symbols represent an
+exact identity, not simulation agreement.">
+</a><figcaption>Figure 2.2. The count partitions the 1,024 ordered samples into 11
+groups. Conditional averaging of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mn>1</mn></msub><annotation encoding="application/x-tex">X_1</annotation></semantics></math></span>
+gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mi>/</mi><mn>10</mn></mrow><annotation encoding="application/x-tex">k/10</annotation></semantics></math></span>
+at both checked parameter values; the overlapping symbols represent an
+exact identity, not simulation agreement.</figcaption>
+<p class="figure-tools"><a href="../assets/inference/ch02-conditioning.png">Open full-size figure</a></p></figure>
+<p>Conditioning is not automatically a recipe for a statistic. For
+example,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>∣</mo><msub><mi>X</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>X</mi><mn>1</mn></msub><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>p</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}_p(K\mid X_1)=X_1+(n-1)p
+ \label{i2-nonimplementable}</annotation></semantics></math><span id="i2-nonimplementable" class="equation-anchor"></span><span class="equation-number">(2.13)</span></span> depends on
+the unknown parameter. It is a legitimate conditional expectation, but
+the displayed expression is not an estimator computable from the data
+alone. Sufficiency helps in the earlier construction precisely because
+it removes the unknown parameter from the conditional distribution.</p>
+<p>The argument establishes a comparison between two estimators under
+this model and squared-error loss, using unbiasedness to equate MSE with
+variance. It does not establish that every unbiased estimator is
+preferable to every biased one. Nor does it establish optimality for a
+clinical or operational action. Those stronger conclusions would need
+different premises.</p>
+<h2 id="construction-is-not-evaluation">2.7 Construction is not
+evaluation</h2>
+<p>The method of moments provides another route to
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">K/n</annotation></semantics></math></span>:
+equate the empirical mean with the model moment
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>p</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}_p(X_i)=p</annotation></semantics></math></span>.
+Agreement with maximum likelihood in this example is useful, but the two
+construction principles need not agree in other models. Neither
+principle eliminates the need to assess bias, variability, support,
+robustness, or the loss relevant to use.</p>
+<p>Transformations need similar care. If the target is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p(1-p)</annotation></semantics></math></span>,
+a plug-in construction gives
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\widehat p(1-\widehat p)</annotation></semantics></math></span>.
+Substituting a reasonable estimator into a nonlinear function does not
+preserve unbiasedness. In fact, the moment identities from Chapter <a href="01-models.html#i1-chapter" data-reference-type="ref" data-reference="i1-chapter">1</a> imply that its expectation
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mn>1</mn><mi>/</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">(1-1/n)p(1-p)</annotation></semantics></math></span>.
+The resulting bias is a property to understand, not a reason to discard
+the estimator before considering the evaluation criterion.</p>
+<p>The count gives us an estimate of one common event probability. If
+the question instead concerns an association after accounting for age or
+another marker, one common probability is no longer the target. The next
+chapter makes that change explicit through conditional regression: we
+specify the outcome distribution given the included predictors and
+derive the coefficient being estimated. We will then return to this
+binary experiment to compare estimators under a stated loss in
+Chapter <a href="03-decisions.html#i3-chapter" data-reference-type="ref" data-reference="i3-chapter">4</a>.</p>
+<h2 id="exercises">2.8 Exercises</h2>
+<ol class="exercises" style='--chapter:"2."'><li id="exercise-2-1"><p><strong>Maxima depend on the parameter space.</strong> For an independent Bernoulli sample of size
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">n=10</annotation></semantics></math></span>,
+use the observed-count likelihood to find the MLE when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">k=0</annotation></semantics></math></span>
+under each parameter space
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0,1]</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0,1)</annotation></semantics></math></span>.
+Then find the MLE when
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">k=2</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>0.1</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">p\in[0,0.1]</annotation></semantics></math></span>.
+Distinguish an attained maximum from a supremum and explain why solving
+a score equation is not sufficient.</p>
+</li><li id="exercise-2-2"><p><strong>Factorization on a finite sample space.</strong> On a finite sample space, suppose
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>g</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow><mi>h</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f_p(x)=g_p(T(x))h(x)</annotation></semantics></math></span>
+for nonnegative functions
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>g</mi><mi>p</mi></msub><mo>,</mo><mi>h</mi></mrow><annotation encoding="application/x-tex">g_p,h</annotation></semantics></math></span>.
+For a value
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>Pr</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>=</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\Pr_p(T=t)&gt;0</annotation></semantics></math></span>,
+derive
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>Pr</mo><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>D</mi><mo>=</mo><mi>x</mi><mo>∣</mo><mi>T</mi><mo>=</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\Pr_p(D=x\mid T=t)</annotation></semantics></math></span>.
+Explain why it does not depend on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+why the positivity condition matters, and why
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>g</mi><mi>p</mi></msub><annotation encoding="application/x-tex">g_p</annotation></semantics></math></span>
+need not itself be a probability mass function.</p>
+</li><li id="exercise-2-3"><p><strong>Sufficiency belongs to a model.</strong> Let independent
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mn>1</mn></msub><mo>∼</mo><mo>Bernoulli</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>p</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">X_1\sim\operatorname{Bernoulli}(p_1)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mn>2</mn></msub><mo>∼</mo><mo>Bernoulli</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>p</mi><mn>2</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">X_2\sim\operatorname{Bernoulli}(p_2)</annotation></semantics></math></span>,
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>p</mi><mn>1</mn></msub><mo>,</mo><msub><mi>p</mi><mn>2</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>∈</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">(p_1,p_2)\in(0,1)^2</annotation></semantics></math></span>,
+and let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><msub><mi>X</mi><mn>1</mn></msub><mo>+</mo><msub><mi>X</mi><mn>2</mn></msub></mrow><annotation encoding="application/x-tex">K=X_1+X_2</annotation></semantics></math></span>.
+Derive
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Pr</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mn>1</mn></msub><mo>=</mo><mn>1</mn><mo>,</mo><msub><mi>X</mi><mn>2</mn></msub><mo>=</mo><mn>0</mn><mo>∣</mo><mi>K</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\Pr(X_1=1,X_2=0\mid K=1)</annotation></semantics></math></span>
+and use two parameter settings to show that
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math></span>
+is not sufficient for the unrestricted pair. Contrast the
+common-probability submodel
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>1</mn></msub><mo>=</mo><msub><mi>p</mi><mn>2</mn></msub></mrow><annotation encoding="application/x-tex">p_1=p_2</annotation></semantics></math></span>.</p>
+</li><li id="exercise-2-4"><p><strong>Conditional averaging must yield an estimator.</strong> For independent identically distributed
+Bernoulli<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(p)</annotation></semantics></math></span>
+variables
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mn>1</mn></msub><mo>,</mo><mi>…</mi><mo>,</mo><msub><mi>X</mi><mi>n</mi></msub></mrow><annotation encoding="application/x-tex">X_1,\ldots,X_n</annotation></semantics></math></span>,
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>≥</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">n\ge2</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>p</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">0&lt;p&lt;1</annotation></semantics></math></span>,
+let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>X</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">K=\sum_iX_i</annotation></semantics></math></span>.
+Derive
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mn>1</mn></msub><mo>∣</mo><mi>K</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb E_p(X_1\mid K)</annotation></semantics></math></span>,
+its squared-error risk for estimating
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>,
+and its improvement over
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mn>1</mn></msub><annotation encoding="application/x-tex">X_1</annotation></semantics></math></span>.
+Also derive
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝔼</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>K</mi><mo>∣</mo><msub><mi>X</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathbb E_p(K\mid X_1)</annotation></semantics></math></span>
+and explain why it is not an implementable statistic for unknown
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="01-models.html">Previous: 1. Probability models and statistical targets</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="conditional-regression.html">Next: 3. Regression and conditional targets</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>

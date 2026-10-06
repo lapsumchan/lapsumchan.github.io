@@ -1,0 +1,945 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="Lap Sum Chan">
+<title>Notes on Survival Analysis — Chapter 6: Parametric survival regression | Lap Sum Chan</title><meta name="description" content="Explanations, derivations and self-contained R examples: Parametric survival regression.">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../teaching/assets/chapter.css"><link rel="stylesheet" href="../../teaching/assets/navigation.css"><link rel="stylesheet" href="../../teaching/assets/references.css"><script defer src="../../teaching/assets/copy-code.js"></script><script defer src="../../teaching/assets/navigation.js"></script><link rel="stylesheet" href="../../teaching/assets/interactions.css"><script defer src="../../teaching/assets/data.js"></script><script defer src="../../teaching/assets/interaction-core.js"></script><script defer src="../../teaching/assets/unit-interactions.js"></script>
+<link rel="canonical" href="https://lapsumchan.github.io/teaching/survival/08-parametric.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Notes on Survival Analysis — Chapter 6: Parametric survival regression | Lap Sum Chan">
+<meta property="og:description" content="Explanations, derivations and self-contained R examples: Parametric survival regression.">
+<meta property="og:url" content="https://lapsumchan.github.io/teaching/survival/08-parametric.html">
+<meta property="og:site_name" content="Lap Sum Chan">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "LearningResource", "name": "Notes on Survival Analysis — Chapter 6: Parametric survival regression", "author": {"@type": "Person", "name": "Lap Sum Chan"}, "isPartOf": {"@type": "Book", "name": "Notes on Survival Analysis", "author": {"@type": "Person", "name": "Lap Sum Chan"}}, "url": "https://lapsumchan.github.io/teaching/survival/08-parametric.html", "learningResourceType": "Book chapter", "inLanguage": "en"}</script>
+</head><body class="book-reader"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header container"><nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../../index.html">Home</a></li><li><a href="../../publications.html">Publications</a></li><li><a href="../../teaching.html" aria-current="page">Resources</a></li></ul></nav></header><main class="container book-layout"><aside class="book-sidebar"><details id="book-contents" class="book-contents" open><summary>Contents</summary><p class="contents-book"><a href="how-to-use.html">Notes on Survival Analysis</a></p><nav aria-label="Contents"><p class="contents-guide"><a href="how-to-use.html">About these notes</a></p><p class="contents-guide"><a href="notation.html">Notation</a></p><p class="contents-part">Part I: Events, observation, and population functions</p><ol class="contents-chapters"><li><a href="01-observation.html">1. Events, clocks, and incomplete observation</a></li><li><a href="02-functions.html">2. Survival, risk, hazard, and lifetime summaries</a></li></ol><p class="contents-part">Part II: Risk sets and nonparametric estimation</p><ol class="contents-chapters"><li><a href="03-km.html">3. Estimating survival from incomplete follow-up</a></li><li><a href="04-nelson-aalen.html">4. Nelson--Aalen estimation and counting processes</a></li></ol><p class="contents-part">Part III: Likelihood and survival regression</p><ol class="contents-chapters"><li><a href="07-likelihood.html">5. Likelihood under incomplete observation</a></li><li><a href="08-parametric.html" aria-current="page">6. Parametric survival regression</a></li><li><a href="09-cox.html">7. The Cox model: estimation and absolute risk</a></li><li><a href="10-strata-ties.html">8. Stratification and tied event times</a></li><li><a href="11-diagnostics.html">9. Diagnostics that answer model questions</a></li></ol><p class="contents-part">Part IV: Competing events</p><ol class="contents-chapters"><li><a href="15-competing-risks.html">10. Competing risks and first-event probabilities</a></li></ol><p class="contents-guide"><a href="references.html">References</a></p></nav><nav class="section-links" aria-label="Sections in this chapter"><p>In this chapter</p><ol><li><a href="#s8-regression-question">6.1 Which part of a distribution should a covariate change?</a></li><li><a href="#s8-aft">6.2 A time ratio from a distributional shift</a></li><li><a href="#s8-weibull">6.3 Weibull regression joins the two scales</a></li><li><a href="#s8-weibull-likelihood">6.4 The Weibull likelihood with censored observations</a></li><li><a href="#complete-r-example">Run the complete R example</a></li><li><a href="#s8-cohort">6.5 A synthetic cohort carried into the next chapter</a></li><li><a href="#s8-standardization">6.6 A fixed profile and a population average are different targets</a></li><li><a href="#s8-model-comparison">6.7 Compare distributional restrictions, then inspect their consequences</a></li><li><a href="#s8-piecewise">6.8 Piecewise-exponential regression makes exposure explicit</a></li><li><a href="#interpret-a-model-at-the-scale-where-it-makes-a-claim">6.9 Interpret a model at the scale where it makes a claim</a></li><li><a href="#exercises">6.10 Exercises</a></li></ol></nav></details></aside><article class="book-main" id="main-content" tabindex="-1"><p class="book-location"><a href="how-to-use.html">Notes on Survival Analysis</a><br><span class="book-byline">Lap Sum Chan &middot; Chapter 6</span></p><div class="chapter-content"><h1 id="s8-chapter">Chapter 6. Parametric survival regression</h1>
+<h2 id="s8-regression-question">6.1 Which part of a distribution should a
+covariate change?</h2>
+<p>The exponential analysis in Chapter <a href="07-likelihood.html#s7-chapter" data-reference-type="ref" data-reference="s7-chapter">5</a>
+treated all people as having one constant hazard. Biomedical populations
+rarely justify that restriction. Baseline age, a measured exposure, or a
+treatment assignment may distinguish event-time distributions; the
+hazard may also change as follow-up proceeds. Regression connects a
+specified change in characteristics to a specified change in the
+distribution. Choosing that connection is part of the scientific
+argument, before estimation begins.</p>
+<p>Our target is conditional survival
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S(t\mid z)</annotation></semantics></math></span>,
+or a contrast between two covariate profiles at a supported horizon. Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>z</mi><annotation encoding="application/x-tex">z</annotation></semantics></math></span>
+be a column vector of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+fixed baseline measurements;
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+counts predictors and excludes an intercept. An accelerated failure-time
+model shifts a distribution on the log-time scale. A
+proportional-hazards model multiplies an instantaneous event rate.
+Neither wording alone identifies a causal effect. A causal
+interpretation would additionally require an appropriate design, a
+well-defined intervention, and assumptions about confounding and
+selection. Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>z</mi><annotation encoding="application/x-tex">z</annotation></semantics></math></span>
+indexes an association in an explicitly invented cohort.</p>
+<p>We retain independent subjects and conditional independent right
+censoring,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>⊥</mo><mi>C</mi><mo>∣</mo><mi>z</mi></mrow><annotation encoding="application/x-tex">T\perp C\mid z</annotation></semantics></math></span>,
+with a parameter-distinct observation mechanism. We also assume the
+regression family correctly specifies the conditional event distribution
+and that the fitted covariate contrasts have data support. The
+likelihood remains <a href="07-likelihood.html#s7-right-likelihood" data-reference-type="eqref" data-reference="s7-right-likelihood">(5.1)</a>, now
+using subject-specific
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>f</mi><mi>i</mi></msub><annotation encoding="application/x-tex">f_i</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>i</mi></msub><annotation encoding="application/x-tex">S_i</annotation></semantics></math></span>.
+A new family changes these functions, not the observation statements.
+Exact failures and right censoring must still contribute different
+factors.</p>
+<h2 id="s8-aft">6.2 A time ratio from a distributional shift</h2>
+<p>Write an accelerated failure-time model as
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>log</mo><mi>T</mi><mo>=</mo><mi>η</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>σ</mi><mi>ε</mi><mo>,</mo><mspace width="2.0em"></mspace><mi>η</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>γ</mi><mn>0</mn></msub><mo>+</mo><msup><mi>γ</mi><mi>T</mi></msup><mi>z</mi><mo>,</mo><mspace width="1.0em"></mspace><mi>σ</mi><mo>&gt;</mo><mn>0</mn><mo>,</mo></mrow><annotation encoding="application/x-tex">\log T=\eta(z)+\sigma\varepsilon,\qquad
+ \eta(z)=\gamma_0+\gamma^Tz,\quad \sigma&gt;0,
+ \label{s8-aft-model}</annotation></semantics></math><span id="s8-aft-model" class="equation-anchor"></span><span class="equation-number">(6.1)</span></span> where the
+distribution of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ε</mi><annotation encoding="application/x-tex">\varepsilon</annotation></semantics></math></span>
+does not change with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>z</mi><annotation encoding="application/x-tex">z</annotation></semantics></math></span>.
+The symbols
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>γ</mi><annotation encoding="application/x-tex">\gamma</annotation></semantics></math></span>
+denote log-time coefficients. Later
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span>
+denotes log-hazard coefficients; keeping these distinct prevents sign
+and scale mistakes. The error need not have mean zero. Its specified
+location is absorbed into
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>γ</mi><mn>0</mn></msub><annotation encoding="application/x-tex">\gamma_0</annotation></semantics></math></span>,
+and the Weibull error used below does not have zero mean under its
+conventional parameterization.</p>
+<p>If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>T</mi><mn>0</mn></msub><annotation encoding="application/x-tex">T_0</annotation></semantics></math></span>
+has the distribution at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">z=0</annotation></semantics></math></span>,
+then
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>∣</mo><mi>z</mi></mrow><annotation encoding="application/x-tex">T\mid z</annotation></semantics></math></span>
+has the distribution of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>e</mi><mrow><msup><mi>γ</mi><mi>T</mi></msup><mi>z</mi></mrow></msup><msub><mi>T</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">e^{\gamma^Tz}T_0</annotation></semantics></math></span>.
+Consequently
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>S</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>γ</mi><mi>T</mi></msup><mi>z</mi></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>Q</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><msup><mi>γ</mi><mi>T</mi></msup><mi>z</mi></mrow></msup><msub><mi>Q</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">S(t\mid z)=S_0(te^{-\gamma^Tz}),\qquad
+ Q_p(z)=e^{\gamma^Tz}Q_p(0),
+ \label{s8-time-ratio}</annotation></semantics></math><span id="s8-time-ratio" class="equation-anchor"></span><span class="equation-number">(6.2)</span></span> for any quantile
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>Q</mi><mi>p</mi></msub><annotation encoding="application/x-tex">Q_p</annotation></semantics></math></span>
+that exists, where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p\in(0,1)</annotation></semantics></math></span>
+is a locally defined quantile probability. A one-unit increase in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>z</mi><mi>j</mi></msub><annotation encoding="application/x-tex">z_j</annotation></semantics></math></span>
+multiplies all event-time quantiles by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><msub><mi>γ</mi><mi>j</mi></msub></msup><annotation encoding="application/x-tex">e^{\gamma_j}</annotation></semantics></math></span>,
+holding other variables fixed. A positive coefficient lengthens time.
+Some conventions call
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>γ</mi><mi>j</mi></msub></mrow></msup><annotation encoding="application/x-tex">e^{-\gamma_j}</annotation></semantics></math></span>
+an acceleration factor because it multiplies the clock argument; we will
+report the time ratio
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><msub><mi>γ</mi><mi>j</mi></msub></msup><annotation encoding="application/x-tex">e^{\gamma_j}</annotation></semantics></math></span>
+explicitly rather than rely on that potentially ambiguous phrase.</p>
+<p>Differentiating the shifted survival function gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>γ</mi><mi>T</mi></msup><mi>z</mi></mrow></msup><msub><mi>λ</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>γ</mi><mi>T</mi></msup><mi>z</mi></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\lambda(t\mid z)=e^{-\gamma^Tz}\lambda_0(te^{-\gamma^Tz}).
+ \label{s8-aft-hazard}</annotation></semantics></math><span id="s8-aft-hazard" class="equation-anchor"></span><span class="equation-number">(6.3)</span></span> There is both a
+vertical multiplier and a shift in the time argument. Unless the
+baseline hazard has a special form, their combination is not a constant
+hazard ratio. For example, a lognormal time distribution yields an AFT
+model but generally nonproportional hazards. Exponentiating an AFT
+coefficient therefore produces a time ratio, not a hazard ratio.</p>
+<h2 id="s8-weibull">6.3 Weibull regression joins the two scales</h2>
+<p>Choose a minimum extreme-value error with survival
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mi>ε</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><msup><mi>e</mi><mi>u</mi></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S_\varepsilon(u)=\exp(-e^u)</annotation></semantics></math></span>
+and density
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mi>ε</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>u</mi><mo>−</mo><msup><mi>e</mi><mi>u</mi></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f_\varepsilon(u)=\exp(u-e^u)</annotation></semantics></math></span>
+for a real argument
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>u</mi><annotation encoding="application/x-tex">u</annotation></semantics></math></span>.
+Here
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>e</mi><annotation encoding="application/x-tex">e</annotation></semantics></math></span>
+is Euler’s exponential base;
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>u</mi><annotation encoding="application/x-tex">u</annotation></semantics></math></span>
+is a possible error value. Transforming <a href="#s8-aft-model" data-reference-type="eqref" data-reference="s8-aft-model">(6.1)</a> gives
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>exp</mo><mrow><mo stretchy="true" form="prefix">[</mo><mo>−</mo><msup><mrow><mo stretchy="true" form="prefix">{</mo><mfrac><mi>t</mi><msup><mi>e</mi><mrow><mi>η</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mfrac><mo stretchy="true" form="postfix">}</mo></mrow><mi>k</mi></msup><mo stretchy="true" form="postfix">]</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>k</mi><mo>=</mo><mfrac><mn>1</mn><mi>σ</mi></mfrac><mo>,</mo></mrow><annotation encoding="application/x-tex">S(t\mid z)=\exp\left[-\left\{\frac{t}{e^{\eta(z)}}\right\}^k\right],
+ \qquad k=\frac1\sigma,
+ \label{s8-weibull-survival}</annotation></semantics></math><span id="s8-weibull-survival" class="equation-anchor"></span><span class="equation-number">(6.4)</span></span> so
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mrow><mi>η</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><annotation encoding="application/x-tex">e^{\eta(z)}</annotation></semantics></math></span>
+is the Weibull scale in time units and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math></span>
+is the shape. At that scale, survival equals
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><annotation encoding="application/x-tex">e^{-1}</annotation></semantics></math></span>,
+rather than one-half. The median is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>e</mi><mrow><mi>η</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mo>log</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mn>1</mn><mi>/</mi><mi>k</mi></mrow></msup></mrow><annotation encoding="application/x-tex">e^{\eta(z)}(\log2)^{1/k}</annotation></semantics></math></span>.
+Confusing the scale with a median would give an incorrect summary even
+if every fitted coefficient were correct.</p>
+<p>The cumulative hazard and hazard follow directly:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>t</mi><mi>k</mi></msup><msup><mi>e</mi><mrow><mo>−</mo><mi>k</mi><mi>η</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><mo>,</mo><mspace width="2.0em"></mspace><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>k</mi><msup><mi>t</mi><mrow><mi>k</mi><mo>−</mo><mn>1</mn></mrow></msup><msup><mi>e</mi><mrow><mo>−</mo><mi>k</mi><mi>η</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">H(t\mid z)=t^k e^{-k\eta(z)},\qquad
+ \lambda(t\mid z)=k t^{k-1}e^{-k\eta(z)}.
+ \label{s8-weibull-hazard}</annotation></semantics></math><span id="s8-weibull-hazard" class="equation-anchor"></span><span class="equation-number">(6.5)</span></span> The reference
+cumulative hazard is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msup><mi>t</mi><mi>k</mi></msup><msup><mi>e</mi><mrow><mo>−</mo><mi>k</mi><msub><mi>γ</mi><mn>0</mn></msub></mrow></msup></mrow><annotation encoding="application/x-tex">H_0(t)=t^k e^{-k\gamma_0}</annotation></semantics></math></span>.
+Thus this family also has proportional hazards,
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>λ</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>λ</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><msup><mi>β</mi><mi>T</mi></msup><mi>z</mi></mrow></msup><mo>,</mo><mspace width="2.0em"></mspace><menclose notation="box"><mrow><mi>β</mi><mo>=</mo><mo>−</mo><mi>k</mi><mi>γ</mi><mo>=</mo><mo>−</mo><mi>γ</mi><mi>/</mi><mi>σ</mi><mi>.</mi></mrow></menclose></mrow><annotation encoding="application/x-tex">\lambda(t\mid z)=\lambda_0(t)e^{\beta^Tz},\qquad
+ \boxed{\beta=-k\gamma=-\gamma/\sigma.}
+ \label{s8-weibull-map}</annotation></semantics></math><span id="s8-weibull-map" class="equation-anchor"></span><span class="equation-number">(6.6)</span></span> A negative
+log-time coefficient gives a positive log-hazard coefficient. The hazard
+ratio for one unit of
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>z</mi><mi>j</mi></msub><annotation encoding="application/x-tex">z_j</annotation></semantics></math></span>
+is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>γ</mi><mi>j</mi></msub><mi>/</mi><mi>σ</mi></mrow></msup><annotation encoding="application/x-tex">e^{-\gamma_j/\sigma}</annotation></semantics></math></span>.
+The shape is common across profiles: allowing profile-specific shape
+would generally remove this PH interpretation. Shape
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">k=1</annotation></semantics></math></span>
+recovers exponential regression,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>&gt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">k&gt;1</annotation></semantics></math></span>
+means increasing hazards, and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">k&lt;1</annotation></semantics></math></span>
+means decreasing hazards. This monotonic shape family cannot represent
+every biomedical hazard pattern.</p>
+<h2 id="s8-weibull-likelihood">6.4 The Weibull likelihood with censored
+observations</h2>
+<p>For observed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><msub><mi>Δ</mi><mi>i</mi></msub><mo>,</mo><msub><mi>z</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(X_i,\Delta_i,z_i)</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>i</mi></msub><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">X_i&gt;0</annotation></semantics></math></span>,
+substitute <a href="#s8-weibull-hazard" data-reference-type="eqref" data-reference="s8-weibull-hazard">(6.5)</a> into
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mi>i</mi></msub><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>Δ</mi><mi>i</mi></msub></msup><msub><mi>S</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\lambda_i(X_i)^{\Delta_i}S_i(X_i)</annotation></semantics></math></span>:
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>ℓ</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>γ</mi><mn>0</mn></msub><mo>,</mo><mi>γ</mi><mo>,</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mi>i</mi></munder><mrow><mo stretchy="true" form="prefix">[</mo><msub><mi>Δ</mi><mi>i</mi></msub><mo stretchy="false" form="prefix">{</mo><mo>log</mo><mi>k</mi><mo>−</mo><mi>k</mi><msub><mi>η</mi><mi>i</mi></msub><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>k</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>log</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">}</mo><mo>−</mo><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mi>k</mi><mrow><mo stretchy="true" form="prefix">(</mo><mo>log</mo><msub><mi>X</mi><mi>i</mi></msub><mo>−</mo><msub><mi>η</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo stretchy="true" form="postfix">]</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">\ell(\gamma_0,\gamma,k)=\sum_i\left[
+ \Delta_i\{\log k-k\eta_i+(k-1)\log X_i\}
+ -\exp\{k(\log X_i-\eta_i)\}\right],
+ \label{s8-weibull-loglik}</annotation></semantics></math><span id="s8-weibull-loglik" class="equation-anchor"></span><span class="equation-number">(6.7)</span></span> where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>η</mi><mi>i</mi></msub><mo>=</mo><msub><mi>γ</mi><mn>0</mn></msub><mo>+</mo><msup><mi>γ</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\eta_i=\gamma_0+\gamma^Tz_i</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>γ</mi><annotation encoding="application/x-tex">\gamma</annotation></semantics></math></span>
+is a
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>-component
+column of slopes, and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>γ</mi><mn>0</mn></msub><annotation encoding="application/x-tex">\gamma_0</annotation></semantics></math></span>
+is the intercept. Every record contributes its cumulative hazard; only
+failures contribute the log hazard. This is the regression version of
+events and exposure, with transformed exposure depending on the shape
+and covariates.</p>
+<p>For clarity, differentiate with respect to the location coefficients
+while holding
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math></span>
+fixed. In the score and information subscripts below,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>γ</mi><annotation encoding="application/x-tex">\gamma</annotation></semantics></math></span>
+labels the full location block: the intercept and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+slopes. Thus
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>v</mi><mi>i</mi></msub><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><msubsup><mi>z</mi><mi>i</mi><mi>T</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mi>T</mi></msup></mrow><annotation encoding="application/x-tex">v_i=(1,z_i^T)^T</annotation></semantics></math></span>
+has
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>+</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">p+1</annotation></semantics></math></span>
+components. This local block notation keeps the intercept in the
+likelihood derivatives; it does not change the
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>-slope
+convention for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>γ</mi><annotation encoding="application/x-tex">\gamma</annotation></semantics></math></span>
+in the AFT model. The location score is a
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(p+1)</annotation></semantics></math></span>-column,
+its information is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>×</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>p</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">(p+1)\times(p+1)</annotation></semantics></math></span>,
+and the full location-and-shape parameter has
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>+</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">p+2</annotation></semantics></math></span>
+coordinates. If
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mi>i</mi></msub><mo>=</mo><mo>exp</mo><mo stretchy="false" form="prefix">{</mo><mi>k</mi><mrow><mo stretchy="true" form="prefix">(</mo><mo>log</mo><msub><mi>X</mi><mi>i</mi></msub><mo>−</mo><msub><mi>η</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">H_i=\exp\{k(\log X_i-\eta_i)\}</annotation></semantics></math></span>,
+then
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>U</mi><mi>γ</mi></msub><mo>=</mo><mi>k</mi><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>v</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>H</mi><mi>i</mi></msub><mo>−</mo><msub><mi>Δ</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>J</mi><mrow><mi>γ</mi><mi>γ</mi></mrow></msub><mo>=</mo><msup><mi>k</mi><mn>2</mn></msup><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>H</mi><mi>i</mi></msub><msub><mi>v</mi><mi>i</mi></msub><msubsup><mi>v</mi><mi>i</mi><mi>T</mi></msubsup><mi>.</mi></mrow><annotation encoding="application/x-tex">U_\gamma=k\sum_i v_i(H_i-\Delta_i),\qquad
+ J_{\gamma\gamma}=k^2\sum_i H_i v_iv_i^T.
+ \label{s8-weibull-score}</annotation></semantics></math><span id="s8-weibull-score" class="equation-anchor"></span><span class="equation-number">(6.8)</span></span> The full
+information also contains the shape parameter and its cross terms. Using
+only the displayed location block while pretending that estimated shape
+is known would omit uncertainty. We optimize jointly and use the full
+likelihood curvature. At the maximum, failures are balanced against
+modeled cumulative exposure in covariate-weighted score equations.</p>
+<p>To make the nuisance-shape calculation explicit, put
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>i</mi></msub><mo>=</mo><mo>log</mo><msub><mi>X</mi><mi>i</mi></msub><mo>−</mo><msub><mi>η</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">q_i=\log X_i-\eta_i</annotation></semantics></math></span>,
+so that
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mi>i</mi></msub><mo>=</mo><msup><mi>e</mi><mrow><mi>k</mi><msub><mi>q</mi><mi>i</mi></msub></mrow></msup></mrow><annotation encoding="application/x-tex">H_i=e^{kq_i}</annotation></semantics></math></span>.
+The remaining score and information blocks in the
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>γ</mi><mo>,</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(\gamma,k)</annotation></semantics></math></span>
+parameterization are
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>U</mi><mi>k</mi></msub><mo>=</mo><munder><mo>∑</mo><mi>i</mi></munder><mrow><mo stretchy="true" form="prefix">{</mo><msub><mi>Δ</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mi>/</mi><mi>k</mi><mo>+</mo><msub><mi>q</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msub><mi>q</mi><mi>i</mi></msub><msub><mi>H</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">}</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">U_k=\sum_i\left\{\Delta_i(1/k+q_i)-q_iH_i\right\}.
+ \label{s8-shape-score}</annotation></semantics></math><span id="s8-shape-score" class="equation-anchor"></span><span class="equation-number">(6.9)</span></span>
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right"><msub><mi>J</mi><mrow><mi>k</mi><mi>k</mi></mrow></msub></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><munder><mo>∑</mo><mi>i</mi></munder><mrow><mo stretchy="true" form="prefix">{</mo><msub><mi>Δ</mi><mi>i</mi></msub><mi>/</mi><msup><mi>k</mi><mn>2</mn></msup><mo>+</mo><msubsup><mi>q</mi><mi>i</mi><mn>2</mn></msubsup><msub><mi>H</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">}</mo></mrow><mo>,</mo></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right"><msub><mi>J</mi><mrow><mi>γ</mi><mi>k</mi></mrow></msub></mtd><mtd columnalign="left" style="text-align: left"><mo>=</mo><mo>−</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>v</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>H</mi><mi>i</mi></msub><mo>−</mo><msub><mi>Δ</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mi>k</mi><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>v</mi><mi>i</mi></msub><msub><mi>q</mi><mi>i</mi></msub><msub><mi>H</mi><mi>i</mi></msub><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+ J_{kk}&amp;=\sum_i\left\{\Delta_i/k^2+q_i^2H_i\right\},\\
+ J_{\gamma k}&amp;=-\sum_i v_i(H_i-\Delta_i)-k\sum_i v_iq_iH_i.
+ \end{aligned}
+ \label{s8-joint-information}</annotation></semantics></math><span id="s8-joint-information" class="equation-anchor"></span><span class="equation-number">(6.10)</span></span> The first
+term in
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>J</mi><mrow><mi>γ</mi><mi>k</mi></mrow></msub><annotation encoding="application/x-tex">J_{\gamma k}</annotation></semantics></math></span>
+vanishes at an interior maximum that solves the location score
+equations; away from that maximum it must be kept. The location
+covariance block is approximately
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>J</mi><mrow><mi>γ</mi><mi>γ</mi></mrow></msub><mo>−</mo><msub><mi>J</mi><mrow><mi>γ</mi><mi>k</mi></mrow></msub><msubsup><mi>J</mi><mrow><mi>k</mi><mi>k</mi></mrow><mrow><mo>−</mo><mn>1</mn></mrow></msubsup><msub><mi>J</mi><mrow><mi>k</mi><mi>γ</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo>−</mo><mn>1</mn></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\left(J_{\gamma\gamma}-J_{\gamma k}J_{kk}^{-1}
+ J_{k\gamma}\right)^{-1}.
+ \label{s8-profile-information}</annotation></semantics></math><span id="s8-profile-information" class="equation-anchor"></span><span class="equation-number">(6.11)</span></span> The
+subtracted term represents changes in location that can be partly
+accommodated by changing shape. This is the same nuisance-parameter
+adjustment used in likelihood inference in the inference book. It
+provides a concrete reason to use the full fitted covariance matrix.</p>
+<h3 id="from-first-principles">6.4.1 From first principles</h3>
+<p>The two computational routes use the same 600 records, covariate
+matrix, conditional survival target, and censoring likelihood.
+Section <a href="#s8-cohort" data-reference-type="ref" data-reference="s8-cohort">6.5</a> specifies how these records are
+generated; the complete R example creates <code>dat</code> before either
+fit. Reading the objective term by term connects the code to Equation <a href="#s8-weibull-loglik" data-reference-type="eqref" data-reference="s8-weibull-loglik">(6.7)</a>: a failure
+supplies log hazard, and every record supplies negative cumulative
+hazard.</p>
+<section class="run-example" aria-labelledby="complete-r-example"><h2 id="complete-r-example">Run the complete R example</h2><p>Dependencies: base R, survival. This complete block includes the data, setup and calculations. Run it in a fresh R session. Short code excerpts above explain individual steps; this block supplies their shared setup. Figures and tables are written to a temporary directory.</p><details class="complete-example"><summary>Complete R example</summary><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"># Complete R example. Synthetic data; no external files are required.
+local({
+  previous.directory &lt;- getwd()
+  example.directory &lt;- tempfile("biomedical-example-")
+  dir.create(example.directory)
+  setwd(example.directory)
+  on.exit(setwd(previous.directory))
+  dir.create("generated",showWarnings=FALSE)
+# Synthetic baseline-covariate survival cohort.
+options(digits=10)
+library(survival)
+dir.create("results",showWarnings=FALSE); dir.create("figures",showWarnings=FALSE)
+set.seed(675408)
+n &lt;- 600L
+z &lt;- rbinom(n,1,.45); age &lt;- runif(n,35,70); age10 &lt;- (age-50)/10
+shape.true &lt;- 1.6
+eta.true &lt;- log(9) - .35*z - .20*age10
+T &lt;- exp(eta.true)*(-log(runif(n)))^(1/shape.true)
+C &lt;- pmin(rexp(n,.035),10)
+dat &lt;- data.frame(id=seq_len(n),z=z,age=age,age10=age10,
+ time=pmin(T,C),status=as.integer(T&lt;=C),event.time=T,censor.time=C)
+write.csv(dat,"results/ch08-cohort.csv",row.names=FALSE)
+Z &lt;- model.matrix(~z+age10,data=dat)
+# Weibull AFT: log(T)=eta+sigma*epsilon; S_epsilon(e)=exp(-exp(e)).
+# Last parameter is log(sigma), so scale remains positive.
+weibull.loglik &lt;- function(par) {
+  eta &lt;- drop(Z %*% par[1:3]); sigma &lt;- exp(par[4]); k &lt;- 1/sigma
+  q &lt;- k*(log(dat$time)-eta)
+  sum(dat$status*(log(k)-k*eta+(k-1)*log(dat$time))-exp(q))
+}
+weib &lt;- survreg(Surv(time,status)~z+age10,data=dat,dist="weibull")
+expon &lt;- survreg(Surv(time,status)~z+age10,data=dat,dist="exponential")
+lnorm &lt;- survreg(Surv(time,status)~z+age10,data=dat,dist="lognormal")
+llogis &lt;- survreg(Surv(time,status)~z+age10,data=dat,dist="loglogistic")
+initial &lt;- c(log(median(dat$time)),0,0,0)
+manual &lt;- optim(initial,function(p)-weibull.loglik(p),method="BFGS",
+ hessian=TRUE,control=list(reltol=1e-12,maxit=1000))
+package.par &lt;- c(coef(weib),log(weib$scale))
+# Both routes maximize the same censored likelihood in identical coordinates.
+comparison &lt;- data.frame(
+ quantity=c("Intercept gamma0","Group gammaZ","Age gammaA","Log error scale",
+            "Weibull shape","Maximized log likelihood"),
+ first.principles=c(manual$par,exp(-manual$par[4]),weibull.loglik(manual$par)),
+ standard.workflow=c(package.par,1/weib$scale,as.numeric(logLik(weib))))
+write.csv(comparison,"results/ch08-computational-routes.csv",row.names=FALSE)
+writeLines(c("\\begin{tabular}{lrr}\\toprule",
+ "Quantity &amp; Manual optimizer &amp; \\texttt{survreg}\\\\\\midrule",
+ vapply(seq_len(nrow(comparison)),function(i) sprintf("%s &amp; %.6f &amp; %.6f\\\\",
+  c("Intercept $\\gamma_0$","Group $\\gamma_Z$","Age $\\gamma_A$","Log error scale",
+    "Weibull shape","Maximized log likelihood")[i],comparison$first.principles[i],comparison$standard.workflow[i]),""),
+ "\\bottomrule\\end{tabular}"),"results/ch08-computational-routes.tex")
+write.csv(data.frame(package=c("R","survival"),
+ version=c(as.character(getRversion()),as.character(packageVersion("survival")))),
+ "results/ch08-package-versions.csv",row.names=FALSE)
+stopifnot(manual$convergence==0,
+ max(abs(manual$par-package.par))&lt;2e-5,
+ abs(weibull.loglik(package.par)-as.numeric(logLik(weib)))&lt;1e-8)
+# Central finite differences check a near-zero score at the fitted maximum.
+eps &lt;- 1e-5
+num.score &lt;- sapply(seq_along(package.par),function(j) {
+ up&lt;-dn&lt;-package.par; up[j]&lt;-up[j]+eps; dn[j]&lt;-dn[j]-eps
+ (weibull.loglik(up)-weibull.loglik(dn))/(2*eps)
+})
+stopifnot(max(abs(num.score))&lt;.001)
+# The numerical Hessian and package covariance use gamma and log(sigma).
+manual.covariance &lt;- solve(manual$hessian)
+stopifnot(max(abs(manual.covariance-vcov(weib))) &lt; 2e-5)
+# survreg type="response" is exp(eta), not the median.
+stopifnot(max(abs(predict(weib,type="response")-
+                 exp(drop(Z%*%coef(weib)))))&lt;1e-7)
+coef.tab &lt;- data.frame(term=c("Intercept","Group z","Age per 10 years"),
+ true.aft=c(log(9),-.35,-.20),aft=coef(weib),
+ aft.se=sqrt(diag(vcov(weib)))[1:3],time.ratio=exp(coef(weib)),
+ ph=-coef(weib)/weib$scale,hazard.ratio=exp(-coef(weib)/weib$scale))
+write.csv(coef.tab,"results/ch08-coefficients.csv",row.names=FALSE)
+models &lt;- list(Exponential=expon,Weibull=weib,Lognormal=lnorm,`Log-logistic`=llogis)
+model.tab &lt;- data.frame(model=names(models),loglik=sapply(models,function(f)as.numeric(logLik(f))),
+ parameters=sapply(models,function(f)attr(logLik(f),"df")),aic=sapply(models,AIC))
+write.csv(model.tab,"results/ch08-model-comparison.csv",row.names=FALSE)
+lr &lt;- 2*(as.numeric(logLik(weib))-as.numeric(logLik(expon)))
+shape.hat &lt;- 1/weib$scale
+# Compare probability calculations with survreg's quantile interface.
+profiles &lt;- data.frame(z=c(0,1),age10=0)
+eta &lt;- drop(cbind(1,profiles$z,profiles$age10)%*%coef(weib))
+medians &lt;- exp(eta)*log(2)^weib$scale
+stopifnot(max(abs(medians-predict(weib,newdata=profiles,type="quantile",p=.5)))&lt;1e-7)
+predictions &lt;- do.call(rbind,lapply(seq_len(nrow(profiles)),function(i) {
+ time &lt;- seq(0,10,length.out=201)
+ H &lt;- (time/exp(eta[i]))^shape.hat
+ data.frame(z=profiles$z[i],age=50,time=time,cumulative.hazard=H,
+ survival=exp(-H),risk=-expm1(-H),median=medians[i])
+}))
+write.csv(predictions,"results/ch08-predictions.csv",row.names=FALSE)
+# Piecewise-exponential first-event likelihood uses exposure until min(T,C).
+breaks &lt;- c(0,2,4,6,8,10)
+split &lt;- do.call(rbind,lapply(seq_len(n),function(i) {
+ W &lt;- pmax(pmin(dat$time[i],tail(breaks,-1))-head(breaks,-1),0)
+ event &lt;- dat$status[i]*(dat$time[i]&gt;head(breaks,-1) &amp; dat$time[i]&lt;=tail(breaks,-1))
+ keep &lt;- W&gt;0
+ data.frame(id=i,interval=factor(seq_len(length(W))[keep],levels=1:5),
+  exposure=W[keep],event=as.integer(event[keep]),z=dat$z[i],age10=dat$age10[i])
+}))
+stopifnot(abs(sum(split$exposure)-sum(dat$time))&lt;1e-10,
+ sum(split$event)==sum(dat$status))
+pwe &lt;- glm(event~interval+z+age10+offset(log(exposure)),data=split,family=poisson())
+write.csv(split,"results/ch08-split-cohort.csv",row.names=FALSE)
+write.csv(data.frame(term=names(coef(pwe)),coefficient=coef(pwe),
+ se=sqrt(diag(vcov(pwe)))),"results/ch08-pwe-coefficients.csv",row.names=FALSE)
+# Verify Poisson and first-event log-likelihoods differ only by data terms.
+log.h &lt;- predict(pwe,type="link")-log(split$exposure)
+pwe.event.ll &lt;- sum(split$event*log.h-split$exposure*exp(log.h))
+constant &lt;- sum(split$event*log(split$exposure)-lgamma(split$event+1))
+stopifnot(abs(as.numeric(logLik(pwe))-(pwe.event.ll+constant))&lt;1e-8)
+# Baseline-population standardization uses the same age distribution for both profiles.
+standardized &lt;- sapply(0:1,function(zz) {
+ ee&lt;-coef(weib)[1]+coef(weib)[2]*zz+coef(weib)[3]*dat$age10
+ mean(-expm1(-(5/exp(ee))^shape.hat))
+})
+mean.age.eta &lt;- coef(weib)[1]+coef(weib)[2]*(0:1)+coef(weib)[3]*mean(dat$age10)
+mean.age.risk &lt;- -expm1(-(5/exp(mean.age.eta))^shape.hat)
+write.csv(data.frame(z=0:1,standardized.risk5=standardized,
+ risk5.at.mean.age=mean.age.risk,mean.age=mean(dat$age)),
+ "results/ch08-standardization.csv",row.names=FALSE)
+# Cox-Snell transformation uses fitted cumulative hazard and retains status.
+eta.dat &lt;- drop(Z%*%coef(weib))
+resid.cs &lt;- (dat$time/exp(eta.dat))^shape.hat
+resfit &lt;- survfit(Surv(resid.cs,dat$status)~1,conf.type="none")
+write.csv(data.frame(residual=resfit$time,survival=resfit$surv,nrisk=resfit$n.risk,
+ events=resfit$n.event),"results/ch08-cox-snell.csv",row.names=FALSE)
+draw.fit &lt;- function() {
+ plot(0,0,type="n",xlim=c(0,10),ylim=c(0,1),xlab="Months since baseline",
+      ylab="Fitted survival, age 50")
+ for(i in 1:2){ss&lt;-predictions[predictions$z==i-1,];
+  lines(ss$time,ss$survival,col=c("#002D72","#5A5A5A")[i],lty=i,lwd=2)}
+ legend("topright",c("z = 0","z = 1"),col=c("#002D72","#5A5A5A"),
+ lty=1:2,lwd=2,bty="n")
+}
+cairo_pdf("figures/ch08-regression.pdf",7,4.5);draw.fit();dev.off()
+png("figures/ch08-regression.png",1400,900,res=200);draw.fit();dev.off()
+draw.diag &lt;- function(){
+ plot(resfit$time,-log(resfit$surv),type="s",xlim=c(0,2.5),ylim=c(0,2.5),
+ xlab="Fitted cumulative-hazard residual",ylab="Estimated cumulative hazard of residual",
+ col="#002D72",lwd=2);abline(0,1,lty=2,col="gray40")
+}
+cairo_pdf("figures/ch08-residuals.pdf",7,4.5);draw.diag();dev.off()
+png("figures/ch08-residuals.png",1400,900,res=200);draw.diag();dev.off()
+summary &lt;- data.frame(quantity=c("n","events","censored","observed.person.months",
+ "scale","shape","lr.exponential","lr.p.value","median.z0.age50","median.z1.age50",
+ "risk5.z0.age50","risk5.z1.age50","pwe.loglik","manual.max.abs.par.difference"),
+ value=c(n,sum(dat$status),sum(dat$status==0),sum(dat$time),weib$scale,shape.hat,
+ lr,pchisq(lr,1,lower.tail=FALSE),medians,
+ -expm1(-(5/exp(eta))^shape.hat),pwe.event.ll,max(abs(manual$par-package.par))))
+write.csv(summary,"results/ch08-summary.csv",row.names=FALSE)
+# Small output tables become part of both web and PDF from a single source.
+lines &lt;- c("\\begin{tabular}{lrrrr}\\toprule",
+ "Term &amp; AFT coefficient &amp; SE &amp; Time ratio &amp; Hazard ratio\\\\\\midrule",
+ sapply(2:nrow(coef.tab),function(i)sprintf("%s &amp; %.4f &amp; %.4f &amp; %.4f &amp; %.4f\\\\",
+ coef.tab$term[i],coef.tab$aft[i],coef.tab$aft.se[i],coef.tab$time.ratio[i],coef.tab$hazard.ratio[i])),
+ "\\bottomrule\\end{tabular}")
+writeLines(lines,"results/ch08-coefficient-table.tex")
+lines &lt;- c("\\begin{tabular}{lrrr}\\toprule","Model &amp; Log likelihood &amp; Parameters &amp; AIC\\\\\\midrule",
+ sapply(seq_len(nrow(model.tab)),function(i)sprintf("%s &amp; %.3f &amp; %d &amp; %.3f\\\\",
+ model.tab$model[i],model.tab$loglik[i],model.tab$parameters[i],model.tab$aic[i])),
+ "\\bottomrule\\end{tabular}")
+writeLines(lines,"results/ch08-model-table.tex")
+cat("Synthetic cohort: seed 675408, n =",n," events =",sum(dat$status),"\n")
+print(coef.tab);print(model.tab);print(summary);print(comparison)
+# Weibull misspecification example: a new fit to lognormal times.
+set.seed(675409)
+ext.z &lt;- rbinom(n,1,.45);ext.age &lt;- runif(n,35,70);ext.age10 &lt;- (ext.age-50)/10
+ext.eta &lt;- log(9)-.35*ext.z-.20*ext.age10
+ext.T &lt;- exp(ext.eta+.625*rnorm(n));ext.C &lt;- pmin(rexp(n,.035),10)
+ext &lt;- data.frame(z=ext.z,age10=ext.age10,time=pmin(ext.T,ext.C),status=as.integer(ext.T&lt;=ext.C))
+ext.fit &lt;- survreg(Surv(time,status)~z+age10,data=ext,dist="weibull")
+ext.lnorm &lt;- survreg(Surv(time,status)~z+age10,data=ext,dist="lognormal")
+ext.ref &lt;- predict(ext.fit,newdata=profiles,type="lp")
+ext.fit.risk5 &lt;- -expm1(-(5/exp(ext.ref))^(1/ext.fit$scale))
+ext.true.risk5 &lt;- pnorm((log(5)-(log(9)-.35*c(0,1)))/.625)
+write.csv(data.frame(z=c(0,1),true.lognormal.risk5=ext.true.risk5,
+ weibull.fitted.risk5=ext.fit.risk5,events=sum(ext$status)),
+ "results/ch08-exercise-extension.csv",row.names=FALSE)
+write.csv(data.frame(model=c("Weibull","Lognormal"),aic=c(AIC(ext.fit),AIC(ext.lnorm))),
+ "results/ch08-exercise-aic.csv",row.names=FALSE)
+ext.resid &lt;- (ext$time/exp(predict(ext.fit,type="lp")))^(1/ext.fit$scale)
+ext.resfit &lt;- survfit(Surv(ext.resid,ext$status)~1,conf.type="none")
+write.csv(data.frame(residual=ext.resfit$time,survival=ext.resfit$surv,
+ nrisk=ext.resfit$n.risk,events=ext.resfit$n.event),
+ "results/ch08-exercise-residuals.csv",row.names=FALSE)
+capture.output(sessionInfo(),file="results/ch08-sessionInfo.txt")
+
+
+  cat("\nSelected numerical results\n")
+  for (candidate in c("reader", "summary", "summary.mc", "perf", "comparison", "route.comparison", "test", "tab", "exact", "workflow.ci", "coef.tab", "evaluation.table")) {
+    if (exists(candidate, inherits=FALSE)) {
+      value &lt;- get(candidate, inherits=FALSE)
+      if (is.data.frame(value) || is.matrix(value)) { cat(candidate, "\n"); print(utils::head(value,8)) }
+    }
+  }
+  cat("R", as.character(getRversion()), "\n")
+})
+</code></pre></div></details></section><p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb1" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>Z <span class="ot">&lt;-</span> <span class="fu">model.matrix</span>(<span class="sc">~</span> z <span class="sc">+</span> age10, <span class="at">data=</span>dat)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>weibull.loglik <span class="ot">&lt;-</span> <span class="cf">function</span>(par) {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  eta <span class="ot">&lt;-</span> <span class="fu">drop</span>(Z <span class="sc">%*%</span> par[<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>])</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  sigma <span class="ot">&lt;-</span> <span class="fu">exp</span>(par[<span class="dv">4</span>])</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  k <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">/</span>sigma</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  q <span class="ot">&lt;-</span> k<span class="sc">*</span>(<span class="fu">log</span>(dat<span class="sc">$</span>time)<span class="sc">-</span>eta)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(dat<span class="sc">$</span>status<span class="sc">*</span>(<span class="fu">log</span>(k)<span class="sc">-</span>k<span class="sc">*</span>eta<span class="sc">+</span>(k<span class="dv">-1</span>)<span class="sc">*</span><span class="fu">log</span>(dat<span class="sc">$</span>time)) <span class="sc">-</span> <span class="fu">exp</span>(q))</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>manual <span class="ot">&lt;-</span> <span class="fu">optim</span>(<span class="fu">c</span>(<span class="fu">log</span>(<span class="fu">median</span>(dat<span class="sc">$</span>time)),<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>),</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">function</span>(par) <span class="sc">-</span><span class="fu">weibull.loglik</span>(par), <span class="at">method=</span><span class="st">"BFGS"</span>,</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">hessian=</span><span class="cn">TRUE</span>, <span class="at">control=</span><span class="fu">list</span>(<span class="at">reltol=</span><span class="fl">1e-12</span>, <span class="at">maxit=</span><span class="dv">1000</span>))</span></code></pre></div>
+<p>The R object <code>Z</code> has one row per person and columns for
+the intercept, group, and centered age. It is a design matrix, whereas
+the scalar
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math></span>
+in the cohort-generating description denotes group membership. The
+fourth coordinate is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>log</mo><mi>σ</mi></mrow><annotation encoding="application/x-tex">\log\sigma</annotation></semantics></math></span>,
+which keeps scale positive. Check convergence and the score before
+interpreting the inverse Hessian as an approximate covariance. That
+inverse concerns all four jointly estimated coordinates, including
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>log</mo><mi>σ</mi></mrow><annotation encoding="application/x-tex">\log\sigma</annotation></semantics></math></span>;
+the upper location block therefore includes nuisance-scale
+uncertainty.</p>
+<h3 id="standard-r-workflow">6.4.2 Standard R workflow</h3>
+<p><code>survival::survreg()</code> fits this censored location–scale
+model using its Weibull distribution option <span class="citation" data-cites="R-survival-survreg R-survival-survreg-distributions"><a class="collection-citation" href="references.html#ref-R-survival-survreg" role="doc-biblioref" aria-label="Reference 4">[4]</a>, <a class="collection-citation" href="references.html#ref-R-survival-survreg-distributions" role="doc-biblioref" aria-label="Reference 5">[5]</a></span>.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb2" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>weib <span class="ot">&lt;-</span> survival<span class="sc">::</span><span class="fu">survreg</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  survival<span class="sc">::</span><span class="fu">Surv</span>(time,status) <span class="sc">~</span> z <span class="sc">+</span> age10,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data=</span>dat, <span class="at">dist=</span><span class="st">"weibull"</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>gamma <span class="ot">&lt;-</span> <span class="fu">coef</span>(weib)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>sigma <span class="ot">&lt;-</span> weib<span class="sc">$</span>scale</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>shape <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">/</span>sigma</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>hazard.ratio <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="sc">-</span>gamma[<span class="sc">-</span><span class="dv">1</span>]<span class="sc">/</span>sigma)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>package.par <span class="ot">&lt;-</span> <span class="fu">c</span>(gamma, <span class="fu">log</span>(sigma))</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>profiles <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">z=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>), <span class="at">age10=</span><span class="dv">0</span>)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>median.time <span class="ot">&lt;-</span> <span class="fu">predict</span>(weib, <span class="at">newdata=</span>profiles,</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>                       <span class="at">type=</span><span class="st">"quantile"</span>, <span class="at">p=</span>.<span class="dv">5</span>)</span></code></pre></div>
+<p>The reported <code>scale</code> is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>σ</mi><mo>=</mo><mn>1</mn><mi>/</mi><mi>k</mi></mrow><annotation encoding="application/x-tex">\sigma=1/k</annotation></semantics></math></span>,
+not the time scale
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mi>η</mi></msup><annotation encoding="application/x-tex">e^\eta</annotation></semantics></math></span>
+used by <code>rweibull()</code>. The coefficients are log-time
+coefficients; the transformation to log hazards uses both their sign and
+the fitted scale. Here <code>predict(weib, type="response")</code>
+returns
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mover><mi>η</mi><mo accent="true">̂</mo></mover></msup><annotation encoding="application/x-tex">e^{\widehat\eta}</annotation></semantics></math></span>,
+which is not the Weibull median or mean. For a median, use
+<code>predict(weib, newdata=profiles, type="quantile", p=.5)</code> or
+the formula
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>e</mi><mover><mi>η</mi><mo accent="true">̂</mo></mover></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mo>log</mo><mn>2</mn><mo stretchy="true" form="postfix">)</mo></mrow><mover><mi>σ</mi><mo accent="true">̂</mo></mover></msup></mrow><annotation encoding="application/x-tex">e^{\widehat\eta}(\log2)^{\widehat\sigma}</annotation></semantics></math></span>.</p>
+<div id="s8-computational-routes">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 6.1. Two implementations of the same observed-data likelihood. Both
+use
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>γ</mi><mn>0</mn></msub><mo>,</mo><msub><mi>γ</mi><mi>Z</mi></msub><mo>,</mo><msub><mi>γ</mi><mi>A</mi></msub><mo>,</mo><mo>log</mo><mi>σ</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(\gamma_0,\gamma_Z,\gamma_A,\log\sigma)</annotation></semantics></math></span>
+as the fitted coordinates; shape is transformed after fitting.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Quantity</th>
+<th style="text-align: right;">Manual optimizer</th>
+<th style="text-align: right;"><code>survreg</code></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Intercept
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>γ</mi><mn>0</mn></msub><annotation encoding="application/x-tex">\gamma_0</annotation></semantics></math></span></td>
+<td style="text-align: right;">2.244996</td>
+<td style="text-align: right;">2.244995</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Group
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>γ</mi><mi>Z</mi></msub><annotation encoding="application/x-tex">\gamma_Z</annotation></semantics></math></span></td>
+<td style="text-align: right;">-0.361879</td>
+<td style="text-align: right;">-0.361879</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Age
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>γ</mi><mi>A</mi></msub><annotation encoding="application/x-tex">\gamma_A</annotation></semantics></math></span></td>
+<td style="text-align: right;">-0.185740</td>
+<td style="text-align: right;">-0.185738</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Log error scale</td>
+<td style="text-align: right;">-0.369882</td>
+<td style="text-align: right;">-0.369883</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Weibull shape</td>
+<td style="text-align: right;">1.447564</td>
+<td style="text-align: right;">1.447565</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Maximized log likelihood</td>
+<td style="text-align: right;">-1139.917137</td>
+<td style="text-align: right;">-1139.917137</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>The small coefficient differences in Table <a href="#s8-computational-routes" data-reference-type="ref" data-reference="s8-computational-routes">6.1</a> come from numerical
+optimization, not from a different estimand. Both routes reach the same
+log likelihood to the displayed precision. The complete R example also
+checks their scores, covariance matrices, and median predictions. A
+matching likelihood value alone would not detect a mislabeled
+coefficient or an incorrect interpretation of a software parameter named
+scale.</p>
+<h2 id="s8-cohort">6.5 A synthetic cohort carried into the next chapter</h2>
+<p>We now create a new synthetic cohort of 600 independent participants
+with seed 675408. It is not an enlargement of the twelve-person
+recurrence cohort. Its endpoint is a single first event, with time
+measured in months; we do not assign a specific clinical diagnosis to
+the generated events. The baseline group indicator is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>∼</mo><mo>Bernoulli</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.45</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">Z\sim\operatorname{Bernoulli}(0.45)</annotation></semantics></math></span>,
+age is uniform from 35 to 70 years, and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mrow><mi mathvariant="normal">a</mi><mi mathvariant="normal">g</mi><mi mathvariant="normal">e</mi></mrow><mo>−</mo><mn>50</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mn>10</mn></mrow><annotation encoding="application/x-tex">A=(\mathrm{age}-50)/10</annotation></semantics></math></span>.
+Event times follow a Weibull AFT model with
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>η</mi><mo>=</mo><mo>log</mo><mn>9</mn><mo>−</mo><mn>0.35</mn><mi>Z</mi><mo>−</mo><mn>0.20</mn><mi>A</mi><mo>,</mo><mspace width="2.0em"></mspace><mi>k</mi><mo>=</mo><mn>1.6</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\eta=\log9-0.35Z-0.20A,\qquad k=1.6.
+ \label{s8-generating-model}</annotation></semantics></math><span id="s8-generating-model" class="equation-anchor"></span><span class="equation-number">(6.12)</span></span> Generate
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><msup><mi>e</mi><mi>η</mi></msup><mo stretchy="false" form="prefix">{</mo><mo>−</mo><mo>log</mo><mi>U</mi><msup><mo stretchy="false" form="postfix">}</mo><mrow><mn>1</mn><mi>/</mi><mi>k</mi></mrow></msup></mrow><annotation encoding="application/x-tex">T=e^\eta\{-\log U\}^{1/k}</annotation></semantics></math></span>
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>U</mi><annotation encoding="application/x-tex">U</annotation></semantics></math></span>
+uniform on
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0,1)</annotation></semantics></math></span>.
+Random censoring has rate 0.035 per month, independently of baseline
+measurements and event times; follow-up closes at ten months. Observed
+records are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>,</mo><mi>C</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">X=\min(T,C)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><mo>=</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>T</mi><mo>≤</mo><mi>C</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\Delta=\mathbf{1}\{T\leq C\}</annotation></semantics></math></span>.
+This construction supplies both conditional and marginal independent
+censoring. In a real cohort those properties require a design argument,
+not a simulator.</p>
+<p>The executed cohort has 385 observed events, 215 censoring records,
+and 3135.0382 person-months. The generating log-hazard coefficients are
+0.56 for group and 0.32 per ten years of age. We know them because these
+data are synthetic. Chapter <a href="09-cox.html#s9-chapter" data-reference-type="ref" data-reference="s9-chapter">7</a>
+fits Cox regression to these exact same 600 records, so the comparison
+changes the model rather than the participants or their outcomes.</p>
+<div id="s8-coefficients">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 6.2. Executed Weibull fit. Time ratios and hazard ratios refer to
+slope contrasts, holding the other covariate fixed. The fitted AFT
+intercept is 2.244995 and the fitted error scale is 0.690815.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Term</th>
+<th style="text-align: right;">AFT coefficient</th>
+<th style="text-align: right;">SE</th>
+<th style="text-align: right;">Time ratio</th>
+<th style="text-align: right;">Hazard ratio</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Group z</td>
+<td style="text-align: right;">-0.3619</td>
+<td style="text-align: right;">0.0710</td>
+<td style="text-align: right;">0.6964</td>
+<td style="text-align: right;">1.6885</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Age per 10 years</td>
+<td style="text-align: right;">-0.1857</td>
+<td style="text-align: right;">0.0352</td>
+<td style="text-align: right;">0.8305</td>
+<td style="text-align: right;">1.3085</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>The fitted shape is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1.447565</mn><annotation encoding="application/x-tex">1.447565</annotation></semantics></math></span>,
+compared with the generating shape 1.6. The group time ratio is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.696367</mn><annotation encoding="application/x-tex">0.696367</annotation></semantics></math></span>
+and hazard ratio is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1.688505</mn><annotation encoding="application/x-tex">1.688505</annotation></semantics></math></span>.
+At age 50, the fitted medians are 7.32873 months for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">Z=0</annotation></semantics></math></span>
+and 5.10348 for
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">Z=1</annotation></semantics></math></span>.
+Their ratio agrees with the group time ratio. Five-month risks are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.328684</mn><annotation encoding="application/x-tex">0.328684</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.489770</mn><annotation encoding="application/x-tex">0.489770</annotation></semantics></math></span>.
+The hazard ratio is neither their risk ratio nor their difference. It
+describes an instantaneous relative rate among people still event-free,
+while the risk accumulates events over five months.</p>
+<figure id="s8-regression-figure">
+<a href="../assets/survival/ch08-regression.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch08-regression.png" alt="Figure 6.1. Fitted conditional survival for two baseline groups at age
+50. The curves use one common fitted Weibull shape. The display stops at
+the administrative ten-month horizon rather than treating later
+predictions as observed follow-up.">
+</a><figcaption>Figure 6.1. Fitted conditional survival for two baseline groups at age
+50. The curves use one common fitted Weibull shape. The display stops at
+the administrative ten-month horizon rather than treating later
+predictions as observed follow-up.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch08-regression.png">Open full-size figure</a></p></figure>
+<h2 id="s8-standardization">6.6 A fixed profile and a population average are
+different targets</h2>
+<p>The curves at age 50 answer a conditional profile question. Suppose
+instead we want average five-month event risk in a baseline population
+having the age distribution of our 600 participants, evaluated
+separately at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">Z=0</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">Z=1</annotation></semantics></math></span>.
+A descriptive model-based standardization is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mover><mi>F</mi><mo accent="true">̂</mo></mover><mi>z</mi><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">d</mi></mrow></msubsup><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mn>1</mn><mi>n</mi></mfrac><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><mrow><mo stretchy="true" form="prefix">[</mo><mn>1</mn><mo>−</mo><mo>exp</mo><mrow><mo stretchy="true" form="prefix">{</mo><mo>−</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mi>/</mi><msup><mi>e</mi><mrow><msub><mover><mi>γ</mi><mo accent="true">̂</mo></mover><mn>0</mn></msub><mo>+</mo><msub><mover><mi>γ</mi><mo accent="true">̂</mo></mover><mi>Z</mi></msub><mi>z</mi><mo>+</mo><msub><mover><mi>γ</mi><mo accent="true">̂</mo></mover><mi>A</mi></msub><msub><mi>A</mi><mi>i</mi></msub></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow><mover><mi>k</mi><mo accent="true">̂</mo></mover></msup><mo stretchy="true" form="postfix">}</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat F_z^{\mathrm{std}}(5)=\frac1n\sum_{i=1}^n
+ \left[1-\exp\left\{-\left(5/e^{\widehat\gamma_0+
+ \widehat\gamma_Zz+\widehat\gamma_A A_i}\right)^{\widehat k}\right\}\right].
+ \label{s8-standardized-risk}</annotation></semantics></math><span id="s8-standardized-risk" class="equation-anchor"></span><span class="equation-number">(6.13)</span></span> The
+weights describe the baseline population, not the selected people still
+at risk at month five. Using the same age distribution for both groups
+separates their model contrast from a change in the age mixture. It does
+not, by itself, identify a causal group intervention.</p>
+<p>The executed standardized risks are 0.351676 and 0.515185. Evaluating
+one prediction at the sample mean age, 52.3622 years, instead gives
+0.345999 and 0.511794. Averaging a nonlinear probability function is
+generally not the same as evaluating it at the average input. These
+differences happen to be modest here; their size and sign depend on the
+function and population. Neither calculation should be labeled the
+age-50 profile shown above.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb3" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>z.fixed <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>eta <span class="ot">&lt;-</span> <span class="fu">coef</span>(weib)[<span class="dv">1</span>] <span class="sc">+</span> <span class="fu">coef</span>(weib)[<span class="dv">2</span>]<span class="sc">*</span>z.fixed <span class="sc">+</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>       <span class="fu">coef</span>(weib)[<span class="dv">3</span>]<span class="sc">*</span>dat<span class="sc">$</span>age10</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>average.risk <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="sc">-</span><span class="fu">expm1</span>(<span class="sc">-</span>(<span class="dv">5</span><span class="sc">/</span><span class="fu">exp</span>(eta))<span class="sc">^</span>(<span class="dv">1</span><span class="sc">/</span>weib<span class="sc">$</span>scale)))</span></code></pre></div>
+<p>The code makes the statistical target visible: hold group fixed,
+retain each baseline age, calculate a conditional probability, and
+average over the specified empirical distribution. For another target
+population, its own baseline weights and support would be needed. Model
+adequacy in one cohort does not establish transport to a population with
+a different event process or missing covariate range. Uncertainty in
+fitted coefficients and in a sampled target-population distribution also
+remains; the average of point predictions is not an uncertainty
+calculation.</p>
+<p>We can now name the target of each calculation: survival for one
+covariate profile, an average for an observed group, or an average
+standardized to a specified baseline population. Keeping these labels
+attached to the results prevents a correct computation from being
+interpreted as a different population quantity.</p>
+<h2 id="s8-model-comparison">6.7 Compare distributional restrictions, then
+inspect their consequences</h2>
+<p>The same observed-data framework permits lognormal and log-logistic
+AFT models. A standard normal error produces lognormal times. A standard
+logistic error produces log-logistic times, whose survival is
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mrow><mo stretchy="true" form="prefix">[</mo><mn>1</mn><mo>+</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mi>/</mi><msup><mi>e</mi><mi>η</mi></msup><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mn>1</mn><mi>/</mi><mi>σ</mi></mrow></msup><mo stretchy="true" form="postfix">]</mo></mrow><mrow><mo>−</mo><mn>1</mn></mrow></msup><annotation encoding="application/x-tex">[1+(t/e^\eta)^{1/\sigma}]^{-1}</annotation></semantics></math></span>.
+Both preserve the time-ratio interpretation, but neither inherits the
+Weibull PH coefficient mapping. Comparing these models asks which shapes
+represent the observed conditional distribution adequately; it does not
+compare different endpoints.</p>
+<div id="s8-model-table">
+<div class="table-scroll" tabindex="0" aria-label="Data table"><table>
+<caption>Table 6.3. Executed likelihood comparison for the same 600 records. AIC
+equals minus twice the maximized log likelihood plus twice the number of
+estimated parameters. Each model uses the same two baseline
+covariates.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Model</th>
+<th style="text-align: right;">Log likelihood</th>
+<th style="text-align: right;">Parameters</th>
+<th style="text-align: right;">AIC</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Exponential</td>
+<td style="text-align: right;">-1172.462</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">2350.923</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Weibull</td>
+<td style="text-align: right;">-1139.917</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">2287.834</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Lognormal</td>
+<td style="text-align: right;">-1142.754</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">2293.507</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Log-logistic</td>
+<td style="text-align: right;">-1142.877</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">2293.754</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<p>Weibull has the smallest AIC among these four candidates in this
+sample. That is consistent with the generating family, but is not a
+proof that its assumptions would be true in real data. Exponential
+regression is nested in Weibull at
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">k=1</annotation></semantics></math></span>.
+Its likelihood-ratio statistic is 65.0891, with an approximate
+one-degree-of-freedom tail probability
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>7.16</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>16</mn></mrow></msup></mrow><annotation encoding="application/x-tex">7.16\times10^{-16}</annotation></semantics></math></span>.
+This test addresses a constant-hazard shape within this regression
+family; it does not test independent censoring or every possible
+deviation from Weibull. Lognormal and Weibull are not nested by fixing
+one shape coefficient, so the same chi-square likelihood-ratio argument
+does not directly compare them. AIC can compare their likelihoods, with
+its own approximation and prediction-oriented rationale.</p>
+<p>A common residual checks the fitted cumulative distribution. For a
+true continuous model,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>=</mo><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">R=H(T\mid z)</annotation></semantics></math></span>
+is exponential with rate one because
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ℙ</mi><mo stretchy="false" form="prefix">{</mo><mi>H</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>T</mi><mo>∣</mo><mi>z</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&gt;</mo><mi>r</mi><mo>∣</mo><mi>z</mi><mo stretchy="false" form="postfix">}</mo><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>r</mi></mrow></msup><mo>,</mo><mspace width="2.0em"></mspace><mi>r</mi><mo>≥</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbb{P}\{H(T\mid z)&gt;r\mid z\}=e^{-r},\qquad r\geq0.
+ \label{s8-cox-snell-identity}</annotation></semantics></math><span id="s8-cox-snell-identity" class="equation-anchor"></span><span class="equation-number">(6.14)</span></span> Here the
+conditional event-time distribution is proper, so cumulative hazard
+eventually tends to infinity. A continuous distribution with a permanent
+event-free fraction would require a different residual reference: its
+finite cumulative-hazard range cannot yield an unrestricted
+unit-exponential variable. On intervals where the hazard vanishes,
+generalized inversion handles the resulting flat cumulative-hazard
+segments. We transform the observed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math></span>
+using fitted
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>H</mi><annotation encoding="application/x-tex">H</annotation></semantics></math></span>,
+retain the censoring indicator, and estimate the residual cumulative
+hazard. Values near the 45-degree line are a useful descriptive check.
+Treating censored residuals as complete exponential observations would
+repeat the original censoring mistake on a new scale.</p>
+<figure id="s8-residual-figure">
+<a href="../assets/survival/ch08-residuals.png" class="figure-zoom" aria-label="Open figure at full resolution"><img src="../assets/survival/ch08-residuals.png" alt="Figure 6.2. Cox–Snell residual check: minus log Kaplan–Meier survival of
+fitted cumulative-hazard residuals versus the residual value. The dashed
+line is the exponential-rate-one reference. This is a descriptive
+fitted-model check, not a formal confidence band or proof of
+adequacy.">
+</a><figcaption>Figure 6.2. Cox–Snell residual check: minus log Kaplan–Meier survival of
+fitted cumulative-hazard residuals versus the residual value. The dashed
+line is the exponential-rate-one reference. This is a descriptive
+fitted-model check, not a formal confidence band or proof of
+adequacy.</figcaption>
+<p class="figure-tools"><a href="../assets/survival/ch08-residuals.png">Open full-size figure</a></p></figure>
+<p>The identity uses true parameters. Estimated parameters reuse the
+same records, so residuals are not an independent sample of ideal
+exponentials. Tail instability also reflects diminishing risk sets.
+Systematic departure can suggest misspecified shape or covariate
+effects; apparent agreement can hide compensating errors. Check
+covariate-specific patterns and scientific plausibility as well as one
+pooled residual graph. More complete diagnostics will follow the basic
+regression constructions.</p>
+<h2 id="s8-piecewise">6.8 Piecewise-exponential regression makes exposure
+explicit</h2>
+<p>Exact observed person-time differs from a midpoint exposure approximation. We can retain
+exact exposure while allowing the hazard to be constant within
+prespecified intervals
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mi>k</mi></msub><mo>=</mo><mo stretchy="false" form="prefix">(</mo><msub><mi>a</mi><mrow><mi>k</mi><mo>−</mo><mn>1</mn></mrow></msub><mo>,</mo><msub><mi>a</mi><mi>k</mi></msub><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">I_k=(a_{k-1},a_k]</annotation></semantics></math></span>.
+With no delayed entry, define
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>W</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo>=</mo><mo>max</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><msub><mi>a</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msub><mi>a</mi><mrow><mi>k</mi><mo>−</mo><mn>1</mn></mrow></msub><mo stretchy="false" form="postfix">}</mo><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>D</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo>=</mo><msub><mi>Δ</mi><mi>i</mi></msub><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><msub><mi>a</mi><mrow><mi>k</mi><mo>−</mo><mn>1</mn></mrow></msub><mo>&lt;</mo><msub><mi>X</mi><mi>i</mi></msub><mo>≤</mo><msub><mi>a</mi><mi>k</mi></msub><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">W_{ik}=\max\{0,\min(X_i,a_k)-a_{k-1}\},\qquad
+ D_{ik}=\Delta_i\mathbf{1}\{a_{k-1}&lt;X_i\leq a_k\}.
+ \label{s8-split-exposure}</annotation></semantics></math><span id="s8-split-exposure" class="equation-anchor"></span><span class="equation-number">(6.15)</span></span> Then
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>k</mi></msub><msub><mi>W</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo>=</mo><msub><mi>X</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\sum_kW_{ik}=X_i</annotation></semantics></math></span>
+over a partition covering all follow-up, and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>k</mi></msub><msub><mi>D</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo>=</mo><msub><mi>Δ</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\sum_kD_{ik}=\Delta_i</annotation></semantics></math></span>.
+The event-first convention assigns an event at an interval’s right
+endpoint to that interval; censoring at the same endpoint adds exposure
+but no event. Boundaries and units should be checked before fitting a
+split-record data set.</p><p>Use
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>α</mi><mi>k</mi></msub><mo>+</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\lambda_i(t)=\exp(\alpha_k+\beta^Tz_i)</annotation></semantics></math></span>
+within
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>I</mi><mi>k</mi></msub><annotation encoding="application/x-tex">I_k</annotation></semantics></math></span>.
+Its first-event log likelihood, up to parameter-free terms, is
+<span class="equation" tabindex="0" aria-label="Displayed equation; scroll horizontally if needed"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>ℓ</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>α</mi><mo>,</mo><mi>β</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>,</mo><mi>k</mi></mrow></munder><mo stretchy="false" form="prefix">{</mo><msub><mi>D</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>α</mi><mi>k</mi></msub><mo>+</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msub><mi>W</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><msup><mi>e</mi><mrow><msub><mi>α</mi><mi>k</mi></msub><mo>+</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub></mrow></msup><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\ell(\alpha,\beta)=\sum_{i,k}
+ \{D_{ik}(\alpha_k+\beta^Tz_i)-W_{ik}e^{\alpha_k+\beta^Tz_i}\}.
+ \label{s8-pwe-loglik}</annotation></semantics></math><span id="s8-pwe-loglik" class="equation-anchor"></span><span class="equation-number">(6.16)</span></span> A Poisson log
+likelihood with mean
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>W</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><msup><mi>e</mi><mrow><msub><mi>α</mi><mi>k</mi></msub><mo>+</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub></mrow></msup></mrow><annotation encoding="application/x-tex">W_{ik}e^{\alpha_k+\beta^Tz_i}</annotation></semantics></math></span>
+differs by
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mrow><mi>i</mi><mo>,</mo><mi>k</mi></mrow></msub><mo stretchy="false" form="prefix">{</mo><msub><mi>D</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo>log</mo><msub><mi>W</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo>−</mo><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>D</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mi>!</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\sum_{i,k}\{D_{ik}\log W_{ik}-\log(D_{ik}!)\}</annotation></semantics></math></span>,
+independent of the parameters. Thus a Poisson fitting algorithm with
+offset
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>log</mo><msub><mi>W</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub></mrow><annotation encoding="application/x-tex">\log W_{ik}</annotation></semantics></math></span>
+maximizes the same likelihood factor. The offset has coefficient fixed
+at one; estimating a coefficient for log exposure defines a different
+model.</p>
+<p class="code-context">This excerpt shows a step inside the preceding <a href="#complete-r-example">complete R example</a>; it uses that block’s data and setup.</p><div class="sourceCode" id="cb4" data-language="R"><pre class="sourceCode r" tabindex="0" aria-label="R code; scroll horizontally if needed"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>pwe <span class="ot">&lt;-</span> <span class="fu">glm</span>(event <span class="sc">~</span> interval <span class="sc">+</span> z <span class="sc">+</span> age10 <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(exposure)),</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>           <span class="at">data=</span>split, <span class="at">family=</span><span class="fu">poisson</span>())</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">abs</span>(<span class="fu">sum</span>(split<span class="sc">$</span>exposure)<span class="sc">-</span><span class="fu">sum</span>(dat<span class="sc">$</span>time)) <span class="sc">&lt;</span> <span class="fl">1e-10</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">sum</span>(split<span class="sc">$</span>event) <span class="sc">==</span> <span class="fu">sum</span>(dat<span class="sc">$</span>status))</span></code></pre></div>
+<p>The script partitions
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>10</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">(0,10]</annotation></semantics></math></span>
+at 2, 4, 6, and 8 months and verifies both conservation identities and
+the log-likelihood equivalence numerically. Zero-exposure rows are
+omitted before taking logarithms. The artificial rows from one subject
+are not independent new people, and first-event counts are not a
+recurrent-event Poisson process. The equivalence is about a likelihood
+as a function of parameters under a specified hazard model; it does not
+change the scientific observation process. Too many sparse intervals can
+create unstable baseline estimates, while too few impose a coarse shape.
+Interval selection and checks should serve the target horizons.</p>
+<h2 id="interpret-a-model-at-the-scale-where-it-makes-a-claim">6.9 Interpret
+a model at the scale where it makes a claim</h2>
+<p>Report whether a coefficient is a log-time or log-hazard coefficient,
+its measurement unit, and the held-fixed profile. State the
+distributional shape restriction and the independent-censoring
+condition. Conditional curves at age 50 are not automatically marginal
+population curves; standardization requires averaging conditional
+predictions over a stated baseline population. A model can calculate
+survival after ten months, but those calculations would be parametric
+extrapolation beyond this cohort’s observation window. Changing the
+extrapolated tail cannot be empirically checked from these records
+alone.</p>
+<p>The Weibull example connects likelihood, time ratios, and hazard
+ratios in one tractable family. The next chapter relaxes the baseline
+shape while keeping a constant covariate hazard multiplier. That gains
+flexibility but also reveals an important division: relative-hazard
+estimation and absolute-risk estimation use different pieces of the
+event information.</p>
+<h2 id="exercises">6.10 Exercises</h2>
+<ol class="exercises" style='--chapter:"6."'><li id="exercise-6-1"><p><strong>A time ratio need not be a hazard ratio.</strong> Assume
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>z</mi></msub><mover><mo>=</mo><mi>d</mi></mover><msup><mi>e</mi><mrow><msup><mi>γ</mi><mi>T</mi></msup><mi>z</mi></mrow></msup><msub><mi>T</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">T_z\overset d=e^{\gamma^Tz}T_0</annotation></semantics></math></span>,
+where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>z</mi><annotation encoding="application/x-tex">z</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>γ</mi><annotation encoding="application/x-tex">\gamma</annotation></semantics></math></span>
+are fixed
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>-dimensional
+columns and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>T</mi><mn>0</mn></msub><annotation encoding="application/x-tex">T_0</annotation></semantics></math></span>
+has positive continuous density and survival on the times considered.
+Derive the conditional survival, corresponding quantile ratio and
+hazard. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>log</mo><msub><mi>T</mi><mn>0</mn></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\log T_0\sim N(0,1)</annotation></semantics></math></span>
+and time ratio 2, evaluate the hazard ratio at times 0.5 and 2. Use this
+to refute the claim that a common time ratio always implies a constant
+hazard ratio.</p>
+</li><li id="exercise-6-2"><p><strong>Map Weibull AFT and proportional hazards.</strong> Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>log</mo><mi>T</mi><mo>=</mo><msub><mi>γ</mi><mn>0</mn></msub><mo>+</mo><msup><mi>γ</mi><mi>T</mi></msup><mi>z</mi><mo>+</mo><mi>σ</mi><mi>ε</mi></mrow><annotation encoding="application/x-tex">\log T=\gamma_0+\gamma^Tz+\sigma\varepsilon</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>σ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\sigma&gt;0</annotation></semantics></math></span>,
+with
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>Pr</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>ε</mi><mo>&gt;</mo><mi>u</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>exp</mo><mrow><mo stretchy="true" form="prefix">(</mo><mo>−</mo><msup><mi>e</mi><mi>u</mi></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\Pr(\varepsilon&gt;u)=\exp(-e^u)</annotation></semantics></math></span>.
+Derive Weibull survival and hazard, and the PH coefficient vector in
+terms of the AFT slopes. For
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>γ</mi><mi>j</mi></msub><mo>=</mo><mo>−</mo><mn>0.35</mn></mrow><annotation encoding="application/x-tex">\gamma_j=-0.35</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>σ</mi><mo>=</mo><mn>0.625</mn></mrow><annotation encoding="application/x-tex">\sigma=0.625</annotation></semantics></math></span>,
+calculate the time and hazard ratios. Distinguish the dimensionless
+log-time error scale, the Weibull time scale and its median.</p>
+</li><li id="exercise-6-3"><p><strong>Estimate location and shape together.</strong> Use independently right-censored Weibull AFT records
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>X</mi><mi>i</mi></msub><mo>,</mo><msub><mi>Δ</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(X_i,\Delta_i)</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>v</mi><mi>i</mi></msub><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><msubsup><mi>z</mi><mi>i</mi><mi>T</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mi>T</mi></msup></mrow><annotation encoding="application/x-tex">v_i=(1,z_i^T)^T</annotation></semantics></math></span>.
+Let
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>η</mi><mi>i</mi></msub><mo>=</mo><msup><mi>γ</mi><mi>T</mi></msup><msub><mi>v</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\eta_i=\gamma^Tv_i</annotation></semantics></math></span>,
+where
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>γ</mi><annotation encoding="application/x-tex">\gamma</annotation></semantics></math></span>
+here contains the intercept and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math></span>
+slopes; write
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>=</mo><mn>1</mn><mi>/</mi><mi>σ</mi></mrow><annotation encoding="application/x-tex">k=1/\sigma</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mi>i</mi></msub><mo>=</mo><msubsup><mi>X</mi><mi>i</mi><mi>k</mi></msubsup><msup><mi>e</mi><mrow><mo>−</mo><mi>k</mi><msub><mi>η</mi><mi>i</mi></msub></mrow></msup></mrow><annotation encoding="application/x-tex">H_i=X_i^ke^{-k\eta_i}</annotation></semantics></math></span>.
+Derive the log likelihood, location score, shape score and joint
+observed information blocks at an arbitrary parameter vector. Show how
+estimating shape changes the covariance for the location block through a
+Schur complement, and state why inversion requires identifiable
+parameters and nonsingular information.</p>
+</li><li id="exercise-6-4"><p><strong>A person split into intervals is still one person.</strong> Partition follow-up into right-closed intervals
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>2</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">(0,2]</annotation></semantics></math></span>,
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>2</mn><mo>,</mo><mn>4</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">(2,4]</annotation></semantics></math></span>
+and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>4</mn><mo>,</mo><mn>6</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">(4,6]</annotation></semantics></math></span>
+months. Split one person who fails at month 4 and one person censored at
+month 5.5 into their interval exposures
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>W</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><annotation encoding="application/x-tex">W_{ik}</annotation></semantics></math></span>
+and event indicators
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>D</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><annotation encoding="application/x-tex">D_{ik}</annotation></semantics></math></span>.
+Verify conservation of exposure and event count. For piecewise log
+hazard
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ξ</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo>=</mo><msub><mi>α</mi><mi>k</mi></msub><mo>+</mo><msup><mi>β</mi><mi>T</mi></msup><msub><mi>z</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\xi_{ik}=\alpha_k+\beta^Tz_i</annotation></semantics></math></span>,
+derive why a Poisson likelihood with offset
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>log</mo><msub><mi>W</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub></mrow><annotation encoding="application/x-tex">\log W_{ik}</annotation></semantics></math></span>
+has the same parameter-dependent part as the first-event likelihood,
+omitting zero-exposure rows. Explain why this representation does not
+establish independent recurrent-event rows.</p>
+</li><li id="exercise-6-5"><p><strong>What a likelihood comparison tests.</strong> For the same independently right-censored cohort and common baseline
+covariates, suppose maximized log likelihoods are
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>1172.461697</mn></mrow><annotation encoding="application/x-tex">-1172.461697</annotation></semantics></math></span>
+(exponential),
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>1139.917137</mn></mrow><annotation encoding="application/x-tex">-1139.917137</annotation></semantics></math></span>
+(Weibull),
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>1142.753715</mn></mrow><annotation encoding="application/x-tex">-1142.753715</annotation></semantics></math></span>
+(lognormal) and
+<span class="inline-equation"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>1142.877239</mn></mrow><annotation encoding="application/x-tex">-1142.877239</annotation></semantics></math></span>
+(log-logistic). Exponential estimates three location coefficients; each
+other model estimates those coefficients and one shape/scale parameter.
+Calculate AIC values. State the exponential-within-Weibull null,
+likelihood-ratio statistic and asymptotic reference degrees of freedom.
+Explain why the same nested test does not compare Weibull with lognormal
+and why none of these comparisons establishes causal effects or
+independent censoring.</p>
+</li></ol></div><nav class="chapter-sequence" aria-label="Chapter sequence"><a rel="prev" href="07-likelihood.html">Previous: 5. Likelihood under incomplete observation</a><a class="book-contents-return" href="#book-contents">Contents</a><a rel="next" href="09-cox.html">Next: 7. The Cox model: estimation and absolute risk</a></nav></article></main>
+<footer class="container site-footer"><p>Lap Sum Chan &middot; Biostatistics</p><p>Adapted from <a href="https://github.com/mavroudisv/plain-academic">Plain Academic</a>.</p></footer></body></html>
